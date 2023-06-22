@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.DoThings" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/SurfaceGray</item>
+    </style>
+
+    <style name="DialogWindowTheme." parent="android:Theme.Material.Dialog">
+        <item name="android:textColorPrimary">@color/FABDarkOrange</item>
+    </style>
+
+    <style name="ThemeOverlay.DoThings.FullscreenContainer" parent="">
+        <item name="fullscreenBackgroundColor">@color/light_blue_600</item>
+        <item name="fullscreenTextColor">@color/light_blue_A200</item>
+    </style>
+</resources>

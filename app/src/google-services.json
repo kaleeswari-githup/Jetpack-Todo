@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "664988258330",
+    "project_id": "todo-things-jetpack",
+    "storage_bucket": "todo-things-jetpack.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664988258330:android:10af5197710c87387c81a3",
+        "android_client_info": {
+          "package_name": "com.example.dothings"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "664988258330-0k7gtp22gc5lv9gqilu6o1flfu22ieul.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.dothings",
+            "certificate_hash": "e3dec1cb625232e555eeecc1add7c55d15f72bcb"
+          }
+        },
+        {
+          "client_id": "664988258330-3ic7tbaom8eeruprcj0lktomos8bnrdo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWGnoDwMz7idm-5eLjl0j0ty96_O8SUVE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "664988258330-3ic7tbaom8eeruprcj0lktomos8bnrdo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
