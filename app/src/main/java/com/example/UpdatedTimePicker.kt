@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
@@ -84,7 +85,8 @@ fun UpdatedScrollableTimePicker(
             Text(
                 text = "Clear",
                 modifier = Modifier
-                    .clickable {
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) {
                         selectedTime.value = null
                         onClearClick()
                     }

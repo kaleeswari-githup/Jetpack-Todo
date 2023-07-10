@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Theme.DoThings" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/SurfaceGray</item>
+
+        <item name="android:windowLightStatusBar" tools:ignore="NewApi">true</item>
+        <item name = "android:navigationBarColor" tools:ignore = "NewApi">@color/SurfaceGray</item>
     </style>
 
-    <style name="DialogWindowTheme." parent="android:Theme.Material.Dialog">
-        <item name="android:textColorPrimary">@color/FABDarkOrange</item>
-    </style>
-
-    <style name="ThemeOverlay.DoThings.FullscreenContainer" parent="">
-        <item name="fullscreenBackgroundColor">@color/light_blue_600</item>
-        <item name="fullscreenTextColor">@color/light_blue_A200</item>
+    <style name="DialogTheme" parent="Theme.MaterialComponents.Light.Dialog">
+        <item name="android:statusBarColor">@color/SurfaceGray</item>
+        <item name="android:navigationBarColor">@color/SurfaceGray</item>
     </style>
 </resources>

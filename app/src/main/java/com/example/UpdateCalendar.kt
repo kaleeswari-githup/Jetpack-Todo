@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,7 +75,8 @@ fun UpdatedCalendar(
                     Text(
                         text = setDateText,
                         modifier = Modifier
-                            .clickable {
+                            .clickable(indication = null,
+                                interactionSource = remember { MutableInteractionSource() }) {
                                 isDatePickervisible = true
                                 isTimePickervisible = false
 
@@ -127,7 +129,8 @@ fun UpdatedCalendar(
                 Row(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp)
-                    .clickable { isTimePickervisible = true },
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) { isTimePickervisible = true },
                     horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         text = setTimeText!!,
@@ -142,7 +145,8 @@ fun UpdatedCalendar(
                         Text(
                             text = "Clear",
                             modifier = Modifier
-                                .clickable {
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
                              isDoneButtonClicked = true
                                     isClearTextVisible = false
                                     selectedTime.value = null
@@ -278,26 +282,27 @@ fun UpdatedShrinkCalendar(
         ) {
             for (day in week) {
                 val isCurrentMonth = day.monthValue == currentMonth.monthValue
-                val textColor = if (isCurrentMonth && day == selectedDate.value) {
-                    Color.White
-                } else if (isCurrentMonth && day == LocalDate.now()) {
+                val isCurrentDate = day == LocalDate.now()
+                val isSelectedDate = day == selectedDate.value
+                val textColor = when {
+                    isSelectedDate -> Color.White
+                    isCurrentDate -> FABDarkColor
+                    isCurrentMonth -> Color.Black
+                    else -> Color.Transparent
+                }
+                val background = if (isSelectedDate && isCurrentMonth) {
                     FABDarkColor
-                } else if (isCurrentMonth) {
-                    Color.Black
                 } else {
                     Color.Transparent
                 }
-                val background = if (day == selectedDate.value) {
-                    FABDarkColor // or any other color
-                } else {
-                    Color.Transparent
-                }
+                val isClickable = isCurrentMonth
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .background(background, shape = CircleShape)
-                        .clickable {
-                            if (isCurrentMonth) {
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            if (isClickable) {
                                 selectedDate.value = day
                             }
                         }

@@ -1,33 +1,6 @@
 <resources>
     <string name="app_name">Do Things</string>
-    <string name="message_1">Buy Milk</string>
-    <string name="message_2">Meet John</string>
-    <string name="message_3">Go school</string>
-    <string name="message_4">Today dinner</string>
-    <string name="message_5">See friend</string>
-    <string name="message_6">Drink juice</string>
-    <string name="date_1">Today</string>
-    <string name="date_2">Today</string>
-    <string name="date_3">Today</string>
-    <string name="date_4">Today</string>
-    <string name="date_5">Today</string>
-    <string name="time_1">9.30AM</string>
-    <string name="time_2">9.30AM</string>
-    <string name="time_3">9.30AM</string>
-    <string name="time_4">9.30AM</string>
-    <string name="time_5">9.30AM</string>
-    <string name="time_6">9.30AM</string>
-    <string name="monday">mon</string>
-    <string name="tuesday">tue</string>
-    <string name="wednesday">wed</string>
-    <string name="thursday">thu</string>
-    <string name="friday">fir</string>
-    <string name="saturday">sat</string>
-    <string name="sunday">sun</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
-
+    <string name="singin_google">Continue with Google</string>
+    <string name="channel_id">channel1</string>
 
 </resources>

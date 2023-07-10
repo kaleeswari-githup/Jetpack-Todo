@@ -1,32 +1,30 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
-import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
-import androidx.compose.material.SnackbarDefaults.backgroundColor
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -46,9 +44,13 @@ import com.example.ui.theme.FABDarkColor
 import com.example.ui.theme.NewtaskColorGray
 import com.example.ui.theme.SurfaceGray
 import com.example.ui.theme.Text1
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import kotlinx.coroutines.launch
+import java.text.ParseException
+import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -64,7 +66,10 @@ fun UpdateTaskScreen(
     textValue:String,
     id:String,
     openKeyboard: Boolean,
-    onDismiss : () -> Unit
+    onDismiss : () -> Unit,
+    scaffoldState: ScaffoldState,
+    onMarkCompletedClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit
 ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
@@ -72,7 +77,10 @@ fun UpdateTaskScreen(
 
     val maxValue = 32
     val database = FirebaseDatabase.getInstance()
-    val databaseRef = database.reference.child("Task")
+    val user = FirebaseAuth.getInstance().currentUser
+    val uid = user?.uid
+    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
+
     var context = LocalContext.current
     val onDoneClick:(String,String) -> Unit = { updatedDate,updatedTime ->
         val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH) // Assuming the date format in the database is in ISO format
@@ -94,31 +102,39 @@ fun UpdateTaskScreen(
         } else {
             "" // Assign empty string if originalDate is LocalDate.MIN
         }
-
-
-            val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        val currentDateTime = LocalDateTime.now()
+        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        val notificationTime: Long? = if (!formattedDate.isNullOrBlank() && !timeFormat.isNullOrBlank()) {
+            val combinedDateTime = "$formattedDate $timeFormat"
+            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
+            val date: Date? = try {
+                dateTimeFormat.parse(combinedDateTime)
+            } catch (e: ParseException) {
+                null
+            }
+            date?.time
+        } else {
+            null
+        }
             val updatedData = HashMap<String, Any>()
             updatedData["id"] = id
             updatedData["message"] = task.value ?: ""
             updatedData["time"] = timeFormat
             updatedData["date"] = formattedDate
+            updatedData["notificationTime"] = notificationTime?.toLong() ?: 0L
             databaseRef.child(id).updateChildren(updatedData)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
-                        onDismiss.invoke()
-                    } else {
-                        Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-
+               onDismiss.invoke()
     }
 
 
     val onBackPressed: () -> Unit = {
         onDoneClick(selectedDate.value,selectedTime.value)
     }
+    var isPickerOpen = remember { mutableStateOf(false) }
+    val blurEffectBackground by animateDpAsState(targetValue = when{
+        isPickerOpen.value -> 10.dp
+        else -> 0.dp
+    })
     Dialog(onDismissRequest = onBackPressed ,
     properties = DialogProperties(
         dismissOnClickOutside = true,
@@ -128,10 +144,10 @@ fun UpdateTaskScreen(
 ) {
 
     Box(modifier = Modifier
+        .blur(radius = blurEffectBackground)
         .fillMaxSize()
-        .background(color = SurfaceGray)
-    ) {val dialogWindow = (LocalView.current.parent as DialogWindowProvider).window
-        dialogWindow.setBackgroundDrawable(ColorDrawable(backgroundColor.toArgb()))
+
+    ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
        // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
             Column(modifier = Modifier.fillMaxSize(),
@@ -150,7 +166,7 @@ fun UpdateTaskScreen(
                     },
                     id = id,
                     openKeyboard = openKeyboard,
-
+                    isPickerOpen = isPickerOpen
                     )
 
                 Box(
@@ -158,7 +174,7 @@ fun UpdateTaskScreen(
                         .padding(bottom = 40.dp)
 
                 ) {
-                    UpdatedButtons( id = id)
+                    UpdatedButtons( id = id,onDismiss, onMarkCompletedClick = onMarkCompletedClick,onDeleteClick)
                 }
 
             }
@@ -182,23 +198,45 @@ fun UpdateCircleDesign(
     initialSelectedtime: MutableState<String> ,
     id:String,
     onTaskChange:(String) -> Unit,
-
+    isPickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
 
 ){
    /* val selectedDate = remember { mutableStateOf(initialSelectedate.value) }
     val selectedTime = remember { mutableStateOf(initialSelectedtime.value) }*/
+    val isMessageFieldFocused = remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    var isPickerOpen by remember { mutableStateOf(false) }
+
     val focusManager = LocalFocusManager.current
+    val database = FirebaseDatabase.getInstance()
+    val user = FirebaseAuth.getInstance().currentUser
+    val uid = user?.uid
+    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
+    val context = LocalContext.current
+    val onDoneClick: () -> Unit = {
+
+        val updatedData = HashMap<String, Any>()
+        updatedData["id"] = id
+        updatedData["message"] = message.value
+        databaseRef.child(id).updateChildren(updatedData)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
+
+                } else {
+                    Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 24.dp, end = 24.dp, top = 38.dp)
-            .background(bigRoundedCircleGradient, shape = CircleShape)
             .size(344.dp)
-            .clip(CircleShape),
+            .aspectRatio(1f)
+            .clip(CircleShape)
+            .background(bigRoundedCircleGradient, shape = CircleShape),
         contentAlignment = Alignment.Center
     ){
 
@@ -214,8 +252,11 @@ fun UpdateCircleDesign(
                     .padding(start = 32.dp, end = 32.dp)
                     .focusRequester(focusRequester)
                     .onFocusChanged { focusState ->
-                        if (!focusState.isFocused) {
+                        if (focusState.isFocused) {
+                            isMessageFieldFocused.value = true
+                        }else{
                             keyboardController?.hide()
+                            isMessageFieldFocused.value = false
                         }
                     },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -223,6 +264,7 @@ fun UpdateCircleDesign(
                     onDone ={
                         keyboardController?.hideSoftwareKeyboard()
                         focusManager.clearFocus(true)
+                        onDoneClick.invoke()
                     }
                 ),
                 colors = TextFieldDefaults.textFieldColors(
@@ -251,6 +293,10 @@ fun UpdateCircleDesign(
                 ),
 
             )
+            if (isMessageFieldFocused.value){
+                TextStyle(text = "${message.value.length} / 32")
+            }
+
             Box(
                 modifier = Modifier
                     .wrapContentSize(Alignment.Center)
@@ -260,19 +306,23 @@ fun UpdateCircleDesign(
                         end = 48.dp
                     )
                     .background(color = Color.White, shape = CircleShape)
-                    .clickable {
-                        isPickerOpen = true
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) {
+                        isPickerOpen.value = true
                     }
                     .padding(4.dp)
 
 
             ) {
-                if (initialSelectedate == null && initialSelectedtime == null){
-                    Icon(
-                        painter = painterResource(id = R.drawable.calendar_icon),
-                        contentDescription = "calender_icon",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.calendar_icon),
+                            contentDescription = "calender_icon",
+                            modifier = Modifier
+                        )
+
+
                 }else if(initialSelectedate != null && initialSelectedtime == null) {
                     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
                     val formattedDate = initialSelectedate.value.format(formatter) ?: ""
@@ -319,7 +369,7 @@ fun UpdateCircleDesign(
                             color = Text1)
                     }
                 }
-                if (isPickerOpen) {
+                if (isPickerOpen.value) {
                     val pattern = "EEE, d MMM yyyy"
                     val locale = Locale.ENGLISH
 
@@ -339,7 +389,7 @@ fun UpdateCircleDesign(
                     UpdatedCalendarAndTimePickerScreen(
                         userSelectedDate = localDate,
                         userSelectedTime = initialSelectedtime.value,
-                        onDismiss = { isPickerOpen = false },
+                        onDismiss = { isPickerOpen.value = false },
                         onDateTimeSelected = { date, time ->
                             val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -351,7 +401,8 @@ fun UpdateCircleDesign(
                             initialSelectedate.value = formattedDate
                             initialSelectedtime.value = time
                         },
-                        id = id
+                        id = id,
+                        invokeOnDoneClick = true
 
                     )
 
@@ -372,11 +423,16 @@ fun UpdateCircleDesign(
 
 
 @Composable
-fun UpdatedButtons(id: String){
+fun UpdatedButtons(id: String,
+                   onDismiss : () -> Unit,
+                   onMarkCompletedClick: (String) -> Unit,
+                   onDeleteClick: (String) -> Unit){
     val coroutineScope = rememberCoroutineScope()
     val database = FirebaseDatabase.getInstance()
-    val databaseRef = database.reference.child("Task")
-    var context = LocalContext.current
+    val user = FirebaseAuth.getInstance().currentUser
+    val uid = user?.uid
+
+
     Box(modifier = Modifier
         .fillMaxWidth()
         .padding(start = 42.dp, end = 42.dp)
@@ -390,22 +446,12 @@ contentAlignment = Alignment.Center
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.clickable {
-                coroutineScope.launch {
-                    Log.d("MyTag", "id: $id")
-                    databaseRef
-                        .child(id)
-                        .removeValue()
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Toast.makeText(context, "Task Deleted", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, task.exception?.message, Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                }
-
-            }
+            modifier = Modifier.clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
+                onDeleteClick(id)
+                onDismiss.invoke()
+            },
+                verticalAlignment = Alignment.CenterVertically
             ) {
                Image(painter = painterResource(id = R.drawable.trash_delete), contentDescription = null )
                Interfont(text = "Delete")
@@ -415,8 +461,17 @@ contentAlignment = Alignment.Center
                     .width(1.dp)
                     .fillMaxHeight()
                     .background(color = SurfaceGray)
+
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
+            , modifier = Modifier.clickable(indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) {
+                    coroutineScope.launch {
+                        onMarkCompletedClick(id)
+                        onDismiss.invoke()
+                    }
+            },
+            verticalAlignment = Alignment.CenterVertically) {
                 Image(painter = painterResource(id = R.drawable.square), contentDescription = null)
                 Interfont(text = "Mark completed")
             }
@@ -442,8 +497,6 @@ fun CrossFloatingActionButton(onClick:() -> Unit){
         .padding(top = 12.dp, start = 24.dp)
         .fillMaxWidth()
         .fillMaxHeight()
-
-
         .background(Color.Transparent)
     ) {
         androidx.compose.material.FloatingActionButton(
@@ -458,7 +511,7 @@ fun CrossFloatingActionButton(onClick:() -> Unit){
             backgroundColor = Color.White
 
             ) {
-            Icon(imageVector = Icons.Default.Close, contentDescription = "")
+            Image(painterResource(id =R.drawable.cross_icon )  , contentDescription = "")
         }
     }
 }

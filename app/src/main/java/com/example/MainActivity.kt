@@ -14,24 +14,17 @@ import com.example.Pages.HomeScreen
 
 class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
+
     @SuppressLint("SuspiciousIndentation")
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-           // CalendarAndTimePickerScreen()
-          /*  Calendar(
 
-                selectedDate = remember {
-                    mutableStateOf(LocalDate.now())
-                },
-                onDateSelected = {},
-                selectedTime = remember {
-                    mutableStateOf(LocalTime.now())
-                }
-            )*/
-              navController = rememberNavController()
-                SetupNavGraph(navController = navController)
+        setContent {
+
+                MyMainApp()
+//HomeScreen(navController = navController)
+
         }
     }
     override fun onBackPressed() {
@@ -42,6 +35,13 @@ class MainActivity : ComponentActivity() {
             super.onBackPressed()
         }
     }
+}
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun MyMainApp() {
+    val navController = rememberNavController()
+    SetupNavGraph(navController = navController)
+    // HomeScreen(navController = navController)
 }
 
 
