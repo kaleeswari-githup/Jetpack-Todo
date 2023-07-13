@@ -9,7 +9,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.dothings.R
 import com.example.dothings.Screen
@@ -30,6 +33,14 @@ fun SplashScreen(navController: NavController){
     Box(modifier = Modifier.fillMaxSize()
         .background(color = SurfaceGray)) {
         Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+        Box(modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center){
+            Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
+                modifier = Modifier
+                    .graphicsLayer(alpha = 0.06f)
+                    .blur(radius = 84.dp)
+                    .align(Alignment.Center))
+        }
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
         ) {

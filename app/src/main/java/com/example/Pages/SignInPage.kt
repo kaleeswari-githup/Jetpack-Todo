@@ -17,7 +17,9 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +110,14 @@ fun SignInScreen(navController: NavController){
     ){
         var isLoading by remember { mutableStateOf(false) }
         Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+        Box(modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center){
+            Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
+                modifier = Modifier
+                    .graphicsLayer(alpha = 0.06f)
+                    .blur(radius = 84.dp)
+                    .align(Alignment.Center))
+        }
         Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center) {
             Column(modifier = Modifier.fillMaxSize(),

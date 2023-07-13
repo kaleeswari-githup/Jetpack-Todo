@@ -28,10 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -134,15 +132,13 @@ fun HomeScreen(navController: NavHostController){
             }
         })
     }
-    var isUpdatedScreenOpen = remember {
-        mutableStateOf(mapOf<String, Boolean>())
-    }
+    val selectedItemId = remember { mutableStateOf("") }
     var isAddDaskScreenOpen = remember {
         mutableStateOf(false)
     }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isUpdatedScreenOpen.value.any { it.value } -> 25.dp
+        selectedItemId.value.isNotEmpty() -> 25.dp
         isAddDaskScreenOpen.value -> 25.dp
         isMarkCompletedOpen.value -> 25.dp
         else -> 0.dp
@@ -164,14 +160,14 @@ fun HomeScreen(navController: NavHostController){
             contentAlignment = Alignment.Center){
                 Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
                     modifier = Modifier
-                        .graphicsLayer(alpha = 0.08f)
-                        .blur(radius = 84.dp)
+                        .graphicsLayer(alpha = 0.04f)
+                        .blur(radius = 90.dp)
                         .align(Alignment.Center))
             }
 
 
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LazyGridLayout( onMarkCompletedClick = onMarkCompletedClick,onDeleteClick,isUpdatedScreenOpen)
+                LazyGridLayout( onMarkCompletedClick = onMarkCompletedClick,onDeleteClick,selectedItemId)
             }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -214,7 +210,7 @@ fun HomeScreen(navController: NavHostController){
 @Composable
 fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                   onDeleteClick: (String) -> Unit,
-                   isUpdatedScreenOpen: MutableState<Map<String, Boolean>>){
+                   selectedItemId: MutableState<String>){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -254,11 +250,13 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
         }
     }
     val gridColumns = 2
+
     if (cardDataList.size > 1) {
         LazyVerticalStaggeredGrid(
             columns = StaggeredGridCells.Fixed(gridColumns),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(16.dp)
+
         ) {
             itemsIndexed(cardDataList.reversed()) { index, cardData ->
                 val animationDelay = index
@@ -271,15 +269,23 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                 } else {
                     ""
                 }
-
+                val shadowOpacity = 0.1f // Set the desired opacity value (between 0 and 1)
+                val shadowColor = Color.Black.copy(alpha = shadowOpacity)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
                             top = if (index == 1) 90.dp else 16.dp,
-                            bottom = if (index == cardDataList.size - 1) 50.dp else 0.dp
+                            bottom = if (index == cardDataList.size - 1) 100.dp else 0.dp
                         )
+
+
                 ) {
+                  /*  Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
+                        modifier = Modifier
+                            .graphicsLayer(alpha = 0.06f)
+                           // .blur(radius = 84.dp)
+                            .align(Alignment.Center))*/
                     RoundedCircleCardDesign(
                         image = imageResource,
                         message = cardData.message!!,
@@ -289,7 +295,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         animationDelay = animationDelay,
                         onMarkCompletedClick = onMarkCompletedClick,
                         onDeleteClick = onDeleteClick,
-                        isUpdatedScreenOpen = isUpdatedScreenOpen
+                        selectedItemId = selectedItemId
                     )
                 }
             }
@@ -297,7 +303,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
     }else if (cardDataList.size == 1) {
         LazyColumn(){
             items(cardDataList){ cardData ->
-                Box(modifier = Modifier, contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.padding(bottom = 50.dp), contentAlignment = Alignment.Center) {
                     val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                     val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                     val dateStringFromDatabase = cardData.date
@@ -316,7 +322,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         animationDelay = 0,
                         onMarkCompletedClick = onMarkCompletedClick,
                         onDeleteClick = onDeleteClick,
-                        isUpdatedScreenOpen = isUpdatedScreenOpen
+                        selectedItemId = selectedItemId
                     )
                 }
             }
@@ -406,7 +412,7 @@ fun RoundedCircleCardDesign(
                             animationDelay: Int,
                             onMarkCompletedClick: (String) -> Unit,
                             onDeleteClick:(String)->Unit,
-                            isUpdatedScreenOpen: MutableState<Map<String, Boolean>>
+                            selectedItemId: MutableState<String>
                            // modifier: Modifier
                             ){
     val scaffoldState = rememberScaffoldState()
@@ -437,90 +443,105 @@ fun RoundedCircleCardDesign(
 
 
 
+    val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
+    val shadowColor = Color.Red.copy(alpha = shadowOpacity)
 
-    androidx.compose.material.Surface(modifier = Modifier
-        .graphicsLayer { translationX = dx * travelDistance
-            translationY = dy * travelDistance}, shape = CircleShape) {
-        Box(
-            modifier = Modifier
-                .size(172.dp)
-                .aspectRatio(1f)
-                .clip(CircleShape)
-                .background(roundedCircleGradient, shape = CircleShape)
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    isUpdatedScreenOpen.value = isUpdatedScreenOpen.value
-                        .toMutableMap()
-                        .apply {
-                            this[id] = true // Update the open state for the clicked item
-                        }
-                        .toMap()
-                },
-            contentAlignment = Alignment.Center,
-
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                Image(
-                    painter = painter,
-                    contentDescription = "square image",
-                    modifier = Modifier
-                        .padding(top = 32.dp)
-                        .clickable(indication = null,
-                            interactionSource = remember { MutableInteractionSource() }) {
-                            onMarkCompletedClick(id)
-                        }
-                )
-                Text(
-                    text = "$message",
-                    textAlign = TextAlign.Center,
-                    fontFamily = interDisplayFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp,
-                    color = Text1,
-                    modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
-                )
-                Text(
-
-                    text = "$date $time",
-                    fontFamily = interDisplayFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 11.sp,
-                    color = Text2,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-            }
-
-            if(isUpdatedScreenOpen.value[id] == true){
-
-                UpdateTaskScreen(
-                    selectedDate = mutableStateOf(date ) ,
-                    selectedTime = mutableStateOf(time) ,
-                    textValue = message,
-                    id = id,
-                    openKeyboard = false,
-                    onDismiss = {isUpdatedScreenOpen.value = isUpdatedScreenOpen.value.toMutableMap().apply { put(id, false) }.toMap()},
-                  scaffoldState = scaffoldState,
-                    onMarkCompletedClick = onMarkCompletedClick,
-                    onDeleteClick
-                )
-
-            }
-
+    Surface(modifier = Modifier
+        .size(172.dp)
+        .graphicsLayer {
+            translationX = dx * travelDistance
+            translationY = dy * travelDistance
         }
-    }
+        .shadow(
+            shape = CircleShape,
+            spotColor = Shadowcolor,
+            elevation = 40.dp,
+        ),
+
+
+    )
+    {
+        androidx.compose.material.FloatingActionButton(onClick = { /*TODO*/ }) {
+            Box(
+                modifier = Modifier
+                    .size(172.dp)
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(roundedCircleGradient, shape = CircleShape)
+                    .clickable {
+                        selectedItemId.value = id
+                    }
+                ,
+                contentAlignment = Alignment.Center,
+
+                ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Image(
+                        painter = painter,
+                        contentDescription = "square image",
+                        modifier = Modifier
+                            .padding(top = 32.dp)
+                            .clickable(indication = null,
+                                interactionSource = remember { MutableInteractionSource() }) {
+                                onMarkCompletedClick(id)
+                            }
+                    )
+                    Text(
+                        text = "$message",
+                        textAlign = TextAlign.Center,
+                        fontFamily = interDisplayFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 15.sp,
+                        color = Text1,
+                        modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+                    )
+                    Text(
+
+                        text = "$date $time",
+                        fontFamily = interDisplayFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.sp,
+                        color = Text2,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
+                }
+
+                if(selectedItemId.value == id){
+
+                    UpdateTaskScreen(
+                        selectedDate = mutableStateOf(date ) ,
+                        selectedTime = mutableStateOf(time) ,
+                        textValue = message,
+                        id = id,
+                        openKeyboard = false,
+                        onDismiss = { selectedItemId.value = "" },
+                        scaffoldState = scaffoldState,
+                        onMarkCompletedClick = onMarkCompletedClick,
+                        onDeleteClick
+                    )
+
+                }
+
+            }
+        }
+        }
+
 
 }
+
+
+
 
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>){
-    val shadowOpacity = 0.5f // Set the desired opacity value (between 0 and 1)
+    val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
     Box(modifier = Modifier
         .fillMaxWidth()

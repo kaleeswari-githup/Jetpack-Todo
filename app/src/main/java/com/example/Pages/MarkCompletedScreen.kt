@@ -1,5 +1,6 @@
 package com.example.Pages
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -13,7 +14,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -47,10 +48,13 @@ import com.example.dothings.roundedCircleGradient
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
 
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -60,8 +64,12 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
     val uid = user?.uid
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     var isChecked by remember { mutableStateOf(false) }
-    var isMarkcompletedHomeOpen = remember { mutableStateOf(false) }
+
     val completedTasksCountState = remember { mutableStateOf(0) }
+    val scaffoldState = rememberScaffoldState()
+    val coroutineScope = rememberCoroutineScope()
+    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
+    val context = LocalContext.current
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             completedTasksCountState.value = snapshot.childrenCount.toInt()
@@ -78,9 +86,70 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
             completedTasksRef.removeEventListener(valueEventListener)
         }
     }
+    val onDeleteClick:(String)  -> Unit = {clickedTaskId ->
+        var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
+        coroutineScope.launch {
+            scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
+            val data = completedTasksRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
+            if (data != null) {
+                completedTasksRef.child(clickedTaskId).removeValue()
+                val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
+                    message = "Task deleted",
+                    actionLabel = "Undo",
+                    duration = SnackbarDuration.Short
+                )
+                when (snackbarResult) {
+                    SnackbarResult.Dismissed -> {
+                        completedTasksRef.child(clickedTaskId).removeValue()
+                    }
+                    SnackbarResult.ActionPerformed -> {
+                        completedTasksRef.child(clickedTaskId).setValue(data)
+                    }
+                }
+            }
+        }
 
+    }
+    val onUnMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
+        val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
+        val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
+
+        completedTasksRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val data = snapshot.getValue(DataClass::class.java)
+                if (data != null) {
+                    completedTasksRef.removeValue()
+                    coroutineScope.launch {
+                        scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
+                        val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
+                            message = "Task UnMark as Completed",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        when (snackbarResult) {
+                            SnackbarResult.Dismissed -> {
+                                // Snackbar dismissed, no action needed
+                                completedTasksRef.removeValue()
+                                taskRef.setValue(data)
+                            }
+                            SnackbarResult.ActionPerformed -> {
+                                completedTasksRef.setValue(data)
+                            }
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", "Database operation cancelled: $error")
+            }
+        })
+    }
+    var isUnMarkCompletedtaskOpen = remember {
+        mutableStateOf(mapOf<String, Boolean>())
+    }
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isMarkcompletedHomeOpen.value -> 25.dp
+        isUnMarkCompletedtaskOpen.value.any{it.value} -> 25.dp
         else -> 0.dp
     }
     )
@@ -95,235 +164,239 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
     ){
 
         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
-        Box(modifier = Modifier
-            .blur(radius = blurEffectBackground)
-            .fillMaxSize(),
+        Scaffold(
+            scaffoldState = scaffoldState,
+            modifier = Modifier.fillMaxSize(),
+            backgroundColor = Color.Transparent,
 
-        ) {
+            ){
+            Box(modifier = Modifier
+                .blur(radius = blurEffectBackground)
+                .fillMaxSize(),
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 120.dp)
-                    .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
-
-                    ) {
-                    Row(modifier = Modifier.padding(start = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier
-                            .size(48.dp)
-                            .background(shape = CircleShape, color = FABColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val firebaseAuth = FirebaseAuth.getInstance()
-                            val user = firebaseAuth.currentUser
-                            val photoUrl = user?.photoUrl
-                            val initials = user?.email?.take(1)?.toUpperCase()
-                            if (photoUrl != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(photoUrl)
-                                        .build(),
-                                    contentDescription = "Profile picture",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                )
-                            }else{
-                                Text(
-                                    text = initials ?: "",
-                                    color = Color.White,
-                                    fontFamily = interDisplayFamily,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                        }
-                        Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                            Text(text = "${user?.displayName}",
-                                fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.Black
-                            )
-                            Text(text = "${user?.email}",
-                                fontFamily = interDisplayFamily,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = Text2
-                            )
-                        }
-                    }
-
-                }
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                    .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
-                    contentAlignment = Alignment.Center) {
-                    Column(modifier = Modifier,
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Completed",
-                            fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Black,
-                            modifier = Modifier.padding(top = 24.dp))
-                        Spacer(modifier = Modifier.padding(top = 12.dp))
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(204.dp)
-                            .padding(start = 24.dp, end = 24.dp)
-                            .background(color = MarkCompleteBack, shape = RoundedCornerShape(24.dp)),
-                        contentAlignment = Alignment.Center) {
-
-                        LazyRowCompletedTask()
-
-                        }
-                        Spacer(modifier = Modifier.padding(top = 24.dp))
-                        if (completedTasksCountState.value > 0) {
-                            Text(
-                                text = "View All (${completedTasksCountState.value})",
-                                fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = NewOrange,
-                                modifier = Modifier
-
-                            )
-                        }
-                        Spacer(modifier = Modifier.padding(top = 24.dp))
-                    }
-                }
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                    .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
-                    contentAlignment = Alignment.Center
                 ) {
-                    Row(modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 24.dp, end = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Box() {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(painter = painterResource(id = R.drawable.sound), contentDescription = null)
-                                Text(text = "Sound",
-                                    fontFamily = interDisplayFamily,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
 
-                        }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 120.dp)
+                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
 
-                        Box(modifier = Modifier) {
-                            Box(
-                                modifier = Modifier
-                                    .clickable(indication = null,
-                                        interactionSource = remember { MutableInteractionSource() }) { isChecked = !isChecked }
+                        ) {
+                        Row(modifier = Modifier.padding(start = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier
+                                .size(48.dp)
+                                .background(shape = CircleShape, color = SurfaceGray),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp, 24.dp)
-                                        .background(
-                                            if (isChecked) NewOrange else Color.Gray,
-                                            shape = CircleShape
-                                        )
-                                ) {
-                                    Spacer(
+                                val firebaseAuth = FirebaseAuth.getInstance()
+                                val user = firebaseAuth.currentUser
+                                val photoUrl = user?.photoUrl
+                                val initials = user?.email?.take(1)?.toUpperCase()
+                                if (photoUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(photoUrl)
+                                            .build(),
+                                        contentDescription = "Profile picture",
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier
-                                            .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
-                                            .size(22.dp)
-                                            .background(Color.White, CircleShape)
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                    )
+                                }else{
+                                    Text(
+                                        text = initials ?: "",
+                                        color = Color.White,
+                                        fontFamily = interDisplayFamily,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
+
                             }
-                        }
-
-                    }
-
-                }
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                    .background(color = Color.White, shape = RoundedCornerShape(32.dp))
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) {
-                        val auth = FirebaseAuth.getInstance()
-                        // Sign out from Firebase
-                        auth.signOut()
-
-                        // Sign out from Google
-                        googleSignInClient
-                            .signOut()
-                            .addOnCompleteListener {
-                                // Optional: Perform any additional actions after sign out
-                                navController.navigate(route = Screen.Main.route)
-                            }
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 24.dp, end = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Box() {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Image(painter = painterResource(id = R.drawable.logout), contentDescription = null)
-                                Text(text = "Log Out",
+                            Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
+                                Text(text = "${user?.displayName}",
                                     fontFamily = interDisplayFamily,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(start = 8.dp)
+                                    color = Color.Black
                                 )
+                                Text(text = "${user?.email}",
+                                    fontFamily = interDisplayFamily,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = Text2
+                                )
+                            }
+                        }
 
+                    }
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
+                        contentAlignment = Alignment.Center) {
+                        Column(modifier = Modifier,
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "Completed (${completedTasksCountState.value})",
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Black,
+                                modifier = Modifier.padding(top = 24.dp))
+                            Spacer(modifier = Modifier.padding(top = 12.dp))
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+                                .height(204.dp)
+                                .padding(start = 24.dp, end = 24.dp)
+                                .background(
+                                    color = MarkCompleteBack,
+                                    shape = RoundedCornerShape(24.dp)
+                                ),
+                                contentAlignment = Alignment.Center) {
+
+                                LazyRowCompletedTask(onDismiss,onDeleteClick,onUnMarkCompletedClick,isUnMarkCompletedtaskOpen)
+
+                            }
+
+                            Spacer(modifier = Modifier.padding(top = 24.dp))
+                        }
+                    }
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 24.dp, end = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween) {
+                            Box() {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(painter = painterResource(id = R.drawable.sound), contentDescription = null)
+                                    Text(text = "Sound",
+                                        fontFamily = interDisplayFamily,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+
+                            }
+
+                            Box(modifier = Modifier) {
+                                Box(
+                                    modifier = Modifier
+                                        .clickable(indication = null,
+                                            interactionSource = remember { MutableInteractionSource() }) { isChecked = !isChecked }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp, 24.dp)
+                                            .background(
+                                                if (isChecked) NewOrange else Color.Gray,
+                                                shape = CircleShape
+                                            )
+                                    ) {
+                                        Spacer(
+                                            modifier = Modifier
+                                                .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
+                                                .size(22.dp)
+                                                .background(Color.White, CircleShape)
+                                        )
+                                    }
+                                }
                             }
 
                         }
 
-                        Box(modifier = Modifier
+                    }
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                        .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            val auth = FirebaseAuth.getInstance()
+                            // Sign out from Firebase
+                            auth.signOut()
 
-                            .align(Alignment.CenterVertically)
-                        ) {
-                            Image(painter = painterResource(id = R.drawable.right), contentDescription = null)
+                            // Sign out from Google
+                            googleSignInClient
+                                .signOut()
+                                .addOnCompleteListener {
+                                    // Optional: Perform any additional actions after sign out
+                                    navController.navigate(route = Screen.Main.route)
+                                    onDismiss.invoke()
+                                }
+                        },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 24.dp, end = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween) {
+                            Box() {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(painter = painterResource(id = R.drawable.logout), contentDescription = null)
+                                    Text(text = "Log Out",
+                                        fontFamily = interDisplayFamily,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+
+                                }
+
+                            }
+
+                            Box(modifier = Modifier
+
+                                .align(Alignment.CenterVertically)
+                            ) {
+                                Image(painter = painterResource(id = R.drawable.right), contentDescription = null)
+                            }
+
                         }
 
                     }
-
                 }
-            }
 
                 CrossFloatingActionButton {
                     onDismiss.invoke()
                 }
-            /*    if (isMarkcompletedHomeOpen.value){
-                    MarkCompletedHomescreen(
-                        onDismiss = {isMarkcompletedHomeOpen.value = false}
-                    )
+                /*    if (isMarkcompletedHomeOpen.value){
+                        MarkCompletedHomescreen(
+                            onDismiss = {isMarkcompletedHomeOpen.value = false}
+                        )
 
 
-                }*/
+                    }*/
+            }
         }
+
     }
 
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun LazyRowCompletedTask(){
+fun LazyRowCompletedTask(onDismiss: () -> Unit,
+                         onDeletedClick: (String) -> Unit,
+                         onUnMarkcompletedClick: (String) -> Unit,
+                         isUnMarkCompletedtaskOpen:MutableState<Map<String,Boolean>>){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -331,7 +404,6 @@ fun LazyRowCompletedTask(){
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
-    cardDataList.add(0, DataClass())
     val imageResource = R.drawable.yesorangecheckbox
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
@@ -353,8 +425,8 @@ fun LazyRowCompletedTask(){
         completedTasksRef.addValueEventListener(valueEventListener)
     }
     LazyRow(contentPadding = PaddingValues(16.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp)){
-        items(cardDataList.reversed().take(5)){cardData ->
+        horizontalArrangement = Arrangement.spacedBy(8.dp)){
+        items(cardDataList.reversed()){cardData ->
             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
 
@@ -373,29 +445,49 @@ fun LazyRowCompletedTask(){
                 id = cardData.id,
                 message = cardData.message!!,
                 time = cardData.time!!,
-                date = formattedDate )
+                date = formattedDate ,
+            onDismiss = onDismiss,
+            onDeletedClick,
+            onUnMarkcompletedClick = onUnMarkcompletedClick,
+            isUnMarkCompletedtaskOpen)
 
         }
     }
 }
+@SuppressLint("UnrememberedMutableState")
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MarkCompletedCircleDesign(image:Int,
                               id:String,
                               message:String,
                               time: String,
-                              date:String){
+                              date:String,
+                              onDismiss: () -> Unit,
+                              onDeletedClick:(String) -> Unit,
+                              onUnMarkcompletedClick:(String) -> Unit,
+                              isUnMarkCompletedtaskOpen:MutableState<Map<String,Boolean>>){
     val painter: Painter = painterResource(image)
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     val completedTasksItem = remember { mutableStateOf("") }
+
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     Box(
         modifier = Modifier
             .size(172.dp)
             .background(roundedCircleGradient, shape = CircleShape)
-            .clip(CircleShape),
+            .clip(CircleShape)
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
+                isUnMarkCompletedtaskOpen.value = isUnMarkCompletedtaskOpen.value
+                    .toMutableMap()
+                    .apply {
+                        this[id] = true
+                    }.toMap()
+            },
+
         contentAlignment = Alignment.Center
     ){
         Column(
@@ -408,17 +500,24 @@ fun MarkCompletedCircleDesign(image:Int,
                 modifier = Modifier
                     .padding(top = 32.dp)
                     .clickable {
-                        completedTasksRef.child(id).get().addOnSuccessListener { completedTaskSnapshot ->
-                            // Get the completed task snapshot
-                            val completedTask = completedTaskSnapshot.getValue(DataClass::class.java)
+                        onUnMarkcompletedClick(id)
+                        /* completedTasksRef
+                            .child(id)
+                            .get()
+                            .addOnSuccessListener { completedTaskSnapshot ->
+                                // Get the completed task snapshot
+                                val completedTask =
+                                    completedTaskSnapshot.getValue(DataClass::class.java)
 
-                            // Remove the completed task from "CompletedTasks"
-                            completedTasksRef.child(id).removeValue()
+                                // Remove the completed task from "CompletedTasks"
+                                completedTasksRef
+                                    .child(id)
+                                    .removeValue()
                                 // Add the completed task to "Task"
                                 val newTaskRef = databaseRef.push()
                                 newTaskRef.setValue(completedTask)
 
-                        }
+                            }*/
                     })
 
             Text(
@@ -449,36 +548,19 @@ fun MarkCompletedCircleDesign(image:Int,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-    }
-}
-@Composable
-fun MarktoTaskItem(){
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
-    val databaseRef:DatabaseReference = database.reference.child("Task").child(uid.toString())
-    var cardDataList = remember {
-        mutableStateListOf<DataClass>()
-    }
-    cardDataList.add(0, DataClass())
-
-    LaunchedEffect(Unit){
-        val valueEventListener = object :ValueEventListener{
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                cardDataList.clear()
-                for(childSnapshot in dataSnapshot.children){
-                    val id = childSnapshot.key.toString()
-                    val data = childSnapshot.getValue(DataClass::class.java)
-                    data?.let {
-                        cardDataList.add(it.copy(id = id))
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Database operation cancelled: $error")
-            }
+        if (isUnMarkCompletedtaskOpen.value[id] == true){
+            UnMarkCompletedTaskScreen(
+                selectedDate = mutableStateOf(date),
+                selectedTime = mutableStateOf(time),
+                textValue = message,
+                id = id,
+                openKeyboard = false,
+                onDismiss = { isUnMarkCompletedtaskOpen.value = isUnMarkCompletedtaskOpen.value.toMutableMap().apply {
+                    put(id,false)
+                }.toMap() },
+                onDeletedClick,
+                onUnMarkCompletedClick = onUnMarkcompletedClick
+            )
         }
-        databaseRef.addValueEventListener(valueEventListener)
     }
 }

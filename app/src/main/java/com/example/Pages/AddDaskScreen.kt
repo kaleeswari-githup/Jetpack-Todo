@@ -20,6 +20,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -141,6 +142,9 @@ fun AddDaskScreen(
                     onDoneClick = onDoneClick,
                 onDismiss = onDismiss)
             }
+            CrossFloatingActionButton {
+                onDismiss.invoke()
+            }
         }
 
     }
@@ -164,12 +168,21 @@ fun AddDaskCircleDesign(
 
     Box(
     modifier = Modifier
+
         .fillMaxWidth()
         .padding(start = 24.dp, end = 24.dp, top = 38.dp)
         .size(344.dp)
+
         .aspectRatio(1f)
+        .shadow(
+            elevation = 48.dp,
+            shape = CircleShape,
+            spotColor = Color.Black
+        )
         .clip(CircleShape)
+
         .background(bigRoundedCircleGradient, shape = CircleShape),
+
         contentAlignment = Alignment.Center
 ) {
     Column(modifier = Modifier.fillMaxSize(),
@@ -366,39 +379,36 @@ fun TwoButtons(
         }
 
         Spacer(modifier = Modifier.padding(40.dp))
-        Box(
+        Button(onClick = {
+            onDoneClick.invoke()
+        },
+            shape = RoundedCornerShape(53.dp),
             modifier = Modifier
-                .size(width = 105.dp, height = 48.dp)
-                .background(shape = RoundedCornerShape(53.dp), color = FABDarkColor)
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    onDoneClick.invoke()
-                },
-            contentAlignment = Alignment.Center
+                .size(width = 105.dp, height = 48.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
+            elevation = ButtonDefaults.elevation(24.dp)
+
+
         ) {
-            RadialGradientBox()
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp),
-                verticalAlignment = Alignment.CenterVertically){
-                Image(
-                    painter = painterResource(id = R.drawable.tick),
-                    contentDescription = "Save Tick",
-                    modifier = Modifier
-                        .size(16.dp)
-                )
-                Text(
-                    text = "Save",
-                    fontFamily = interDisplayFamily,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
+
+            Image(
+                painter = painterResource(id = R.drawable.tick),
+                contentDescription = "Save Tick",
+                modifier = Modifier
+                    .size(16.dp)
+            )
+            Text(
+                text = "Save",
+                fontFamily = interDisplayFamily,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color.White,
+                modifier = Modifier.padding(start = 12.dp)
+            )
             }
 
         }
-    }
+
 
 }
 

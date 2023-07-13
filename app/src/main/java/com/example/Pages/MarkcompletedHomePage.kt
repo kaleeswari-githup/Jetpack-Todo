@@ -107,14 +107,14 @@ fun LazyGridCompletedTask(){
 
                 ""
             }
-            MarkCompletedCircleDesign(
+          /*  MarkCompletedCircleDesign(
                 image = imageResource,
                 id = cardData.id,
                 message = cardData.message!!,
                 time = cardData.time!!,
                 date = formattedDate,
 
-            )
+            )*/
 
         }
     }

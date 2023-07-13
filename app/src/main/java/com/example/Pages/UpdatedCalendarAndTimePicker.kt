@@ -5,9 +5,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -125,15 +122,16 @@ fun UpdatedCalendarAndTimePickerScreen(
                 .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
-                Box(
+                Button(
+                    onClick = {
+                        onDismiss.invoke()
+                    },
+                    shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
-                        .size(width = 105.dp, height = 48.dp)
-                        .background(shape = RoundedCornerShape(53.dp), color = Color.White)
-                        .clickable(indication = null,
-                            interactionSource = remember { MutableInteractionSource() }) {
-                            onDismiss.invoke()
-                        },
-                    contentAlignment = Alignment.Center
+                        .size(width = 105.dp, height = 48.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    elevation = ButtonDefaults.elevation(24.dp)
+
                 ) {
                     Text(
                         text = "Cancel",
@@ -165,6 +163,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                     modifier = Modifier
                         .size(width = 105.dp, height = 48.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
+                    elevation = ButtonDefaults.elevation(24.dp)
 
                     ) {
                     Image(
