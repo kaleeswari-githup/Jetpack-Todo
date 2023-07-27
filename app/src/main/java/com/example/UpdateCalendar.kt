@@ -3,6 +3,7 @@ package com.example
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,13 +50,16 @@ fun UpdatedCalendar(
 
     Box(modifier = Modifier
         .fillMaxWidth()
-        .wrapContentHeight(),
+
+        .animateContentSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
             .background(shape = RoundedCornerShape(20.dp), color = Color.White)
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {  }
         ) {
             // Month navigation buttons
           //  UpdatedShrinkCalendar(startDate = startDate, selectedDate = selectedDate)
@@ -69,22 +73,24 @@ fun UpdatedCalendar(
                     selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM")).toString()
                 }
                 Row(modifier = Modifier
+
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp),
+                    .clickable (indication = null,
+                        interactionSource = remember { MutableInteractionSource() }){
+                        isDatePickervisible = true
+                        isTimePickervisible = false
+                    }
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp,bottom = 24.dp)
+                    ,
                     ) {
                     Text(
                         text = setDateText,
                         modifier = Modifier
-                            .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) {
-                                isDatePickervisible = true
-                                isTimePickervisible = false
-
-
-                            },
+                            ,
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                     )
                 }
 
@@ -92,7 +98,7 @@ fun UpdatedCalendar(
 
             Box(
                 modifier = Modifier
-                    .padding(top = 24.dp, bottom = 24.dp)
+                    .padding( bottom = 24.dp,)
                     .height(2.dp)
                     .fillMaxWidth()
                     .background(color = SurfaceGray)
@@ -138,7 +144,8 @@ fun UpdatedCalendar(
                             .padding( bottom = 24.dp),
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                     )
 
                     if ((newUserSelectedtime != null && newUserSelectedtime.isNotEmpty() && isClearTextVisible) || selectedTime.value != null) {
@@ -154,7 +161,8 @@ fun UpdatedCalendar(
                             color = FABDarkColor,
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
                     }
                 }
@@ -227,6 +235,7 @@ fun UpdatedShrinkCalendar(
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.Medium,
             fontSize = 15.sp,
+            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
             modifier = Modifier
                 .weight(1f)
         )
@@ -263,6 +272,7 @@ fun UpdatedShrinkCalendar(
                 fontSize = 12.sp,
                 color = Text3,
                 textAlign = TextAlign.Center,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                 modifier = Modifier.width(32.dp)
             )
         }
@@ -315,6 +325,7 @@ fun UpdatedShrinkCalendar(
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                             color = textColor
 
                         )

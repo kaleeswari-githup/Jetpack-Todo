@@ -37,7 +37,7 @@ fun UpdatedScrollableTimePicker(
 ){
     Box(
         modifier = Modifier
-            .padding(start = 8.dp, end = 8.dp)
+            .padding(bottom = 24.dp)
             .fillMaxWidth()
             .wrapContentHeight()
     ) {
@@ -65,11 +65,12 @@ fun UpdatedScrollableTimePicker(
                         WheelTimePicker(
                             startTime = initialTime!! ,
                             timeFormat = TimeFormat.AM_PM,
-                            size = DpSize(width = 160.dp, height = 160.dp),
+                            size = DpSize(width = 170.dp, height = 200.dp),
+                            rowCount = 5,
                             textStyle = TextStyle(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.SemiBold
                             ),
                             selectorProperties = WheelPickerDefaults.selectorProperties(
                                 enabled = true,

@@ -144,7 +144,10 @@ fun UnMarkCompletedTaskScreen(
                 .blur(radius = blurEffectBackground)
             ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
                 // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                Box(modifier = Modifier.fillMaxSize()
+                    .clickable (indication = null,
+                        interactionSource = remember { MutableInteractionSource() }){ onDismiss.invoke() }
+                    , contentAlignment = Alignment.Center){
                     Column(modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.SpaceBetween,
                         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -238,7 +241,10 @@ fun UnMarkCompletedCircleDesign(
             .size(344.dp)
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(bigRoundedCircleGradient, shape = CircleShape),
+            .background(bigRoundedCircleGradient, shape = CircleShape)
+            .clickable (indication = null,
+                interactionSource = remember { MutableInteractionSource() }){  },
+
         contentAlignment = Alignment.Center
     ){
 
@@ -398,7 +404,8 @@ fun UnMarkCompletedCircleDesign(
                             initialSelectedtime.value = time
                         },
                         id = id,
-                        invokeOnDoneClick = true
+                        invokeOnDoneClick = false,
+                        UnMarkedDateandTime = true
 
                     )
 
@@ -465,7 +472,7 @@ fun UnMarkCompletedButtons(id: String,
                 },
                 verticalAlignment = Alignment.CenterVertically) {
                 Image(painter = painterResource(id = R.drawable.square), contentDescription = null)
-                Interfont(text = "Mark Uncompleted")
+                Interfont(text = "Mark uncompleted")
             }
         }
 

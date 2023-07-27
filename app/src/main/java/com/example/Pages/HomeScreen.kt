@@ -11,8 +11,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,11 +29,13 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -54,6 +59,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -92,8 +98,9 @@ fun HomeScreen(navController: NavHostController){
         }
 
     }
-
+    val animateVisibility = remember { MutableTransitionState(false) }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
+
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
         taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
@@ -133,12 +140,17 @@ fun HomeScreen(navController: NavHostController){
         })
     }
     val selectedItemId = remember { mutableStateOf("") }
+    val selectedMarkedItemId = remember { mutableStateOf("") }
     var isAddDaskScreenOpen = remember {
         mutableStateOf(false)
     }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
+    var isPickerOpen = remember { mutableStateOf(false) }
+    var isAddDaskOpen = remember { mutableStateOf(false) }
+
     val blurEffectBackground by animateDpAsState(targetValue = when{
         selectedItemId.value.isNotEmpty() -> 25.dp
+
         isAddDaskScreenOpen.value -> 25.dp
         isMarkCompletedOpen.value -> 25.dp
         else -> 0.dp
@@ -149,6 +161,7 @@ fun HomeScreen(navController: NavHostController){
         backgroundColor = Color.Transparent,
 
     ){
+
         BoxWithConstraints(modifier = Modifier
             .blur(radius = blurEffectBackground)
             .background(color = SurfaceGray)
@@ -167,7 +180,7 @@ fun HomeScreen(navController: NavHostController){
 
 
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                LazyGridLayout( onMarkCompletedClick = onMarkCompletedClick,onDeleteClick,selectedItemId)
+                LazyGridLayout( onMarkCompletedClick = onMarkCompletedClick,onDeleteClick,selectedItemId,isPickerOpen,isAddDaskOpen)
             }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -194,12 +207,19 @@ fun HomeScreen(navController: NavHostController){
                 drawRect(brush = gradientBrush)
             }
             Column {
-                TopSectionHomeScreen(image = R.drawable.home_icon,navController,isMarkCompletedOpen)
-                FloatingActionButton(isAddDaskScreenOpen)
+                TopSectionHomeScreen(image = R.drawable.home_icon,navController,isMarkCompletedOpen,selectedMarkedItemId)
+                FloatingActionButton(isAddDaskScreenOpen,isPickerOpen)
             }
 
 
         }
+        if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty() ){
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .background(color = SurfaceGray, shape = RectangleShape)
+            )
+        }
+
     }
 
 
@@ -209,8 +229,12 @@ fun HomeScreen(navController: NavHostController){
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
-                  onDeleteClick: (String) -> Unit,
-                   selectedItemId: MutableState<String>){
+                   onDeleteClick: (String) -> Unit,
+                   selectedItemId: MutableState<String>,
+                   isPickerOpen:MutableState<Boolean>,
+                   isAddDaskOpen:MutableState<Boolean>,
+
+                   ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -249,13 +273,19 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
             scheduleNotification(selectedDateTime, itemId, message!!)
         }
     }
+    val animatedItemIds = remember { mutableStateListOf<String>() }
+
+    // Function to add an item's ID to the animatedItemIds list
+    fun addItemToAnimatedList(itemId: String) {
+        animatedItemIds.add(itemId)
+    }
     val gridColumns = 2
 
     if (cardDataList.size > 1) {
         LazyVerticalStaggeredGrid(
             columns = StaggeredGridCells.Fixed(gridColumns),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            contentPadding = PaddingValues(0.dp)
 
         ) {
             itemsIndexed(cardDataList.reversed()) { index, cardData ->
@@ -271,21 +301,23 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                 }
                 val shadowOpacity = 0.1f // Set the desired opacity value (between 0 and 1)
                 val shadowColor = Color.Black.copy(alpha = shadowOpacity)
+                val isVisible = cardData.id in animatedItemIds
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = if (index == 1) 90.dp else 16.dp,
+                            top = if (index == 1) 90.dp else 0.dp,
                             bottom = if (index == cardDataList.size - 1) 100.dp else 0.dp
                         )
 
 
                 ) {
-                  /*  Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
-                        modifier = Modifier
-                            .graphicsLayer(alpha = 0.06f)
-                           // .blur(radius = 84.dp)
-                            .align(Alignment.Center))*/
+                    /*  Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
+                          modifier = Modifier
+                              .graphicsLayer(alpha = 0.06f)
+                             // .blur(radius = 84.dp)
+                              .align(Alignment.Center))*/
                     RoundedCircleCardDesign(
                         image = imageResource,
                         message = cardData.message!!,
@@ -295,7 +327,10 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         animationDelay = animationDelay,
                         onMarkCompletedClick = onMarkCompletedClick,
                         onDeleteClick = onDeleteClick,
-                        selectedItemId = selectedItemId
+                        selectedItemId = selectedItemId,
+                        isPickerOpen = isPickerOpen,
+                        isAddDaskOpen = isAddDaskOpen,
+                        modifier = Modifier.animateContentSize()
                     )
                 }
             }
@@ -322,15 +357,17 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         animationDelay = 0,
                         onMarkCompletedClick = onMarkCompletedClick,
                         onDeleteClick = onDeleteClick,
-                        selectedItemId = selectedItemId
+                        selectedItemId = selectedItemId,
+                        isPickerOpen = isPickerOpen,
+                        isAddDaskOpen = isAddDaskOpen,
+                        modifier = Modifier.animateContentSize()
                     )
                 }
             }
         }
 
     }
-
-}
+                   }
 @Composable
 fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String) {
     val now = Calendar.getInstance().timeInMillis
@@ -355,7 +392,10 @@ fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun TopSectionHomeScreen(@DrawableRes image:Int,navController: NavController,isMarkCompletedOpen:MutableState<Boolean>){
+fun TopSectionHomeScreen(@DrawableRes image:Int
+                         ,navController: NavController,
+                         isMarkCompletedOpen:MutableState<Boolean>,
+                         selectedMarkedItemId: MutableState<String>){
 
     Row(modifier = Modifier
         .fillMaxWidth()
@@ -394,12 +434,14 @@ fun TopSectionHomeScreen(@DrawableRes image:Int,navController: NavController,isM
             MarkCompletedScreen(
                 navController = navController,
                 onDismiss = { isMarkCompletedOpen.value = false },
+                selectedMarkedItemId
             )
         }
     }
 }
 
 
+@OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("UnrememberedMutableState", "CoroutineCreationDuringComposition")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -412,8 +454,11 @@ fun RoundedCircleCardDesign(
                             animationDelay: Int,
                             onMarkCompletedClick: (String) -> Unit,
                             onDeleteClick:(String)->Unit,
-                            selectedItemId: MutableState<String>
-                           // modifier: Modifier
+                            selectedItemId: MutableState<String>,
+                            isPickerOpen:MutableState<Boolean>,
+                            isAddDaskOpen:MutableState<Boolean>,
+
+                            modifier: Modifier
                             ){
     val scaffoldState = rememberScaffoldState()
     val infiniteTransition = rememberInfiniteTransition()
@@ -425,7 +470,7 @@ fun RoundedCircleCardDesign(
         initialValue = if (animateX) -0.4f else 0f,
         targetValue = if (animateX) 0.5f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing, delayMillis = animationDelay * 200),
+            animation = tween(500, easing = LinearEasing, delayMillis = animationDelay * 200),
             repeatMode = RepeatMode.Reverse
         )
     )
@@ -434,102 +479,161 @@ fun RoundedCircleCardDesign(
         initialValue = if (animateY) -0.4f else 0f,
         targetValue = if (animateY) 0.5f else 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing, delayMillis = animationDelay * 200),
+            animation = tween(500, easing = LinearEasing, delayMillis = animationDelay * 200),
             repeatMode = RepeatMode.Reverse
         )
     )
 
-    val travelDistance = with(LocalDensity.current) { 10.dp.toPx() }
+    val travelDistance = with(LocalDensity.current) { 4.dp.toPx() }
 
 
 
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Red.copy(alpha = shadowOpacity)
+    var visible by remember {
+        mutableStateOf(false)
+    }
+    val transition = updateTransition(isAddDaskOpen.value)
 
-    Surface(modifier = Modifier
-        .size(172.dp)
-        .graphicsLayer {
-            translationX = dx * travelDistance
-            translationY = dy * travelDistance
-        }
-        .shadow(
-            shape = CircleShape,
-            spotColor = Shadowcolor,
-            elevation = 40.dp,
+    val smallCircleSize = 172.dp
+    val bigCircleSize = 344.dp
+
+    // Define the animated circleSize using animateFloatAsState
+
+
+    val offsetX = remember { Animatable(1000f) }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+        offsetX.animateTo(0f, animationSpec = tween(500))
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = scaleIn(animationSpec =spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))  + fadeIn(
+            // Fade in with the initial alpha of 0.3f.
+            initialAlpha = 0f
         ),
 
+    ){
 
-    )
-    {
-        androidx.compose.material.FloatingActionButton(onClick = { /*TODO*/ }) {
-            Box(
-                modifier = Modifier
-                    .size(172.dp)
-                    .aspectRatio(1f)
-                    .clip(CircleShape)
-                    .background(roundedCircleGradient, shape = CircleShape)
-                    .clickable {
-                        selectedItemId.value = id
-                    }
-                ,
-                contentAlignment = Alignment.Center,
 
-                ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+Box(Modifier.size(width = 200.dp,height = 200.dp)
+    .background(color = Color.Transparent),
+contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
 
-                    Image(
-                        painter = painter,
-                        contentDescription = "square image",
-                        modifier = Modifier
-                            .padding(top = 32.dp)
-                            .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) {
-                                onMarkCompletedClick(id)
-                            }
-                    )
-                    Text(
-                        text = "$message",
-                        textAlign = TextAlign.Center,
-                        fontFamily = interDisplayFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 15.sp,
-                        color = Text1,
-                        modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
-                    )
-                    Text(
-
-                        text = "$date $time",
-                        fontFamily = interDisplayFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 11.sp,
-                        color = Text2,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-
-                }
-
-                if(selectedItemId.value == id){
-
-                    UpdateTaskScreen(
-                        selectedDate = mutableStateOf(date ) ,
-                        selectedTime = mutableStateOf(time) ,
-                        textValue = message,
-                        id = id,
-                        openKeyboard = false,
-                        onDismiss = { selectedItemId.value = "" },
-                        scaffoldState = scaffoldState,
-                        onMarkCompletedClick = onMarkCompletedClick,
-                        onDeleteClick
-                    )
-
-                }
-
+            .size(172.dp)
+            .bounceClick()
+            .graphicsLayer {
+                translationX = dx * travelDistance
+                translationY = dy * travelDistance
             }
+            .aspectRatio(1f)
+
+            .clip(CircleShape)
+            .shadow(
+                elevation = 12.dp
+            )
+
+            .background(roundedCircleGradient, shape = CircleShape)
+            .clickable {
+                selectedItemId.value = id
+                // isAddDaskOpen.value = true
+            }
+
+        ,
+        contentAlignment = Alignment.Center,
+
+        ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Image(
+                painter = painter,
+                contentDescription = "square image",
+                modifier = Modifier
+                    .padding(top = 32.dp)
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) {
+                        onMarkCompletedClick(id)
+                    }
+            )
+            Text(
+                text = "$message",
+                textAlign = TextAlign.Center,
+                fontFamily = interDisplayFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                color = Text1,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+
+            )
+            Text(
+
+                text = "$date $time",
+                fontFamily = interDisplayFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp,
+                color = Text2,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
         }
+
+        if(selectedItemId.value == id){
+            val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+            val currentDate = LocalDate.now()
+            val formattedDate: String = when {
+                date == "Today" -> currentDate.format(formatter)
+                date == "Yesterday" -> currentDate.minusDays(1).format(formatter)
+                date == "Tomorrow" -> currentDate.plusDays(1).format(formatter)
+                date.endsWith("day ago") || date.endsWith("days ago") -> {
+                    val daysAgo = date.split(" ")[0].toInt()
+                    currentDate.minusDays(daysAgo.toLong()).format(formatter)
+                }
+                date.endsWith("week ago") || date.endsWith("weeks ago") -> {
+                    val weeksAgo = date.split(" ")[0].toInt()
+                    currentDate.minusWeeks(weeksAgo.toLong()).format(formatter)
+                }
+                date.endsWith("year ago") || date.endsWith("years ago") -> {
+                    val yearsAgo = date.split(" ")[0].toInt()
+                    currentDate.minusYears(yearsAgo.toLong()).format(formatter)
+                }
+                else -> {
+                    try {
+                        LocalDate.parse(date, formatter).format(formatter)
+                    } catch (e: DateTimeParseException) {
+                        ""
+                    }
+                }
+            }
+            UpdateTaskScreen(
+                selectedDate = mutableStateOf(formattedDate ) ,
+                selectedTime = mutableStateOf(time) ,
+                textValue = message,
+                id = id,
+                openKeyboard = false,
+                onDismiss = { selectedItemId.value = ""  },
+                onMarkCompletedClick = onMarkCompletedClick,
+                onDeleteClick,
+                isPickerOpen,
+
+                isAddDaskOpen = isAddDaskOpen
+            )
+
         }
+
+    }
+}
+
+        }
+
+
+
 
 
 }
@@ -540,7 +644,7 @@ fun RoundedCircleCardDesign(
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>){
+fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>,isPickerOpen: MutableState<Boolean>){
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
     Box(modifier = Modifier
@@ -552,7 +656,8 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>){
         androidx.compose.material.FloatingActionButton(
             modifier = Modifier
                 .size(64.dp)
-                .align(Alignment.BottomCenter),
+                .align(Alignment.BottomCenter)
+                .bounceClick(),
            onClick = {isAddDaskScreenOpen.value = true}
                ,
             shape = CircleShape,
@@ -562,7 +667,10 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>){
             contentColor = Color.White.compositeOver(shadowColor)
 
         ) {
-            Image(painterResource(id = R.drawable.plus_icon) , contentDescription = "")
+            Image(painterResource(
+                id = R.drawable.plus_icon) ,
+                contentDescription = "",
+            modifier = Modifier)
         }
         val context = LocalContext.current
         val dialog = Dialog(context)
@@ -570,9 +678,39 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>){
      AddDaskScreen( selectedDate = mutableStateOf(null),
          selectedTime = mutableStateOf(null),
          textValue = "",
-         onDismiss = {isAddDaskScreenOpen.value = false}
+         onDismiss = {isAddDaskScreenOpen.value = false},
+         isPickerOpen = isPickerOpen,
+         modifier = Modifier
      )
  }
     }
 
+}
+enum class ButtonState { Pressed, Idle }
+@Composable
+fun Modifier.bounceClick() = composed {
+    var buttonState by remember { mutableStateOf(ButtonState.Idle) }
+    val scale by animateFloatAsState(if (buttonState == ButtonState.Pressed) 0.70f else 1f)
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = {  }
+        )
+        .pointerInput(buttonState) {
+            awaitPointerEventScope {
+                buttonState = if (buttonState == ButtonState.Pressed) {
+                    waitForUpOrCancellation()
+                    ButtonState.Idle
+                } else {
+                    awaitFirstDown(false)
+                    ButtonState.Pressed
+                }
+            }
+        }
 }

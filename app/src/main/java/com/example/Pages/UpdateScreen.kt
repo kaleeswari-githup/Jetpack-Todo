@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -67,9 +68,11 @@ fun UpdateTaskScreen(
     id:String,
     openKeyboard: Boolean,
     onDismiss : () -> Unit,
-    scaffoldState: ScaffoldState,
     onMarkCompletedClick: (String) -> Unit,
-    onDeleteClick: (String) -> Unit
+    onDeleteClick: (String) -> Unit,
+    isPickerOpen:MutableState<Boolean>,
+
+    isAddDaskOpen:MutableState<Boolean>
 ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
@@ -135,6 +138,7 @@ fun UpdateTaskScreen(
         isPickerOpen.value -> 10.dp
         else -> 0.dp
     })
+
     Dialog(onDismissRequest = onBackPressed ,
     properties = DialogProperties(
         dismissOnClickOutside = true,
@@ -146,7 +150,8 @@ fun UpdateTaskScreen(
     Box(modifier = Modifier
         .blur(radius = blurEffectBackground)
         .fillMaxSize()
-
+        .clickable(indication = null,
+            interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
     ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
        // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
@@ -166,7 +171,9 @@ fun UpdateTaskScreen(
                     },
                     id = id,
                     openKeyboard = openKeyboard,
-                    isPickerOpen = isPickerOpen
+                    isPickerOpen = isPickerOpen,
+
+                    isAddDaskOpen = isAddDaskOpen
                     )
 
                 Box(
@@ -190,7 +197,7 @@ fun UpdateTaskScreen(
 
 
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun UpdateCircleDesign(
     message: MutableState<String>,
@@ -200,6 +207,8 @@ fun UpdateCircleDesign(
     onTaskChange:(String) -> Unit,
     isPickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
+
+    isAddDaskOpen:MutableState<Boolean>
 
 ){
    /* val selectedDate = remember { mutableStateOf(initialSelectedate.value) }
@@ -229,187 +238,203 @@ fun UpdateCircleDesign(
                 }
             }
     }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 38.dp)
-            .size(344.dp)
-            .aspectRatio(1f)
-            .clip(CircleShape)
-            .background(bigRoundedCircleGradient, shape = CircleShape),
-        contentAlignment = Alignment.Center
-    ){
-
-        Column(modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center) {
-            val messageState = remember { mutableStateOf(message.value) }
-            TextField(
-                value = message.value,
-                onValueChange = onTaskChange ,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 32.dp, end = 32.dp)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            isMessageFieldFocused.value = true
-                        }else{
-                            keyboardController?.hide()
-                            isMessageFieldFocused.value = false
-                        }
-                    },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone ={
-                        keyboardController?.hideSoftwareKeyboard()
-                        focusManager.clearFocus(true)
-                        onDoneClick.invoke()
-                    }
-                ),
-                colors = TextFieldDefaults.textFieldColors(
-                    backgroundColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = FABDarkColor
-                ),
-                placeholder = {
-                    Text(text = "New Task",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 70.dp),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 24.sp,
-                        color = NewtaskColorGray
-                    )
-                },
-
-                textStyle = LocalTextStyle.current.copy(
-                    textAlign = TextAlign.Center,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = interDisplayFamily,
-                    color = Text1
-                ),
-
-            )
-            if (isMessageFieldFocused.value){
-                TextStyle(text = "${message.value.length} / 32")
-            }
-
-            Box(
-                modifier = Modifier
-                    .wrapContentSize(Alignment.Center)
-                    .padding(
-                        top = 20.dp,
-                        start = 48.dp,
-                        end = 48.dp
-                    )
-                    .background(color = Color.White, shape = CircleShape)
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) {
-                        isPickerOpen.value = true
-                    }
-                    .padding(4.dp)
+    var visible by remember {
+        mutableStateOf(false)
+    }
 
 
-            ) {
-                if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
 
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                            modifier = Modifier
-                        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, top = 38.dp)
+                .size(377.dp)
+                .aspectRatio(1f)
+                .clip(CircleShape)
+                .background(bigRoundedCircleGradient, shape = CircleShape)
+                .clickable (indication = null,
+                    interactionSource = remember { MutableInteractionSource() }){  },
+            contentAlignment = Alignment.Center
+        ){
 
-
-                }else if(initialSelectedate != null && initialSelectedtime == null) {
-                    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
-                    val formattedDate = initialSelectedate.value.format(formatter) ?: ""
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                            modifier = Modifier
-                        )
-                        Text(
-                            text = formattedDate,
-                            fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Text1
-                        )
-                    }
-                }else{
-                    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
-                    val formattedDate = initialSelectedate.value.format(formatter) ?: ""
-                    val dateString:String = formattedDate
-                    val timeFormat = initialSelectedtime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
-                    val timeString:String = timeFormat
-                    Log.d("timestring","$timeString")
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                        )
-                        Text(
-                            text = dateString,
-                            fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Text1
-                        )
-                        Text(
-                            text = timeString,
-                            fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Text1)
-                    }
-                }
-                if (isPickerOpen.value) {
-                    val pattern = "EEE, d MMM yyyy"
-                    val locale = Locale.ENGLISH
-
-                    val formatter = DateTimeFormatter.ofPattern(pattern, locale)
-                        .withZone(ZoneId.of("America/New_York"))
-
-                    val localDate = if (initialSelectedate.value.isEmpty()) {
-                        LocalDate.now()
-                    } else {
-                        try {
-                            LocalDate.parse(initialSelectedate.value, formatter)
-                        } catch (e: DateTimeParseException) {
-                            LocalDate.now()
-                        }
-                    }
-
-                    UpdatedCalendarAndTimePickerScreen(
-                        userSelectedDate = localDate,
-                        userSelectedTime = initialSelectedtime.value,
-                        onDismiss = { isPickerOpen.value = false },
-                        onDateTimeSelected = { date, time ->
-                            val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                            val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-
-                            val defaultDateString = date
-                            val parsedDate = LocalDate.parse(defaultDateString, defaultDateFormat)
-                            val formattedDate = parsedDate.format(desiredDateFormat)
-
-                            initialSelectedate.value = formattedDate
-                            initialSelectedtime.value = time
+            Column(modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center) {
+                val messageState = remember { mutableStateOf(message.value) }
+                TextField(
+                    value = message.value,
+                    onValueChange = onTaskChange ,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 32.dp, end = 32.dp)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                isMessageFieldFocused.value = true
+                            }else{
+                                keyboardController?.hide()
+                                isMessageFieldFocused.value = false
+                            }
                         },
-                        id = id,
-                        invokeOnDoneClick = true
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone ={
+                            keyboardController?.hideSoftwareKeyboard()
+                            focusManager.clearFocus(true)
+                            onDoneClick.invoke()
+                        }
+                    ),
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = FABDarkColor
+                    ),
+                    placeholder = {
+                        Text(text = "New Task",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 70.dp),
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 24.sp,
+                            color = NewtaskColorGray
+                        )
+                    },
+
+                    textStyle = LocalTextStyle.current.copy(
+                        textAlign = TextAlign.Center,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = interDisplayFamily,
+                        color = Text1,
+                        letterSpacing = 0.sp
+                    ),
 
                     )
-
+                if (isMessageFieldFocused.value){
+                    TextStyle(text = "${message.value.length} / 32")
                 }
+
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize(Alignment.Center)
+                        .padding(
+                            top = 20.dp,
+                            start = 48.dp,
+                            end = 48.dp
+                        )
+                        .background(color = Color.White, shape = CircleShape)
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            isPickerOpen.value = true
+                        }
+                        .padding(4.dp)
+
+
+                ) {
+                    if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.calendar_icon),
+                            contentDescription = "calender_icon",
+                            modifier = Modifier
+                        )
+
+
+                    }else if(initialSelectedate != null && initialSelectedtime == null) {
+                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+                        val formattedDate = initialSelectedate.value.format(formatter) ?: ""
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.calendar_icon),
+                                contentDescription = "calender_icon",
+                                modifier = Modifier
+                            )
+                            Text(
+                                text = formattedDate,
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Text1
+                            )
+                        }
+                    }else{
+                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+                        val formattedDate = initialSelectedate.value.format(formatter) ?: ""
+                        val dateString:String = formattedDate
+                        val timeFormat = initialSelectedtime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+                        val timeString:String = timeFormat
+                        Log.d("timestring","$timeString")
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.calendar_icon),
+                                contentDescription = "calender_icon",
+                            )
+                            Text(
+                                text = dateString,
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Text1,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                            )
+                            Text(
+                                text = timeString,
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Text1,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp))
+                        }
+                    }
+                    if (isPickerOpen.value) {
+                        val pattern = "EEE, d MMM yyyy"
+                        val locale = Locale.ENGLISH
+
+                        val formatter = DateTimeFormatter.ofPattern(pattern, locale)
+                            .withZone(ZoneId.of("America/New_York"))
+
+                        val localDate = if (initialSelectedate.value.isEmpty()) {
+                            LocalDate.now()
+                        } else {
+                            try {
+                                LocalDate.parse(initialSelectedate.value, formatter)
+                            } catch (e: DateTimeParseException) {
+                                LocalDate.now()
+                            }
+                        }
+
+                        UpdatedCalendarAndTimePickerScreen(
+                            userSelectedDate = localDate,
+                            userSelectedTime = initialSelectedtime.value,
+                            onDismiss = { isPickerOpen.value = false },
+                            onDateTimeSelected = { date, time ->
+                                val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                                val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+
+                                val defaultDateString = date
+                                val parsedDate = LocalDate.parse(defaultDateString, defaultDateFormat)
+                                val formattedDate = parsedDate.format(desiredDateFormat)
+
+                                initialSelectedate.value = formattedDate
+                                initialSelectedtime.value = time
+                            },
+                            id = id,
+                            invokeOnDoneClick = true,
+                            UnMarkedDateandTime = false
+
+                        )
+
+                    }
+                
             }
         }
     }
+
+
+
     LaunchedEffect(openKeyboard) {
         if (openKeyboard) {
             focusRequester.requestFocus()
@@ -486,7 +511,8 @@ fun Interfont(text:String){
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 15.sp,
-        color = Text1
+        color = Text1,
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
     )
 }
 
@@ -503,6 +529,7 @@ fun CrossFloatingActionButton(onClick:() -> Unit){
             modifier = Modifier
                 .size(48.dp)
                 .align(Alignment.BottomCenter)
+                .bounceClick()
                 ,
             elevation = FloatingActionButtonDefaults.elevation(0.dp),
             onClick = {onClick.invoke()},

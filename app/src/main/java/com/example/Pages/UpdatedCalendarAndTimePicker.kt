@@ -5,6 +5,8 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -46,7 +48,8 @@ fun UpdatedCalendarAndTimePickerScreen(
     userSelectedTime: String?= "",
     onDateTimeSelected: (String, String) -> Unit,
     id:String,
-    invokeOnDoneClick: Boolean = true) {
+    invokeOnDoneClick: Boolean = true,
+    UnMarkedDateandTime:Boolean = true) {
     var selectedDate = remember { mutableStateOf(LocalDate.now()) }
     var isTimePickerVisible by remember { mutableStateOf(false) }
 
@@ -57,6 +60,7 @@ fun UpdatedCalendarAndTimePickerScreen(
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
+    val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     val context = LocalContext.current
     val onDoneClick: (String, String) -> Unit = { updatedDate, updatedTime ->
         val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Assuming the date format in the database is in ISO format
@@ -88,7 +92,36 @@ fun UpdatedCalendarAndTimePickerScreen(
                 }
             }
     }
+    val onCompletedDateandTimeClick: (String, String) -> Unit = { updatedDate, updatedTime ->
+        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Assuming the date format in the database is in ISO format
+        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy",Locale.ENGLISH) // Desired format: "MM/dd/yyyy"
 
+        val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
+
+        // Parse the date string with the original format
+        val originalDate: LocalDate? = if (dateStringFromDatabase.isNotEmpty()) {
+            LocalDate.parse(dateStringFromDatabase, dateFormatter)
+        } else {
+            LocalDate.MIN // Assign LocalDate.MIN when dateStringFromDatabase is empty
+        }
+
+        // Format the date with the desired format if originalDate is not LocalDate.MIN
+        val formattedDate = originalDate?.format(dateFormatter) ?: ""
+        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        val updatedData = HashMap<String, Any>()
+        updatedData["id"] = id
+        updatedData["time"] = timeFormat.toString()
+        updatedData["date"] = formattedDate
+        completedTasksRef.child(id).updateChildren(updatedData)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Toast.makeText(context, "UnMarkedUpdated successfully", Toast.LENGTH_SHORT).show()
+                    onDismiss.invoke()
+                } else {
+                    Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -99,7 +132,9 @@ fun UpdatedCalendarAndTimePickerScreen(
         )
     ) {
         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
-        Column(modifier = Modifier,
+        Column(modifier = Modifier.fillMaxSize()
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
@@ -128,7 +163,8 @@ fun UpdatedCalendarAndTimePickerScreen(
                     },
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
-                        .size(width = 105.dp, height = 48.dp),
+                        .size(width = 105.dp, height = 48.dp)
+                        .bounceClick(),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                     elevation = ButtonDefaults.elevation(24.dp)
 
@@ -137,6 +173,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         text = "Cancel",
                         fontFamily = interDisplayFamily,
                         fontWeight = FontWeight.Medium,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                         fontSize = 15.sp,
                         color = Text1
                     )
@@ -156,12 +193,16 @@ fun UpdatedCalendarAndTimePickerScreen(
                         if(invokeOnDoneClick){
                             onDoneClick(dateString,timeString)
                         }
+                        if (UnMarkedDateandTime){
+                            onCompletedDateandTimeClick(dateString,timeString)
+                        }
 
                         onDismiss.invoke()
                     },
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
-                        .size(width = 105.dp, height = 48.dp),
+                        .size(width = 105.dp, height = 48.dp)
+                        .bounceClick(),
                     colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
                     elevation = ButtonDefaults.elevation(24.dp)
 
@@ -178,7 +219,8 @@ fun UpdatedCalendarAndTimePickerScreen(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color.White,
-                        modifier = Modifier.padding(start = 12.dp)
+                        modifier = Modifier.padding(start = 12.dp),
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                     )
                 }
             }

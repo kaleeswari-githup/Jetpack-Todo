@@ -4,12 +4,13 @@ import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -56,9 +56,8 @@ import java.util.*
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
+fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selectedMarkedItemId: MutableState<String>){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -145,11 +144,10 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
             }
         })
     }
-    var isUnMarkCompletedtaskOpen = remember {
-        mutableStateOf(mapOf<String, Boolean>())
-    }
+
+
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isUnMarkCompletedtaskOpen.value.any{it.value} -> 25.dp
+        selectedMarkedItemId.value.isNotEmpty() -> 25.dp
         else -> 0.dp
     }
     )
@@ -170,220 +168,274 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
             backgroundColor = Color.Transparent,
 
             ){
+            var visible by remember { mutableStateOf(false) }
+
+            // Use LaunchedEffect to animate the 'visible' variable
+            LaunchedEffect(Unit) {
+                visible = true // Set the visibility to true to trigger the animation
+            }
+
+            // Use animateDpAsState to animate the scale for the Box
+
             Box(modifier = Modifier
                 .blur(radius = blurEffectBackground)
-                .fillMaxSize(),
+
+                .fillMaxSize()
+                .clickable(indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
 
                 ) {
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, end = 24.dp, top = 120.dp)
-                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
+                LazyColumn(modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    item{
+                        val offsetY by animateDpAsState(
+                            targetValue = if (visible) 0.dp else 200.dp,
+                            animationSpec = tween(
+                                durationMillis = 2000,
+                                delayMillis = 0,
+                                easing = EaseInOutSine),
 
-                        ) {
-                        Row(modifier = Modifier.padding(start = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier
-                                .size(48.dp)
-                                .background(shape = CircleShape, color = SurfaceGray),
-                                contentAlignment = Alignment.Center
+                        )
+                        val opacity by animateFloatAsState(
+                            targetValue = if (visible) 1f else 0f,
+                            animationSpec = tween(
+                                durationMillis = 300,
+                                delayMillis = 0,
+                                easing = EaseInOutSine
+                            )
+                        )
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = offsetY)
+                            .padding(start = 24.dp, end = 24.dp, top = 120.dp)
+                            .background(color = Color.White.copy(alpha = opacity), shape = RoundedCornerShape(32.dp))
+                            .clickable (indication = null,
+                                interactionSource = remember { MutableInteractionSource() }){  },
+
                             ) {
-                                val firebaseAuth = FirebaseAuth.getInstance()
-                                val user = firebaseAuth.currentUser
-                                val photoUrl = user?.photoUrl
-                                val initials = user?.email?.take(1)?.toUpperCase()
-                                if (photoUrl != null) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(photoUrl)
-                                            .build(),
-                                        contentDescription = "Profile picture",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape)
-                                    )
-                                }else{
-                                    Text(
-                                        text = initials ?: "",
-                                        color = Color.White,
-                                        fontFamily = interDisplayFamily,
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-
-                            }
-                            Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                                Text(text = "${user?.displayName}",
-                                    fontFamily = interDisplayFamily,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Black
-                                )
-                                Text(text = "${user?.email}",
-                                    fontFamily = interDisplayFamily,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    color = Text2
-                                )
-                            }
-                        }
-
-                    }
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
-                        contentAlignment = Alignment.Center) {
-                        Column(modifier = Modifier,
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Completed (${completedTasksCountState.value})",
-                                fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.Black,
-                                modifier = Modifier.padding(top = 24.dp))
-                            Spacer(modifier = Modifier.padding(top = 12.dp))
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(204.dp)
-                                .padding(start = 24.dp, end = 24.dp)
-                                .background(
-                                    color = MarkCompleteBack,
-                                    shape = RoundedCornerShape(24.dp)
-                                ),
-                                contentAlignment = Alignment.Center) {
-
-                                LazyRowCompletedTask(onDismiss,onDeleteClick,onUnMarkCompletedClick,isUnMarkCompletedtaskOpen)
-
-                            }
-
-                            Spacer(modifier = Modifier.padding(top = 24.dp))
-                        }
-                    }
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp)
-                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                        .background(color = Color.White, shape = RoundedCornerShape(32.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 24.dp, end = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween) {
-                            Box() {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Image(painter = painterResource(id = R.drawable.sound), contentDescription = null)
-                                    Text(text = "Sound",
-                                        fontFamily = interDisplayFamily,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.Black,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-
-                            }
-
-                            Box(modifier = Modifier) {
-                                Box(
-                                    modifier = Modifier
-                                        .clickable(indication = null,
-                                            interactionSource = remember { MutableInteractionSource() }) { isChecked = !isChecked }
+                            Row(modifier = Modifier.padding(start = 24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier
+                                    .size(48.dp)
+                                    .background(shape = CircleShape, color = SurfaceGray),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp, 24.dp)
-                                            .background(
-                                                if (isChecked) NewOrange else Color.Gray,
-                                                shape = CircleShape
-                                            )
-                                    ) {
-                                        Spacer(
+                                    val firebaseAuth = FirebaseAuth.getInstance()
+                                    val user = firebaseAuth.currentUser
+                                    val photoUrl = user?.photoUrl
+                                    val initials = user?.email?.take(1)?.toUpperCase()
+                                    if (photoUrl != null) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(photoUrl)
+                                                .build(),
+                                            contentDescription = "Profile picture",
+                                            contentScale = ContentScale.Crop,
                                             modifier = Modifier
-                                                .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
-                                                .size(22.dp)
-                                                .background(Color.White, CircleShape)
+                                                .fillMaxSize()
+                                                .clip(CircleShape)
+                                        )
+                                    }else{
+                                        Text(
+                                            text = initials ?: "",
+                                            color = Color.White,
+                                            fontFamily = interDisplayFamily,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
+
                                 }
-                            }
-
-                        }
-
-                    }
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp)
-                        .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                        .background(color = Color.White, shape = RoundedCornerShape(32.dp))
-                        .clickable(indication = null,
-                            interactionSource = remember { MutableInteractionSource() }) {
-                            val auth = FirebaseAuth.getInstance()
-                            // Sign out from Firebase
-                            auth.signOut()
-
-                            // Sign out from Google
-                            googleSignInClient
-                                .signOut()
-                                .addOnCompleteListener {
-                                    // Optional: Perform any additional actions after sign out
-                                    navController.navigate(route = Screen.Main.route)
-                                    onDismiss.invoke()
-                                }
-                        },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 24.dp, end = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween) {
-                            Box() {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Image(painter = painterResource(id = R.drawable.logout), contentDescription = null)
-                                    Text(text = "Log Out",
+                                Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
+                                    Text(text = "${user?.displayName}",
                                         fontFamily = interDisplayFamily,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.Black,
-                                        modifier = Modifier.padding(start = 8.dp)
+                                        color = Color.Black
                                     )
+                                    Text(text = "${user?.email}",
+                                        fontFamily = interDisplayFamily,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = Text2
+                                    )
+                                }
+                            }
 
+                        }
+                    }
+                   item {
+                       val offsetY by animateDpAsState(
+                           targetValue = if (visible) 0.dp else 200.dp,
+                           animationSpec = tween(durationMillis = 2000, delayMillis = 100,easing =  EaseInOutSine)
+                       )
+                       Box(modifier = Modifier
+                           .fillMaxWidth()
+                           .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                           .offset(y = offsetY)
+                           .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                           .clickable (indication = null,
+                               interactionSource = remember { MutableInteractionSource() }){  },
+                           contentAlignment = Alignment.Center) {
+                           Column(modifier = Modifier,
+                               verticalArrangement = Arrangement.Center,
+                               horizontalAlignment = Alignment.CenterHorizontally
+                           ) {
+                               Text(text = "Completed (${completedTasksCountState.value})",
+                                   fontFamily = interDisplayFamily,
+                                   fontSize = 15.sp,
+                                   fontWeight = FontWeight.Medium,
+                                   color = Color.Black,
+                                   modifier = Modifier.padding(top = 24.dp))
+                               Spacer(modifier = Modifier.padding(top = 12.dp))
+                               Box(modifier = Modifier
+                                   .fillMaxWidth()
+                                   .height(204.dp)
+                                   .padding(start = 24.dp, end = 24.dp)
+                                   .background(
+                                       color = MarkCompleteBack,
+                                       shape = RoundedCornerShape(24.dp)
+                                   ),
+                                   contentAlignment = Alignment.Center) {
+
+                                   LazyRowCompletedTask(onDismiss,onDeleteClick,onUnMarkCompletedClick,selectedMarkedItemId)
+
+                               }
+
+                               Spacer(modifier = Modifier.padding(top = 24.dp))
+                           }
+                       }
+                   }
+                    item {
+                        val offsetY by animateDpAsState(
+                            targetValue = if (visible) 0.dp else 200.dp,
+                            animationSpec = tween(durationMillis = 2000, delayMillis = 200,easing =  EaseInOutSine)
+                        )
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = offsetY)
+                            .height(72.dp)
+                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                            .clickable (indication = null,
+                                interactionSource = remember { MutableInteractionSource() }){  },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 24.dp, end = 24.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Box() {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Image(painter = painterResource(id = R.drawable.sound), contentDescription = null)
+                                        Text(text = "Sound",
+                                            fontFamily = interDisplayFamily,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.Black,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+
+                                }
+
+                                Box(modifier = Modifier) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clickable(indication = null,
+                                                interactionSource = remember { MutableInteractionSource() }) { isChecked = !isChecked }
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp, 24.dp)
+                                                .background(
+                                                    if (isChecked) NewOrange else Color.Gray,
+                                                    shape = CircleShape
+                                                )
+                                        ) {
+                                            Spacer(
+                                                modifier = Modifier
+                                                    .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
+                                                    .size(22.dp)
+                                                    .background(Color.White, CircleShape)
+                                            )
+                                        }
+                                    }
                                 }
 
                             }
 
-                            Box(modifier = Modifier
-
-                                .align(Alignment.CenterVertically)
-                            ) {
-                                Image(painter = painterResource(id = R.drawable.right), contentDescription = null)
-                            }
-
                         }
-
                     }
+                  item {
+                      val offsetY by animateDpAsState(
+                          targetValue = if (visible) 0.dp else 200.dp,
+                          animationSpec = tween(durationMillis = 2000, delayMillis = 300,easing = EaseInOutSine)
+                      )
+                      Box(modifier = Modifier
+                          .fillMaxWidth()
+                          .offset(y = offsetY)
+                          .height(72.dp)
+                          .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                          .bounceClick()
+                          .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                          .clickable(indication = null,
+                              interactionSource = remember { MutableInteractionSource() }) {
+                              val auth = FirebaseAuth.getInstance()
+                              // Sign out from Firebase
+                              auth.signOut()
+
+                              // Sign out from Google
+                              googleSignInClient
+                                  .signOut()
+                                  .addOnCompleteListener {
+                                      // Optional: Perform any additional actions after sign out
+                                      navController.navigate(route = Screen.Main.route)
+                                      onDismiss.invoke()
+                                  }
+                          },
+                          contentAlignment = Alignment.Center
+                      ) {
+                          Row(modifier = Modifier
+                              .fillMaxSize()
+                              .padding(start = 24.dp, end = 24.dp),
+                              verticalAlignment = Alignment.CenterVertically,
+                              horizontalArrangement = Arrangement.SpaceBetween) {
+                              Box() {
+                                  Row(verticalAlignment = Alignment.CenterVertically) {
+                                      Image(painter = painterResource(id = R.drawable.logout), contentDescription = null)
+                                      Text(text = "Log Out",
+                                          fontFamily = interDisplayFamily,
+                                          fontSize = 15.sp,
+                                          fontWeight = FontWeight.Medium,
+                                          color = Color.Black,
+                                          modifier = Modifier.padding(start = 8.dp)
+                                      )
+
+                                  }
+
+                              }
+
+                              Box(modifier = Modifier
+
+                                  .align(Alignment.CenterVertically)
+                              ) {
+                                  Image(painter = painterResource(id = R.drawable.right), contentDescription = null)
+                              }
+
+                          }
+
+                      }
+                  }
+
                 }
 
                 CrossFloatingActionButton {
                     onDismiss.invoke()
                 }
-                /*    if (isMarkcompletedHomeOpen.value){
-                        MarkCompletedHomescreen(
-                            onDismiss = {isMarkcompletedHomeOpen.value = false}
-                        )
-
-
-                    }*/
             }
         }
 
@@ -396,7 +448,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit){
 fun LazyRowCompletedTask(onDismiss: () -> Unit,
                          onDeletedClick: (String) -> Unit,
                          onUnMarkcompletedClick: (String) -> Unit,
-                         isUnMarkCompletedtaskOpen:MutableState<Map<String,Boolean>>){
+                         selectedMarkedItemId: MutableState<String>){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -449,7 +501,8 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
             onDismiss = onDismiss,
             onDeletedClick,
             onUnMarkcompletedClick = onUnMarkcompletedClick,
-            isUnMarkCompletedtaskOpen)
+                selectedMarkedItemId
+            )
 
         }
     }
@@ -465,7 +518,8 @@ fun MarkCompletedCircleDesign(image:Int,
                               onDismiss: () -> Unit,
                               onDeletedClick:(String) -> Unit,
                               onUnMarkcompletedClick:(String) -> Unit,
-                              isUnMarkCompletedtaskOpen:MutableState<Map<String,Boolean>>){
+                              selectedMarkedItemId: MutableState<String>,
+                              ){
     val painter: Painter = painterResource(image)
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -477,15 +531,12 @@ fun MarkCompletedCircleDesign(image:Int,
     Box(
         modifier = Modifier
             .size(172.dp)
+            .bounceClick()
             .background(roundedCircleGradient, shape = CircleShape)
             .clip(CircleShape)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                isUnMarkCompletedtaskOpen.value = isUnMarkCompletedtaskOpen.value
-                    .toMutableMap()
-                    .apply {
-                        this[id] = true
-                    }.toMap()
+                selectedMarkedItemId.value = id
             },
 
         contentAlignment = Alignment.Center
@@ -501,23 +552,7 @@ fun MarkCompletedCircleDesign(image:Int,
                     .padding(top = 32.dp)
                     .clickable {
                         onUnMarkcompletedClick(id)
-                        /* completedTasksRef
-                            .child(id)
-                            .get()
-                            .addOnSuccessListener { completedTaskSnapshot ->
-                                // Get the completed task snapshot
-                                val completedTask =
-                                    completedTaskSnapshot.getValue(DataClass::class.java)
 
-                                // Remove the completed task from "CompletedTasks"
-                                completedTasksRef
-                                    .child(id)
-                                    .removeValue()
-                                // Add the completed task to "Task"
-                                val newTaskRef = databaseRef.push()
-                                newTaskRef.setValue(completedTask)
-
-                            }*/
                     })
 
             Text(
@@ -548,16 +583,14 @@ fun MarkCompletedCircleDesign(image:Int,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-        if (isUnMarkCompletedtaskOpen.value[id] == true){
+        if (selectedMarkedItemId.value == id){
             UnMarkCompletedTaskScreen(
                 selectedDate = mutableStateOf(date),
                 selectedTime = mutableStateOf(time),
                 textValue = message,
                 id = id,
                 openKeyboard = false,
-                onDismiss = { isUnMarkCompletedtaskOpen.value = isUnMarkCompletedtaskOpen.value.toMutableMap().apply {
-                    put(id,false)
-                }.toMap() },
+                onDismiss ={ selectedMarkedItemId.value = "" },
                 onDeletedClick,
                 onUnMarkCompletedClick = onUnMarkcompletedClick
             )
