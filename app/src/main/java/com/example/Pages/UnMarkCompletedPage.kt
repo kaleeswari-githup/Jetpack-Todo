@@ -21,7 +21,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -141,7 +140,7 @@ fun UnMarkCompletedTaskScreen(
     ) {
 
             Box(modifier = Modifier
-                .blur(radius = blurEffectBackground)
+            //    .blur(radius = blurEffectBackground)
             ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
                 // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier.fillMaxSize()

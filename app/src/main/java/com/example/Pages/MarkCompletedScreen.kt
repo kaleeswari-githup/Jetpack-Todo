@@ -19,7 +19,7 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -178,7 +178,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
             // Use animateDpAsState to animate the scale for the Box
 
             Box(modifier = Modifier
-                .blur(radius = blurEffectBackground)
+              //  .blur(radius = blurEffectBackground)
 
                 .fillMaxSize()
                 .clickable(indication = null,
@@ -187,29 +187,32 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                 ) {
 
                 LazyColumn(modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ) {
                     item{
                         val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 200.dp,
+                            targetValue = if (visible) 0.dp else 32.dp,
                             animationSpec = tween(
-                                durationMillis = 2000,
+                                durationMillis = 300,
                                 delayMillis = 0,
-                                easing = EaseInOutSine),
+                                easing = EaseOutCirc
+                            ),
 
                         )
                         val opacity by animateFloatAsState(
                             targetValue = if (visible) 1f else 0f,
-                            animationSpec = tween(
-                                durationMillis = 300,
-                                delayMillis = 0,
-                                easing = EaseInOutSine
-                            )
+                            animationSpec = keyframes {
+                                durationMillis = 300 // Total duration of the animation
+                                0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                1f at 300 // Opacity becomes 1f after 1000ms (end of the animation)
+                            }
                         )
                         Box(modifier = Modifier
                             .fillMaxWidth()
                             .offset(y = offsetY)
+                            .alpha(opacity)
                             .padding(start = 24.dp, end = 24.dp, top = 120.dp)
-                            .background(color = Color.White.copy(alpha = opacity), shape = RoundedCornerShape(32.dp))
+                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
                             .clickable (indication = null,
                                 interactionSource = remember { MutableInteractionSource() }){  },
 
@@ -268,13 +271,26 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                     }
                    item {
                        val offsetY by animateDpAsState(
-                           targetValue = if (visible) 0.dp else 200.dp,
-                           animationSpec = tween(durationMillis = 2000, delayMillis = 100,easing =  EaseInOutSine)
+                           targetValue = if (visible) 0.dp else 32.dp,
+                           animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
+                       )
+                       val opacity by animateFloatAsState(
+                           targetValue = if (visible) 1f else 0f,
+                           animationSpec = keyframes {
+                               durationMillis = 300 // Total duration of the animation
+                               0.3f at 100 // Opacity becomes 0.3f after 200ms
+                               0.6f at 200 // Opacity becomes 0.6f after 500ms
+                               1f at 300
+
+                               delayMillis = 100
+                           }
                        )
                        Box(modifier = Modifier
                            .fillMaxWidth()
+
                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                            .offset(y = offsetY)
+                           .alpha(opacity)
                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
                            .clickable (indication = null,
                                interactionSource = remember { MutableInteractionSource() }){  },
@@ -310,12 +326,25 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                    }
                     item {
                         val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 200.dp,
-                            animationSpec = tween(durationMillis = 2000, delayMillis = 200,easing =  EaseInOutSine)
+                            targetValue = if (visible) 0.dp else 32.dp,
+                            animationSpec = tween(durationMillis = 300, delayMillis = 200,easing =  EaseOutCirc)
+                        )
+                        val opacity by animateFloatAsState(
+                            targetValue = if (visible) 1f else 0f,
+                            animationSpec = keyframes {
+                                durationMillis = 300 // Total duration of the animation
+                                0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                1f at 300
+
+                                delayMillis = 200
+                            }
                         )
                         Box(modifier = Modifier
                             .fillMaxWidth()
+
                             .offset(y = offsetY)
+                            .alpha(opacity)
                             .height(72.dp)
                             .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                             .background(color = Color.White, shape = RoundedCornerShape(32.dp))
@@ -372,12 +401,25 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                     }
                   item {
                       val offsetY by animateDpAsState(
-                          targetValue = if (visible) 0.dp else 200.dp,
-                          animationSpec = tween(durationMillis = 2000, delayMillis = 300,easing = EaseInOutSine)
+                          targetValue = if (visible) 0.dp else 32.dp,
+                          animationSpec = tween(durationMillis = 300, delayMillis = 300,easing = EaseOutCirc)
+                      )
+                      val opacity by animateFloatAsState(
+                          targetValue = if (visible) 1f else 0f,
+                          animationSpec = keyframes {
+                              durationMillis = 300 // Total duration of the animation
+                              0.3f at 100 // Opacity becomes 0.3f after 200ms
+                              0.6f at 200 // Opacity becomes 0.6f after 500ms
+                              1f at 300
+
+                              delayMillis = 300
+                          }
                       )
                       Box(modifier = Modifier
                           .fillMaxWidth()
+
                           .offset(y = offsetY)
+                          .alpha(opacity)
                           .height(72.dp)
                           .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                           .bounceClick()

@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.dothings"
-        minSdk 21
+        minSdk 33
         targetSdk 33
         versionCode 1
         versionName "1.0"
@@ -75,6 +75,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.4.0")
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.5.2'
+  //  implementation 'com.github.x3rocode:xblur-compose:1.0.1'
 
 
 

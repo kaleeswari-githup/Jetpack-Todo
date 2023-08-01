@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.painter.Painter
@@ -148,13 +149,18 @@ fun HomeScreen(navController: NavHostController){
     var isPickerOpen = remember { mutableStateOf(false) }
     var isAddDaskOpen = remember { mutableStateOf(false) }
 
-    val blurEffectBackground by animateDpAsState(targetValue = when{
-        selectedItemId.value.isNotEmpty() -> 25.dp
-
-        isAddDaskScreenOpen.value -> 25.dp
-        isMarkCompletedOpen.value -> 25.dp
-        else -> 0.dp
-    })
+    val blurEffectBackground by animateDpAsState(
+        targetValue = when {
+            selectedItemId.value.isNotEmpty() -> 25.dp
+            isAddDaskScreenOpen.value -> 25.dp
+            isMarkCompletedOpen.value -> 25.dp
+            else -> 0.dp
+        },
+        animationSpec = tween(
+            durationMillis = 300, // Adjust the duration to your desired value
+            easing = EaseOutCirc // You can try different easing functions for smoother animations
+        )
+    )
     Scaffold(
         scaffoldState = scaffoldState,
         modifier = Modifier.fillMaxSize(),
@@ -504,16 +510,16 @@ fun RoundedCircleCardDesign(
     val offsetX = remember { Animatable(1000f) }
     LaunchedEffect(Unit) {
         visible = true // Set the visibility to true to trigger the animation
-        offsetX.animateTo(0f, animationSpec = tween(500))
+       // offsetX.animateTo(0f, animationSpec = tween(500))
     }
-    AnimatedVisibility(
-        visible = visible,
-        enter = scaleIn(animationSpec =spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))  + fadeIn(
-            // Fade in with the initial alpha of 0.3f.
-            initialAlpha = 0f
-        ),
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 3f,
+        animationSpec = spring(
+            dampingRatio = 0.7f,
+            stiffness = Spring.StiffnessVeryLow
+        )
+    )
 
-    ){
 
 
 Box(Modifier.size(width = 200.dp,height = 200.dp)
@@ -523,6 +529,7 @@ contentAlignment = Alignment.Center) {
         modifier = Modifier
 
             .size(172.dp)
+            .scale(scale)
             .bounceClick()
             .graphicsLayer {
                 translationX = dx * travelDistance
@@ -536,7 +543,8 @@ contentAlignment = Alignment.Center) {
             )
 
             .background(roundedCircleGradient, shape = CircleShape)
-            .clickable {
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
                 selectedItemId.value = id
                 // isAddDaskOpen.value = true
             }
@@ -630,7 +638,7 @@ contentAlignment = Alignment.Center) {
     }
 }
 
-        }
+
 
 
 
@@ -657,7 +665,8 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>,isPickerOpen:
             modifier = Modifier
                 .size(64.dp)
                 .align(Alignment.BottomCenter)
-                .bounceClick(),
+                .bounceClick()
+                    ,
            onClick = {isAddDaskScreenOpen.value = true}
                ,
             shape = CircleShape,

@@ -4,6 +4,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -137,8 +140,33 @@ fun UpdatedCalendarAndTimePickerScreen(
                 interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
+            var visible by remember {
+                mutableStateOf(false)
+            }
+
+            LaunchedEffect(Unit) {
+                visible = true // Set the visibility to true to trigger the animation
+
+            }
+            val scale by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = spring(
+                    dampingRatio = 0.7f,
+                    stiffness = Spring.StiffnessVeryLow
+                )
+            )
+            val offsetY by animateDpAsState(
+                targetValue = if (visible) 0.dp else 200.dp,
+                animationSpec = spring(
+                    dampingRatio = 0.45f,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
             Box(
-                modifier = Modifier.padding(start = 8.dp,end = 8.dp),
+                modifier = Modifier
+                    .padding(start = 8.dp,end = 8.dp)
+                    .scale(scale)
+                    .offset (y = offsetY),
                 contentAlignment = Alignment.Center) {
 
                 UpdatedCalendar(
@@ -157,6 +185,28 @@ fun UpdatedCalendarAndTimePickerScreen(
                 .fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically) {
+                var visible by remember {
+                    mutableStateOf(false)
+                }
+                LaunchedEffect(Unit) {
+                    visible = true // Set the visibility to true to trigger the animation
+
+                }
+                val offsetY by animateDpAsState(
+                    targetValue = if (visible) 0.dp else 42.dp,
+                    animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
+                )
+                val opacity by animateFloatAsState(
+                    targetValue = if (visible) 1f else 0f,
+                    animationSpec = keyframes {
+                        durationMillis = 300 // Total duration of the animation
+                        0.3f at 100 // Opacity becomes 0.3f after 200ms
+                        0.6f at 200 // Opacity becomes 0.6f after 500ms
+                        1f at 300
+
+
+                    }
+                )
                 Button(
                     onClick = {
                         onDismiss.invoke()
@@ -164,9 +214,13 @@ fun UpdatedCalendarAndTimePickerScreen(
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
                         .size(width = 105.dp, height = 48.dp)
-                        .bounceClick(),
+                        .offset(y = offsetY)
+                        .alpha(opacity)
+                        .bounceClick()
+                        ,
+
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                    elevation = ButtonDefaults.elevation(24.dp)
+                  // elevation = ButtonDefaults.elevation(12.dp)
 
                 ) {
                     Text(
@@ -202,9 +256,13 @@ fun UpdatedCalendarAndTimePickerScreen(
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
                         .size(width = 105.dp, height = 48.dp)
-                        .bounceClick(),
+                        .offset(y = offsetY)
+                        .alpha(opacity)
+
+                        .bounceClick()
+                        ,
                     colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
-                    elevation = ButtonDefaults.elevation(24.dp)
+                   // elevation = ButtonDefaults.elevation(12.dp)
 
                     ) {
                     Image(

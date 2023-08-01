@@ -19,8 +19,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -125,12 +127,25 @@ fun AddDaskScreen(
 
         ){
 
-            (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+            var visible by remember {
+                mutableStateOf(false)
+            }
+           (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+            val offsetY by animateDpAsState(
+                targetValue = if (visible) 0.dp else 400.dp,
+                animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
+            )
 
-
+           /* Box(modifier = Modifier.fillMaxSize()
+                .blur(60.dp)
+                .background(color = SurfaceGray.copy(alpha = 0.9f))
+                )*/
+            // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier
-                    .blur(radius = blurEffectBackground)
+
+                     .blur(radius = blurEffectBackground)
                     .fillMaxSize()
+                    // .offset(y = offsetY)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
                 ) {
@@ -163,6 +178,7 @@ fun AddDaskScreen(
 
 
 
+@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -183,19 +199,40 @@ fun AddDaskCircleDesign(
         visible = true // Set the visibility to true to trigger the animation
 
     }
-    AnimatedVisibility(
-        visible = visible,
-        enter = scaleIn(
-            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessVeryLow)
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.7f,
+            stiffness = Spring.StiffnessVeryLow
         )
+    )
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 400.dp,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMediumLow
+        )
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 300 // Total duration of the animation
+            0.3f at 100 // Opacity becomes 0.3f after 200ms
+            0.6f at 200 // Opacity becomes 0.6f after 500ms
+            1f at 300
 
-    ){
+
+        }
+    )
         Box(
             modifier = Modifier
 
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 38.dp)
                 .size(344.dp)
+                .offset(y = offsetY)
+                .scale(scale)
+              //  .alpha(opacity)
 
                 .aspectRatio(1f)
 
@@ -350,7 +387,7 @@ fun AddDaskCircleDesign(
 
                 }
 
-            }
+
 
         }
     }
@@ -379,6 +416,29 @@ fun TwoButtons(
     onDoneClick: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+
+    var visible by remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+    }
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 48.dp,
+        animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 300)
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 300 // Total duration of the animation
+            0.0f at 0 // Opacity becomes 0.3f after 200ms
+             // Opacity becomes 0.6f after 500ms
+            1f at 300
+
+        delayMillis = 300// Opacity becomes 1f after 1000ms (end of the animation)
+        }
+
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -389,7 +449,10 @@ fun TwoButtons(
         Box(
             modifier = Modifier
                 .size(width = 105.dp, height = 48.dp)
+                .offset(y = offsetY)
+                .alpha(opacity)
                 .bounceClick()
+
                 .background(shape = RoundedCornerShape(53.dp), color = Color.White)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
@@ -414,9 +477,12 @@ fun TwoButtons(
             shape = RoundedCornerShape(53.dp),
             modifier = Modifier
                 .size(width = 105.dp, height = 48.dp)
-                .bounceClick(),
+                .bounceClick()
+                .offset(y = offsetY)
+                .alpha(opacity),
             colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
-            elevation = ButtonDefaults.elevation(24.dp)
+            elevation = ButtonDefaults.elevation(0.dp)
+
 
 
         ) {

@@ -6,7 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -20,8 +20,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -196,6 +198,7 @@ fun UpdateTaskScreen(
 }
 
 
+@SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
 @Composable
@@ -241,14 +244,37 @@ fun UpdateCircleDesign(
     var visible by remember {
         mutableStateOf(false)
     }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.68f,
+            stiffness = Spring.StiffnessLow
+        )
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 100 // Total duration of the animation
+            0.3f at 10 // Opacity becomes 0.3f after 200ms
+            0.6f at 50 // Opacity becomes 0.6f after 500ms
+            1f at 100
 
 
-
+        }
+    )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 38.dp)
+
                 .size(377.dp)
+                .scale(scale)
+                .alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(bigRoundedCircleGradient, shape = CircleShape)
@@ -323,7 +349,9 @@ fun UpdateCircleDesign(
                             start = 48.dp,
                             end = 48.dp
                         )
+                        .bounceClick()
                         .background(color = Color.White, shape = CircleShape)
+
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             isPickerOpen.value = true

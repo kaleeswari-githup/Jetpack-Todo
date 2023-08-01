@@ -4,6 +4,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -48,10 +49,15 @@ fun UpdatedCalendar(
     var isDatePickervisible by remember{ mutableStateOf(false) }
     var newUserSelectedtime by remember { mutableStateOf(userSelectedtime) }
 
+
     Box(modifier = Modifier
         .fillMaxWidth()
 
-        .animateContentSize(),
+        .animateContentSize()
+       // .alpha(opacity)
+       // .scale(scale)
+            ,
+
         contentAlignment = Alignment.Center
     ) {
         Column(modifier = Modifier
