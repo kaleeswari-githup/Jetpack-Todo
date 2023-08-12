@@ -32,7 +32,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import com.example.UpdatedCalendar
 import com.example.dothings.R
 import com.example.dothings.interDisplayFamily
-import com.example.ui.theme.FABDarkColor
 import com.example.ui.theme.Text1
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
@@ -139,7 +138,8 @@ fun UpdatedCalendarAndTimePickerScreen(
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally) {
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             var visible by remember {
                 mutableStateOf(false)
             }
@@ -150,24 +150,29 @@ fun UpdatedCalendarAndTimePickerScreen(
             }
             val scale by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
-                animationSpec = spring(
-                    dampingRatio = 0.7f,
-                    stiffness = Spring.StiffnessVeryLow
+                animationSpec = tween(
+
+                    easing = EaseOutCirc
                 )
+
+
             )
             val offsetY by animateDpAsState(
-                targetValue = if (visible) 0.dp else 200.dp,
+                targetValue = if (visible) 0.dp else -48.dp,
                 animationSpec = spring(
-                    dampingRatio = 0.45f,
-                    stiffness = Spring.StiffnessMedium
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessVeryLow
                 )
+
             )
             Box(
                 modifier = Modifier
                     .padding(start = 8.dp,end = 8.dp)
-                    .scale(scale)
-                    .offset (y = offsetY),
-                contentAlignment = Alignment.Center) {
+                    .offset (y = offsetY)
+                    .scale(scale),
+
+                contentAlignment = Alignment.Center
+            ) {
 
                 UpdatedCalendar(
                     selectedDate = selectedDate,
@@ -220,7 +225,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         ,
 
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                  // elevation = ButtonDefaults.elevation(12.dp)
+                   elevation = ButtonDefaults.elevation(0.dp)
 
                 ) {
                     Text(
@@ -261,8 +266,8 @@ fun UpdatedCalendarAndTimePickerScreen(
 
                         .bounceClick()
                         ,
-                    colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
-                   // elevation = ButtonDefaults.elevation(12.dp)
+                    colors = ButtonDefaults.buttonColors(backgroundColor =Color.Black),
+                    elevation = ButtonDefaults.elevation(0.dp)
 
                     ) {
                     Image(
@@ -275,7 +280,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         text = "Done",
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Normal,
+                        fontWeight = FontWeight.Medium,
                         color = Color.White,
                         modifier = Modifier.padding(start = 12.dp),
                         style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)

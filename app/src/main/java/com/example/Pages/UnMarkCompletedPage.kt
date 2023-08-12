@@ -5,9 +5,16 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.EaseOutCirc
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -21,7 +28,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -34,13 +44,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.R
-import com.example.dothings.bigRoundedCircleGradient
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.FABDarkColor
 import com.example.ui.theme.NewtaskColorGray
@@ -140,7 +150,7 @@ fun UnMarkCompletedTaskScreen(
     ) {
 
             Box(modifier = Modifier
-            //    .blur(radius = blurEffectBackground)
+               .blur(radius = blurEffectBackground)
             ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
                 // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier.fillMaxSize()
@@ -233,14 +243,39 @@ fun UnMarkCompletedCircleDesign(
                 }
             }
     }
+    var visible by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+
+    }
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.7f,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessVeryLow
+        )
+    )
+
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 40.dp,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMediumLow
+        )
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 24.dp, end = 24.dp, top = 38.dp)
             .size(344.dp)
+            .offset(y= offsetY)
+            .scale(scale)
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(bigRoundedCircleGradient, shape = CircleShape)
+            .background(color = Color.White, shape = CircleShape)
             .clickable (indication = null,
                 interactionSource = remember { MutableInteractionSource() }){  },
 
@@ -266,6 +301,7 @@ fun UnMarkCompletedCircleDesign(
                             isMessageFieldFocused.value = false
                         }
                     },
+
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
                     onDone ={
@@ -296,7 +332,8 @@ fun UnMarkCompletedCircleDesign(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = interDisplayFamily,
-                    color = Text1
+                    color = Text1,
+                    textDecoration = TextDecoration.LineThrough
                 ),
 
                 )
@@ -316,7 +353,12 @@ fun UnMarkCompletedCircleDesign(
                         interactionSource = remember { MutableInteractionSource() }) {
                         isPickerOpen.value = true
                     }
-                    .padding(4.dp)
+                    .border(
+                        width = 0.6.dp,
+                        color = Color.Black.copy(alpha = 0.4f), // Change to your desired border color
+                        shape = CircleShape
+                    )
+                    .padding(8.dp)
             ) {
                 if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
                     Icon(
@@ -432,11 +474,34 @@ fun UnMarkCompletedButtons(id: String,
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
 
+    var visible by remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+    }
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 24.dp,
+        animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 200)
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 300 // Total duration of the animation
+            0.0f at 0 // Opacity becomes 0.3f after 200ms
+            // Opacity becomes 0.6f after 500ms
+            1f at 300
 
+            delayMillis = 200// Opacity becomes 1f after 1000ms (end of the animation)
+        }
+
+    )
     Box(modifier = Modifier
         .fillMaxWidth()
         .padding(start = 42.dp, end = 42.dp)
         .height(48.dp)
+        .offset(y=offsetY)
+        .alpha(opacity)
         .background(color = Color.White, shape = RoundedCornerShape(30.dp)),
         contentAlignment = Alignment.Center
     ) {

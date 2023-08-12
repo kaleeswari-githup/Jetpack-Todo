@@ -2,7 +2,18 @@ package com.example.dothings
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,7 +34,33 @@ fun SetupNavGraph(navController: NavHostController){
             SignInScreen(navController = navController)
         }
         composable(route = Screen.Home.route){
-            HomeScreen( navController)
+            var visible by remember {
+                mutableStateOf(false)
+            }
+            LaunchedEffect(visible) {
+                visible = true
+            }
+            val random = Random(System.currentTimeMillis())
+            val randomDelay = random.nextInt(300)
+            val offsetY by animateDpAsState(
+                targetValue = if (visible) 0.dp else 32.dp,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessVeryLow
+                ),
+
+                )
+            val opacitySecond by animateFloatAsState(
+                targetValue = if (visible) 1f else 0f,
+                animationSpec = keyframes {
+                    durationMillis = 500
+
+
+                }
+            )
+
+
+            HomeScreen( navController,opacitySecond,offsetY)
         }
        /* composable(route = Screen.AddNewTask.route ){
 

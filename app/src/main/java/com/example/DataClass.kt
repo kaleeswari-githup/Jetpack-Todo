@@ -5,7 +5,8 @@ data class DataClass(
     val message: String?="",
     val time:  String? = "",
     val date:  String? = "",
-    val notificationTime:Long = 0
+    val notificationTime:Long = 0,
+    val completed: Boolean = false
 )
 
 

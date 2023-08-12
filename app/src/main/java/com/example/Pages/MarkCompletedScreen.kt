@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -44,7 +46,6 @@ import com.example.dothings.R
 import com.example.dothings.R.DataClass
 import com.example.dothings.Screen
 import com.example.dothings.interDisplayFamily
-import com.example.dothings.roundedCircleGradient
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -178,7 +179,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
             // Use animateDpAsState to animate the scale for the Box
 
             Box(modifier = Modifier
-              //  .blur(radius = blurEffectBackground)
+                .blur(radius = blurEffectBackground)
 
                 .fillMaxSize()
                 .clickable(indication = null,
@@ -213,8 +214,8 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                             .alpha(opacity)
                             .padding(start = 24.dp, end = 24.dp, top = 120.dp)
                             .background(color = Color.White, shape = RoundedCornerShape(32.dp))
-                            .clickable (indication = null,
-                                interactionSource = remember { MutableInteractionSource() }){  },
+                            .clickable(indication = null,
+                                interactionSource = remember { MutableInteractionSource() }) { },
 
                             ) {
                             Row(modifier = Modifier.padding(start = 24.dp),
@@ -292,8 +293,8 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                            .offset(y = offsetY)
                            .alpha(opacity)
                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
-                           .clickable (indication = null,
-                               interactionSource = remember { MutableInteractionSource() }){  },
+                           .clickable(indication = null,
+                               interactionSource = remember { MutableInteractionSource() }) { },
                            contentAlignment = Alignment.Center) {
                            Column(modifier = Modifier,
                                verticalArrangement = Arrangement.Center,
@@ -308,12 +309,14 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                                Spacer(modifier = Modifier.padding(top = 12.dp))
                                Box(modifier = Modifier
                                    .fillMaxWidth()
+
                                    .height(204.dp)
                                    .padding(start = 24.dp, end = 24.dp)
                                    .background(
                                        color = MarkCompleteBack,
                                        shape = RoundedCornerShape(24.dp)
-                                   ),
+                                   )
+                                   ,
                                    contentAlignment = Alignment.Center) {
 
                                    LazyRowCompletedTask(onDismiss,onDeleteClick,onUnMarkCompletedClick,selectedMarkedItemId)
@@ -348,8 +351,8 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                             .height(72.dp)
                             .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                             .background(color = Color.White, shape = RoundedCornerShape(32.dp))
-                            .clickable (indication = null,
-                                interactionSource = remember { MutableInteractionSource() }){  },
+                            .clickable(indication = null,
+                                interactionSource = remember { MutableInteractionSource() }) { },
                             contentAlignment = Alignment.Center
                         ) {
                             Row(modifier = Modifier
@@ -370,7 +373,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                                     }
 
                                 }
-
+                                val animatedCheckedState = remember { mutableStateOf(isChecked) }
                                 Box(modifier = Modifier) {
                                     Box(
                                         modifier = Modifier
@@ -379,18 +382,24 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(40.dp, 24.dp)
+                                                .size(48.dp, 28.dp)
                                                 .background(
-                                                    if (isChecked) NewOrange else Color.Gray,
+                                                    if (isChecked) Color.Black else SmallBox,
                                                     shape = CircleShape
                                                 )
+                                                , contentAlignment = Alignment.Center
                                         ) {
-                                            Spacer(
-                                                modifier = Modifier
-                                                    .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
-                                                    .size(22.dp)
-                                                    .background(Color.White, CircleShape)
-                                            )
+
+                                                Spacer(
+                                                    modifier = Modifier
+                                                        .padding(start = 4.dp, end = 4.dp)
+                                                        .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
+                                                        .size(20.dp)
+                                                        .background(Color.White, CircleShape)
+
+                                                )
+
+
                                         }
                                     }
                                 }
@@ -422,7 +431,6 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                           .alpha(opacity)
                           .height(72.dp)
                           .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                          .bounceClick()
                           .background(color = Color.White, shape = RoundedCornerShape(32.dp))
                           .clickable(indication = null,
                               interactionSource = remember { MutableInteractionSource() }) {
@@ -485,6 +493,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
 
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun LazyRowCompletedTask(onDismiss: () -> Unit,
@@ -498,7 +507,7 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
-    val imageResource = R.drawable.yesorangecheckbox
+    val imageResource = R.drawable.black_square
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -520,7 +529,7 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
     }
     LazyRow(contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)){
-        items(cardDataList.reversed()){cardData ->
+        items(cardDataList.reversed(),key = {it.id}){cardData ->
             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
 
@@ -543,7 +552,8 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
             onDismiss = onDismiss,
             onDeletedClick,
             onUnMarkcompletedClick = onUnMarkcompletedClick,
-                selectedMarkedItemId
+                selectedMarkedItemId,
+                modifier = Modifier.animateItemPlacement()
             )
 
         }
@@ -561,6 +571,7 @@ fun MarkCompletedCircleDesign(image:Int,
                               onDeletedClick:(String) -> Unit,
                               onUnMarkcompletedClick:(String) -> Unit,
                               selectedMarkedItemId: MutableState<String>,
+                              modifier: Modifier=Modifier
                               ){
     val painter: Painter = painterResource(image)
     val database = FirebaseDatabase.getInstance()
@@ -571,15 +582,17 @@ fun MarkCompletedCircleDesign(image:Int,
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(172.dp)
             .bounceClick()
-            .background(roundedCircleGradient, shape = CircleShape)
+            .background(color = Color.White, shape = CircleShape)
             .clip(CircleShape)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 selectedMarkedItemId.value = id
-            },
+            }
+
+            ,
 
         contentAlignment = Alignment.Center
     ){

@@ -77,6 +77,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.5.2'
   //  implementation 'com.github.x3rocode:xblur-compose:1.0.1'
 
-
+    implementation "com.airbnb.android:lottie-compose:6.1.0"
+    implementation "com.github.omkar-tenkale:ExplodingComposable:1.0.1"
 
 }

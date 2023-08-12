@@ -43,7 +43,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
-import com.example.dothings.bigRoundedCircleGradient
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
@@ -238,7 +237,7 @@ fun AddDaskCircleDesign(
 
                 .clip(CircleShape)
 
-                .background(bigRoundedCircleGradient, shape = CircleShape)
+                .background( color = Color.White, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -299,12 +298,18 @@ fun AddDaskCircleDesign(
                         .wrapContentSize(Alignment.Center)
                         .padding(top = 48.dp)
                         .bounceClick()
-                        .background(color = Color.White, shape = CircleShape)
+                        //.background(color = SmallBox, shape = CircleShape)
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             isPickerOpen.value = true
                         }
-                        .padding(4.dp)
+                        .border(
+                            width = 0.8.dp,
+                            color = Color.Black.copy(alpha = 0.8f), // Change to your desired border color
+                            shape = CircleShape
+                        )
+                       // .padding(top = 4.dp,start = 8.dp,end = 8.dp, bottom =  4.dp)
+                        .padding(8.dp)
 
 
                 ) {
@@ -480,7 +485,7 @@ fun TwoButtons(
                 .bounceClick()
                 .offset(y = offsetY)
                 .alpha(opacity),
-            colors = ButtonDefaults.buttonColors(backgroundColor = FABDarkColor),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Black),
             elevation = ButtonDefaults.elevation(0.dp)
 
 
@@ -497,7 +502,8 @@ fun TwoButtons(
                 text = "Save",
                 fontFamily = interDisplayFamily,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                 color = Color.White,
                 modifier = Modifier.padding(start = 12.dp)
             )

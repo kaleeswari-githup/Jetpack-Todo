@@ -25,7 +25,7 @@ fun SplashScreen(navController: NavController){
 
     LaunchedEffect(Unit) {
         // Wait for a certain duration (e.g., 2 seconds) using delay()
-        delay(1000)
+        delay(500)
 
         // Navigate to the sign-in page using the provided NavController
         navController.navigate(Screen.Main.route)

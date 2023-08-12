@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -73,8 +74,8 @@ fun UpdateTaskScreen(
     onMarkCompletedClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     isPickerOpen:MutableState<Boolean>,
-
-    isAddDaskOpen:MutableState<Boolean>
+    isAddDaskOpen:MutableState<Boolean>,
+    index:Int
 ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
@@ -174,8 +175,8 @@ fun UpdateTaskScreen(
                     id = id,
                     openKeyboard = openKeyboard,
                     isPickerOpen = isPickerOpen,
-
-                    isAddDaskOpen = isAddDaskOpen
+                    isAddDaskOpen = isAddDaskOpen,
+                    index = index
                     )
 
                 Box(
@@ -210,7 +211,7 @@ fun UpdateCircleDesign(
     onTaskChange:(String) -> Unit,
     isPickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
-
+    index:Int,
     isAddDaskOpen:MutableState<Boolean>
 
 ){
@@ -241,31 +242,30 @@ fun UpdateCircleDesign(
                 }
             }
     }
+
+
     var visible by remember {
         mutableStateOf(false)
     }
+
     LaunchedEffect(Unit) {
         visible = true // Set the visibility to true to trigger the animation
 
     }
-
     val scale by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
+        targetValue = if (visible) 1f else 0.7f,
         animationSpec = spring(
-            dampingRatio = 0.68f,
-            stiffness = Spring.StiffnessLow
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessVeryLow
         )
     )
-    val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 100 // Total duration of the animation
-            0.3f at 10 // Opacity becomes 0.3f after 200ms
-            0.6f at 50 // Opacity becomes 0.6f after 500ms
-            1f at 100
 
-
-        }
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else index*40.dp,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMediumLow
+        )
     )
         Box(
             modifier = Modifier
@@ -273,11 +273,12 @@ fun UpdateCircleDesign(
                 .padding(start = 24.dp, end = 24.dp, top = 38.dp)
 
                 .size(377.dp)
-                .scale(scale)
-                .alpha(opacity)
+              .scale(scale)
+                .offset(y = offsetY)
+               // .alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(bigRoundedCircleGradient, shape = CircleShape)
+                .background( color = Color.White, shape = CircleShape)
                 .clickable (indication = null,
                     interactionSource = remember { MutableInteractionSource() }){  },
             contentAlignment = Alignment.Center
@@ -350,13 +351,19 @@ fun UpdateCircleDesign(
                             end = 48.dp
                         )
                         .bounceClick()
-                        .background(color = Color.White, shape = CircleShape)
+                     //   .background(color = SmallBox, shape = CircleShape)
 
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             isPickerOpen.value = true
                         }
-                        .padding(4.dp)
+
+                        .border(
+                            width = 0.6.dp,
+                            color = Color.Black.copy(alpha = 0.4f), // Change to your desired border color
+                            shape = CircleShape
+                        )
+                        .padding(8.dp)
 
 
                 ) {
@@ -485,12 +492,36 @@ fun UpdatedButtons(id: String,
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
 
+    var visible by remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+    }
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 24.dp,
+        animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 200)
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 300 // Total duration of the animation
+            0.0f at 0 // Opacity becomes 0.3f after 200ms
+            // Opacity becomes 0.6f after 500ms
+            1f at 300
 
+            delayMillis = 200// Opacity becomes 1f after 1000ms (end of the animation)
+        }
+
+    )
     Box(modifier = Modifier
         .fillMaxWidth()
         .padding(start = 42.dp, end = 42.dp)
         .height(48.dp)
-        .background(color = Color.White, shape = RoundedCornerShape(30.dp)),
+        .offset(y=offsetY)
+        .alpha(opacity)
+        .background(color = Color.White, shape = RoundedCornerShape(30.dp))
+        ,
 contentAlignment = Alignment.Center
     ) {
         Row(modifier = Modifier

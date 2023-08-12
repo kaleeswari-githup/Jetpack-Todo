@@ -53,7 +53,7 @@ fun UpdatedCalendar(
     Box(modifier = Modifier
         .fillMaxWidth()
 
-        .animateContentSize()
+
        // .alpha(opacity)
        // .scale(scale)
             ,
@@ -64,6 +64,7 @@ fun UpdatedCalendar(
             .fillMaxWidth()
             .wrapContentHeight()
             .background(shape = RoundedCornerShape(20.dp), color = Color.White)
+            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {  }
         ) {
@@ -302,12 +303,12 @@ fun UpdatedShrinkCalendar(
                 val isSelectedDate = day == selectedDate.value
                 val textColor = when {
                     isSelectedDate -> Color.White
-                    isCurrentDate -> FABDarkColor
+                    isCurrentDate -> Color.Black
                     isCurrentMonth -> Color.Black
                     else -> Color.Transparent
                 }
                 val background = if (isSelectedDate && isCurrentMonth) {
-                    FABDarkColor
+                    Color.Black
                 } else {
                     Color.Transparent
                 }

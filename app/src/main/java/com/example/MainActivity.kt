@@ -7,10 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.example.Pages.HomeScreen
 
 class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
@@ -45,12 +43,7 @@ fun MyMainApp() {
 }
 
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-@Preview(showBackground = true)
-fun SomePreview(){
-      HomeScreen(navController = rememberNavController() )
-}
+
 
 
 
