@@ -4,8 +4,11 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -29,7 +32,7 @@ class NotificationWorker(
         val messageExtra = "messageExtra"
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
-
+        val soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + context.packageName + "/" + R.raw.button_click)
         val mainIntent = Intent(context, MainActivity::class.java)
         val pendingMainIntent = PendingIntent.getActivity(
             context,
@@ -48,20 +51,20 @@ class NotificationWorker(
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
 
-            notificationBuilder.setSmallIcon(R.drawable.todo_icon_ball)
+            notificationBuilder.setSmallIcon(R.drawable.black_tick_ball)
                 .setContentText("$email")
                 .setContentTitle(inputData.getString(messageExtra))
                 .setContentIntent(pendingMainIntent)
-
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.getDefaultType(soundUri)))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .build()
         } else {
-            notificationBuilder.setSmallIcon(R.drawable.todo_icon_ball)
+            notificationBuilder.setSmallIcon(R.drawable.black_tick_ball)
                 .setContentText("$email")
                 .setContentTitle(inputData.getString(messageExtra))
                 .setContentIntent(pendingMainIntent)
-
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.getDefaultType(soundUri)))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .build()

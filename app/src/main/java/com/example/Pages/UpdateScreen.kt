@@ -51,10 +51,9 @@ import com.example.ui.theme.Text1
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import kotlinx.coroutines.launch
-import java.text.ParseException
-import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -89,47 +88,37 @@ fun UpdateTaskScreen(
 
     var context = LocalContext.current
     val onDoneClick:(String,String) -> Unit = { updatedDate,updatedTime ->
-        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH) // Assuming the date format in the database is in ISO format
-        val desiredDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy") // Desired format: "EEE, d MMM"
+        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+        val desiredDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+        val timeFormat = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH) // Ensure to set the proper Locale
 
-        val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
-
-// Parse the date string with the original format
+        val dateStringFromDatabase = updatedDate
 
         val originalDate: LocalDate? = if (dateStringFromDatabase.isNotEmpty()) {
             LocalDate.parse(dateStringFromDatabase, originalDateFormat)
         } else {
-            LocalDate.MIN // Assign LocalDate.MIN when dateStringFromDatabase is empty
+            null
         }
 
-// Format the date with the desired format if originalDate is not LocalDate.MIN
-        val formattedDate = if (originalDate != LocalDate.MIN) {
-            originalDate?.format(desiredDateFormat) ?: ""
-        } else {
-            "" // Assign empty string if originalDate is LocalDate.MIN
-        }
-        val currentDateTime = LocalDateTime.now()
-        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
-        val notificationTime: Long? = if (!formattedDate.isNullOrBlank() && !timeFormat.isNullOrBlank()) {
-            val combinedDateTime = "$formattedDate $timeFormat"
-            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
-            val date: Date? = try {
-                dateTimeFormat.parse(combinedDateTime)
-            } catch (e: ParseException) {
-                null
-            }
-            date?.time
+        val formattedDate = originalDate?.format(desiredDateFormat) ?: ""
+
+        val formattedTime = LocalTime.parse(updatedTime, timeFormat)
+
+        val notificationTime: Long? = if (!formattedDate.isNullOrBlank() && formattedTime != null) {
+            val dateTime = LocalDateTime.of(originalDate, formattedTime)
+            dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         } else {
             null
         }
-            val updatedData = HashMap<String, Any>()
-            updatedData["id"] = id
-            updatedData["message"] = task.value ?: ""
-            updatedData["time"] = timeFormat
-            updatedData["date"] = formattedDate
-            updatedData["notificationTime"] = notificationTime?.toLong() ?: 0L
-            databaseRef.child(id).updateChildren(updatedData)
-               onDismiss.invoke()
+        val updatedData = HashMap<String, Any>()
+        updatedData["id"] = id
+        updatedData["message"] = task.value ?: ""
+        updatedData["time"] = formattedTime.format(timeFormat)
+        updatedData["date"] = formattedDate
+        updatedData["notificationTime"] = notificationTime ?: 0L
+
+        databaseRef.child(id).updateChildren(updatedData)
+        onDismiss.invoke()
     }
 
 
@@ -262,10 +251,7 @@ fun UpdateCircleDesign(
 
     val offsetY by animateDpAsState(
         targetValue = if (visible) 0.dp else index*40.dp,
-        animationSpec = spring(
-            dampingRatio = 0.45f,
-            stiffness = Spring.StiffnessMediumLow
-        )
+        animationSpec = tween(durationMillis = 300,easing = LinearOutSlowInEasing)
     )
         Box(
             modifier = Modifier
@@ -359,10 +345,13 @@ fun UpdateCircleDesign(
                         }
 
                         .border(
-                            width = 0.6.dp,
-                            color = Color.Black.copy(alpha = 0.4f), // Change to your desired border color
+                            width = 0.8.dp,
+                            color = Color.Black.copy(alpha = 0.8f), // Change to your desired border color
                             shape = CircleShape
                         )
+
+
+
                         .padding(8.dp)
 
 

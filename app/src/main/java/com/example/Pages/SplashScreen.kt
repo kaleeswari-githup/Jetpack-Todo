@@ -25,7 +25,7 @@ fun SplashScreen(navController: NavController){
 
     LaunchedEffect(Unit) {
         // Wait for a certain duration (e.g., 2 seconds) using delay()
-        delay(500)
+        delay(300)
 
         // Navigate to the sign-in page using the provided NavController
         navController.navigate(Screen.Main.route)
@@ -44,7 +44,7 @@ fun SplashScreen(navController: NavController){
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
         ) {
-            Image(painter = painterResource(id = R.drawable.todo_icon_ball), contentDescription = "")
+            Image(painter = painterResource(id = R.drawable.black_tick_ball), contentDescription = "")
         }
     }
 }

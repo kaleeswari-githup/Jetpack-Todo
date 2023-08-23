@@ -6,7 +6,11 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.app.NotificationManager
 import android.content.Context
+import android.content.SharedPreferences
+import android.media.MediaPlayer
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
@@ -58,7 +62,8 @@ import com.example.dothings.R.DataClass
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import dev.omkartenkale.explodable.rememberExplosionController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
@@ -67,7 +72,9 @@ import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition")
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition",
+    "UnrememberedMutableState"
+)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
@@ -77,6 +84,10 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var context = LocalContext.current
+    val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
+    fun getIsChecked(): Boolean {
+        return sharedPreferences.getBoolean("isChecked", false)
+    }
     val onDeleteClick:(String) -> Unit = {clickedTaskId ->
         val databaseRef = database.reference.child("Task").child(uid.toString())
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
@@ -150,6 +161,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
     var isPickerOpen = remember { mutableStateOf(false) }
     var isAddDaskOpen = remember { mutableStateOf(false) }
+    val isChecked = getIsChecked()
     val blurEffectBackground by animateDpAsState(
         targetValue = when {
             selectedItemId.value.isNotEmpty() -> 25.dp
@@ -162,6 +174,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
             easing = EaseOutCirc // You can try different easing functions for smoother animations
         )
     )
+    val isCheckedState = mutableStateOf(isChecked)
     Scaffold(
         scaffoldState = scaffoldState,
         modifier = Modifier.fillMaxSize(),
@@ -182,6 +195,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                         .align(Alignment.Center))
             }
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
                 LazyGridLayout(
                     onMarkCompletedClick = onMarkCompletedClick,
                     onDeleteClick,
@@ -189,7 +203,8 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     isPickerOpen,
                     isAddDaskOpen,
                     scale = scale,
-offset = offset
+                    offset = offset,
+                    isChecked = isCheckedState
                 )
             }
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -199,7 +214,7 @@ offset = offset
                         Color(0x00EDEDED)
                     ),
                     startY = 0f,
-                    endY = size.height.coerceAtMost(84.dp.toPx())
+                    endY = size.height.coerceAtMost(100.dp.toPx())
                 )
                 val opacityBrush = Brush.verticalGradient(
                     colors = listOf(
@@ -209,13 +224,20 @@ offset = offset
                     startY = (size.height - 84.dp.toPx()).coerceAtLeast(0f),
                     endY = size.height
                 )
-                drawRect(brush = gradientBrush)
+               drawRect(brush = gradientBrush)
                 drawRect(brush = opacityBrush)
-                drawRect(brush = gradientBrush)
+              //  drawRect(brush = gradientBrush)
             }
+
             Column {
-                TopSectionHomeScreen(image = R.drawable.home_icon,navController,isMarkCompletedOpen,selectedMarkedItemId)
-                FloatingActionButton(isAddDaskScreenOpen,isPickerOpen)
+                TopSectionHomeScreen(
+                    image = R.drawable.home_icon,
+                    navController,
+                    isMarkCompletedOpen,
+                    selectedMarkedItemId,
+                    isChecked = isCheckedState,
+                    sharedPreferences)
+                FloatingActionButton(isAddDaskScreenOpen,isPickerOpen,isCheckedState)
             }
         }
         if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty() ){
@@ -235,7 +257,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                    isPickerOpen:MutableState<Boolean>,
                    isAddDaskOpen:MutableState<Boolean>,
                    scale:Float,
-                   offset: Dp
+                   offset: Dp,
+                   isChecked: MutableState<Boolean>
                    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -274,14 +297,19 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
             scheduleNotification(selectedDateTime, itemId, message!!)
         }
     }
-    var animatedItemIndexes by remember { mutableStateOf(emptyList<Int>()) }
+
+
+   // var animatedItemIndexes by remember { mutableStateOf(emptyList<Int>()) }
     val selectedItemIndex = remember { mutableStateOf(-1) }
     val gridColumns = 2
     if (cardDataList.size > 1) {
         LazyVerticalStaggeredGrid(
+
             columns = StaggeredGridCells.Fixed(gridColumns),
+
             verticalItemSpacing = 16.dp,
-            contentPadding = PaddingValues(24.dp)
+            contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 36.dp)
+
         ) {
             itemsIndexed(cardDataList.reversed()) { index, cardData ->
                 val animationDelay = index
@@ -294,42 +322,46 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                 } else {
                     ""
                 }
-                val isAnimated = index in animatedItemIndexes
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            top = if (index == 1) 90.dp else 0.dp,
-                            bottom = if (index == cardDataList.size - 1) 100.dp else 0.dp
-                        )
-                ) {
-                    RoundedCircleCardDesign(
-                        image = imageResource,
-                        message = cardData.message!!,
-                        time = cardData.time!!,
-                        date = formattedDate,
-                        id = cardData.id,
-                        animationDelay = animationDelay,
-                        onMarkCompletedClick = onMarkCompletedClick,
-                        onDeleteClick = onDeleteClick,
-                        selectedItemId = selectedItemId,
-                        isPickerOpen = isPickerOpen,
-                        isAddDaskOpen = isAddDaskOpen,
-                        modifier = Modifier.animateContentSize(),
-                        scale = scale,
-                        offset = offset,
-                        index = index,
-                        isAnimated = isAnimated,
-                        selectedItemIndex = selectedItemIndex
-                    )
-                }
+
+     Box(
+         modifier = Modifier
+             .fillMaxWidth()
+
+             .padding(
+                 top = if (index == 1)100.dp else 0.dp,
+                 bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
+             )
+     ) {
+
+         RoundedCircleCardDesign(
+             image = imageResource,
+             message = cardData.message!!,
+             time = cardData.time!!,
+             date = formattedDate,
+             id = cardData.id,
+             animationDelay = animationDelay,
+             onMarkCompletedClick = onMarkCompletedClick,
+             onDeleteClick = onDeleteClick,
+             selectedItemId = selectedItemId,
+             isPickerOpen = isPickerOpen,
+             isAddDaskOpen = isAddDaskOpen,
+
+             scale = scale,
+             offset = offset,
+             index = index,
+             isChecked = isChecked
+         )
+
+ }
+
+
             }
         }
     }else if (cardDataList.size == 1) {
         LazyColumn(){
             itemsIndexed(cardDataList){ index,cardData ->
-                val isAnimated = index in animatedItemIndexes
+
                 Box(modifier = Modifier.padding(bottom = 50.dp), contentAlignment = Alignment.Center) {
                     val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                     val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -352,14 +384,12 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         selectedItemId = selectedItemId,
                         isPickerOpen = isPickerOpen,
                         isAddDaskOpen = isAddDaskOpen,
-                        modifier = Modifier.animateContentSize(),
+
                         scale = scale,
                         offset = offset,
                         index = index,
-                        isAnimated = isAnimated,
-                        selectedItemIndex = selectedItemIndex
-
-                    )
+                        isChecked = isChecked
+                        )
                 }
             }
         }
@@ -369,7 +399,9 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
 
 
 @OptIn(ExperimentalAnimationApi::class)
-@SuppressLint("UnrememberedMutableState", "CoroutineCreationDuringComposition")
+@SuppressLint("UnrememberedMutableState", "CoroutineCreationDuringComposition",
+    "SuspiciousIndentation", "ServiceCast", "WrongConstant"
+)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun RoundedCircleCardDesign(
@@ -387,9 +419,8 @@ fun RoundedCircleCardDesign(
     scale:Float,
     offset: Dp,
     index:Int,
-    selectedItemIndex: MutableState<Int>,
-    isAnimated: Boolean,
-    modifier: Modifier)
+    isChecked:MutableState<Boolean>
+    )
 {
     val scaffoldState = rememberScaffoldState()
     val infiniteTransition = rememberInfiniteTransition()
@@ -416,33 +447,18 @@ fun RoundedCircleCardDesign(
         )
     )
     val travelDistance = with(LocalDensity.current) { 4.dp.toPx() }
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.exploade_animation))
+   // val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.exploade_animation))
 
     val coroutineScope = rememberCoroutineScope()
-    val explosionController = rememberExplosionController()
-    val deleteClick = remember {
-         mutableStateOf(false)
-    }
-    val offsetY by animateDpAsState(
-        targetValue = if (deleteClick.value) 0.dp else 32.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessVeryLow
-        ),
-
-        )
-    val markedAnimation = remember {
-        mutableStateOf(true)
-    }
-
-        Box(
+    val mContext = LocalContext.current
+    Box(
             modifier = Modifier
                 .size(172.dp)
                 //   .scale(scale)
                 .offset(y = offset)
                 // .offset(y = offsetY)
                 .alpha(scale)
-                .bounceClick()
+               // .bounceClick()
                 .graphicsLayer {
                     translationX = dx * travelDistance
                     translationY = dy * travelDistance
@@ -474,10 +490,18 @@ fun RoundedCircleCardDesign(
                         .padding(top = 32.dp)
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
+                            if(isChecked.value){
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    val mMediaPlayer = MediaPlayer.create(mContext, R.raw.button_click)
+                                    mMediaPlayer.start()
+                                    delay(mMediaPlayer.duration.toLong())
+                                    mMediaPlayer.release()
+                                }
+                            }
 
-                           onMarkCompletedClick(id)
-                            //selectedItemIndex.value = index
+                            onMarkCompletedClick(id)
                         }
+
                 )
                 Text(
                     text = "$message",
@@ -497,14 +521,6 @@ fun RoundedCircleCardDesign(
                     color = Text2,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-            if (index == selectedItemIndex.value) {
-                LottieAnimation(
-                    modifier = Modifier.size(200.dp),
-                    composition = composition,
-                    iterations = 1
                 )
             }
             if(selectedItemId.value == id){
@@ -548,20 +564,21 @@ fun RoundedCircleCardDesign(
                     index = index
                 )
             }
-        
 
     }
-
 
 }
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>,isPickerOpen: MutableState<Boolean>){
+fun FloatingActionButton(
+    isAddDaskScreenOpen:MutableState<Boolean>,
+    isPickerOpen: MutableState<Boolean>,
+    isChecked:MutableState<Boolean>){
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
     var visible by remember { mutableStateOf(false) }
-
+     val context = LocalContext.current
     LaunchedEffect(Unit) {
         visible = true
     }
@@ -581,22 +598,8 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>,isPickerOpen:
             delayMillis = 300// Total duration of the animation
         }
     )
-    val elevation by animateDpAsState(
-        targetValue = if (visible) 24.dp else 0.dp, // Set your desired elevation values here
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 900,
-            easing = EaseOutCirc
-        )
-    )
-    val elevationOpacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 300,
-            easing = LinearEasing
-        )
-    )
+    val coroutineScope = rememberCoroutineScope()
+    val mContext = LocalContext.current
     Box(modifier = Modifier
         .fillMaxWidth()
         .fillMaxHeight()
@@ -612,7 +615,17 @@ fun FloatingActionButton(isAddDaskScreenOpen:MutableState<Boolean>,isPickerOpen:
                 .align(Alignment.BottomCenter)
                 .bounceClick()
                     ,
-           onClick = {isAddDaskScreenOpen.value = true},
+           onClick = {isAddDaskScreenOpen.value = true
+                     Vibration(context)
+               if(isChecked.value){
+                   coroutineScope.launch(Dispatchers.IO) {
+                       val mMediaPlayer = MediaPlayer.create(mContext, R.raw.adddask_sound)
+                       mMediaPlayer.start()
+                       delay(mMediaPlayer.duration.toLong())
+                       mMediaPlayer.release()
+                   }
+               }
+           },
             shape = CircleShape,
            // contentColor = Color.White,
             elevation = FloatingActionButtonDefaults.elevation(0.dp),
@@ -690,11 +703,14 @@ fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String)
 fun TopSectionHomeScreen(@DrawableRes image:Int
                          ,navController: NavController,
                          isMarkCompletedOpen:MutableState<Boolean>,
-                         selectedMarkedItemId: MutableState<String>){
+                         selectedMarkedItemId: MutableState<String>,
+                         isChecked:MutableState<Boolean>,
+                         sharedPreferences: SharedPreferences){
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         visible = true
     }
+    val context = LocalContext.current
     val offsetY by animateDpAsState(
         targetValue = if (visible) 0.dp else -52.dp,
         animationSpec = tween(
@@ -726,7 +742,7 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
     Row(modifier = Modifier
         .fillMaxWidth()
 
-        .padding(top = 24.dp, start = 24.dp, end = 24.dp),
+        .padding(top = 12.dp, start = 24.dp, end = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -748,6 +764,7 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 isMarkCompletedOpen.value = true
+                Vibration(context)
             }
             .clip(shape)
             .background(color = SmallBox)
@@ -765,8 +782,20 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
             MarkCompletedScreen(
                 navController = navController,
                 onDismiss = { isMarkCompletedOpen.value = false },
-                selectedMarkedItemId
+                selectedMarkedItemId,
+                isChecked,
+                sharedPreferences = sharedPreferences
             )
         }
+    }
+}
+fun Vibration(context:Context){
+    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    val vibrationEffect2: VibrationEffect
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        vibrationEffect2 =
+            VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        vibrator.cancel()
+        vibrator.vibrate(vibrationEffect2)
     }
 }

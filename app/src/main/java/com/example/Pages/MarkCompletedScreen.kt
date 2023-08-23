@@ -1,6 +1,8 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
+import android.content.SharedPreferences
+import android.media.MediaPlayer
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -49,6 +51,8 @@ import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
@@ -58,18 +62,23 @@ import java.util.*
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selectedMarkedItemId: MutableState<String>){
+fun MarkCompletedScreen(
+    navController:NavController,onDismiss: () -> Unit,
+    selectedMarkedItemId: MutableState<String>,
+    isChecked:MutableState<Boolean>,
+    sharedPreferences:SharedPreferences){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-    var isChecked by remember { mutableStateOf(false) }
+
 
     val completedTasksCountState = remember { mutableStateOf(0) }
     val scaffoldState = rememberScaffoldState()
     val coroutineScope = rememberCoroutineScope()
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val context = LocalContext.current
+
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             completedTasksCountState.value = snapshot.childrenCount.toInt()
@@ -77,6 +86,11 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
 
         override fun onCancelled(error: DatabaseError) {
             // Handle onCancelled event if needed
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
         }
     }
     DisposableEffect(Unit) {
@@ -119,6 +133,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                 val data = snapshot.getValue(DataClass::class.java)
                 if (data != null) {
                     completedTasksRef.removeValue()
+                    taskRef.setValue(data)
                     coroutineScope.launch {
                         scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
                         val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
@@ -129,11 +144,12 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                         when (snackbarResult) {
                             SnackbarResult.Dismissed -> {
                                 // Snackbar dismissed, no action needed
-                                completedTasksRef.removeValue()
+                              //  completedTasksRef.removeValue()
                                 taskRef.setValue(data)
                             }
                             SnackbarResult.ActionPerformed -> {
                                 completedTasksRef.setValue(data)
+                                taskRef.removeValue()
                             }
                         }
                     }
@@ -146,7 +162,11 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
         })
     }
 
-
+    fun saveIsChecked(isChecked: Boolean) {
+        val editor = sharedPreferences.edit()
+        editor.putBoolean("isChecked", isChecked)
+        editor.apply()
+    }
     val blurEffectBackground by animateDpAsState(targetValue = when{
         selectedMarkedItemId.value.isNotEmpty() -> 25.dp
         else -> 0.dp
@@ -352,7 +372,18 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                             .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                             .background(color = Color.White, shape = RoundedCornerShape(32.dp))
                             .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) { },
+                                interactionSource = remember { MutableInteractionSource() }) {
+                                isChecked.value = !isChecked.value
+                                saveIsChecked(isChecked.value)
+                                if(isChecked.value){
+                                    coroutineScope.launch(Dispatchers.IO) {
+                                        val mMediaPlayer = MediaPlayer.create(context, R.raw.button_click)
+                                        mMediaPlayer.start()
+                                        delay(mMediaPlayer.duration.toLong())
+                                        mMediaPlayer.release()
+                                    }
+                                }
+                                Vibration(context) },
                             contentAlignment = Alignment.Center
                         ) {
                             Row(modifier = Modifier
@@ -373,18 +404,32 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                                     }
 
                                 }
-                                val animatedCheckedState = remember { mutableStateOf(isChecked) }
+
                                 Box(modifier = Modifier) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clickable(indication = null,
-                                                interactionSource = remember { MutableInteractionSource() }) { isChecked = !isChecked }
-                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clickable(indication = null,
+                                                    interactionSource = remember { MutableInteractionSource() }) {
+                                                    isChecked.value = !isChecked.value
+                                                    saveIsChecked(isChecked.value)
+                                                    if(isChecked.value){
+                                                        coroutineScope.launch(Dispatchers.IO) {
+                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.button_click)
+                                                            mMediaPlayer.start()
+                                                            delay(mMediaPlayer.duration.toLong())
+                                                            mMediaPlayer.release()
+                                                        }
+                                                    }
+
+
+                                                    Vibration(context)
+                                                }
+                                        ) {
                                         Box(
                                             modifier = Modifier
                                                 .size(48.dp, 28.dp)
                                                 .background(
-                                                    if (isChecked) Color.Black else SmallBox,
+                                                    if (isChecked.value) Color.Black else SmallBox,
                                                     shape = CircleShape
                                                 )
                                                 , contentAlignment = Alignment.Center
@@ -393,7 +438,7 @@ fun MarkCompletedScreen(navController:NavController,onDismiss: () -> Unit, selec
                                                 Spacer(
                                                     modifier = Modifier
                                                         .padding(start = 4.dp, end = 4.dp)
-                                                        .align(if (isChecked) Alignment.CenterEnd else Alignment.CenterStart)
+                                                        .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
                                                         .size(20.dp)
                                                         .background(Color.White, CircleShape)
 
@@ -532,15 +577,11 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
         items(cardDataList.reversed(),key = {it.id}){cardData ->
             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-
             val dateStringFromDatabase = cardData.date
             val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
-
                 val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-
                 originalDate.format(desiredDateFormat)
             } else {
-
                 ""
             }
             MarkCompletedCircleDesign(

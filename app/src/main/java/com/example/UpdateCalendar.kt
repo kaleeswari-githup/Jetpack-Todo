@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dothings.interDisplayFamily
-import com.example.ui.theme.FABDarkColor
+import com.example.ui.theme.FABRed
 import com.example.ui.theme.SurfaceGray
 import com.example.ui.theme.Text3
 import java.time.LocalDate
@@ -165,7 +165,7 @@ fun UpdatedCalendar(
                                     isClearTextVisible = false
                                     selectedTime.value = null
                                 },
-                            color = FABDarkColor,
+                            color = FABRed,
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 12.sp,
@@ -303,7 +303,7 @@ fun UpdatedShrinkCalendar(
                 val isSelectedDate = day == selectedDate.value
                 val textColor = when {
                     isSelectedDate -> Color.White
-                    isCurrentDate -> Color.Black
+                    isCurrentDate -> FABRed
                     isCurrentMonth -> Color.Black
                     else -> Color.Transparent
                 }
