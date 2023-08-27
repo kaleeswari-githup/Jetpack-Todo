@@ -671,7 +671,7 @@ fun MarkCompletedCircleDesign(image:Int,
             )
             Text(
 
-                text = "$date $time",
+                text = "$date, $time",
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 11.sp,

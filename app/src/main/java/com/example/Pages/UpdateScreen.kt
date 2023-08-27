@@ -102,7 +102,12 @@ fun UpdateTaskScreen(
 
         val formattedDate = originalDate?.format(desiredDateFormat) ?: ""
 
-        val formattedTime = LocalTime.parse(updatedTime, timeFormat)
+        val formattedTime = if (updatedTime.isNotEmpty()) {
+            LocalTime.parse(updatedTime, timeFormat)
+        } else {
+            // Handle the case where updatedTime is empty
+            null // Or provide a default value as needed
+        }
 
         val notificationTime: Long? = if (!formattedDate.isNullOrBlank() && formattedTime != null) {
             val dateTime = LocalDateTime.of(originalDate, formattedTime)
@@ -113,7 +118,7 @@ fun UpdateTaskScreen(
         val updatedData = HashMap<String, Any>()
         updatedData["id"] = id
         updatedData["message"] = task.value ?: ""
-        updatedData["time"] = formattedTime.format(timeFormat)
+        updatedData["time"] = formattedTime?.format(timeFormat) ?: ""
         updatedData["date"] = formattedDate
         updatedData["notificationTime"] = notificationTime ?: 0L
 

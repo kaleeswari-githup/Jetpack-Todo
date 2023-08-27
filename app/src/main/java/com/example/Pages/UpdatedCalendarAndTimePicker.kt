@@ -37,7 +37,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -54,7 +56,6 @@ fun UpdatedCalendarAndTimePickerScreen(
     UnMarkedDateandTime:Boolean = true) {
     var selectedDate = remember { mutableStateOf(LocalDate.now()) }
     var isTimePickerVisible by remember { mutableStateOf(false) }
-
     var selectedTime = remember {
         mutableStateOf(if (isTimePickerVisible) LocalTime.now() else null)
     }
@@ -64,39 +65,13 @@ fun UpdatedCalendarAndTimePickerScreen(
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     val context = LocalContext.current
-    val onDoneClick: (String, String) -> Unit = { updatedDate, updatedTime ->
-        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Assuming the date format in the database is in ISO format
-        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy",Locale.ENGLISH) // Desired format: "MM/dd/yyyy"
-
-        val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
-
-        // Parse the date string with the original format
-        val originalDate: LocalDate? = if (dateStringFromDatabase.isNotEmpty()) {
-            LocalDate.parse(dateStringFromDatabase, dateFormatter)
-        } else {
-            LocalDate.MIN // Assign LocalDate.MIN when dateStringFromDatabase is empty
-        }
-
-        // Format the date with the desired format if originalDate is not LocalDate.MIN
-        val formattedDate = originalDate?.format(dateFormatter) ?: ""
-        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
-        val updatedData = HashMap<String, Any>()
-        updatedData["id"] = id
-        updatedData["time"] = timeFormat.toString()
-        updatedData["date"] = formattedDate
-        databaseRef.child(id).updateChildren(updatedData)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
-                    onDismiss.invoke()
-                } else {
-                    Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
-                }
-            }
+    fun calculateNotificationTime(selectedDate: LocalDate, selectedTime: LocalTime): Long {
+        val dateTime = LocalDateTime.of(selectedDate, selectedTime)
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
-    val onCompletedDateandTimeClick: (String, String) -> Unit = { updatedDate, updatedTime ->
-        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Assuming the date format in the database is in ISO format
-        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy",Locale.ENGLISH) // Desired format: "MM/dd/yyyy"
+    val onDoneClick: (String, String) -> Unit = { updatedDate, updatedTime ->
+        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)
 
         val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
 
@@ -109,20 +84,50 @@ fun UpdatedCalendarAndTimePickerScreen(
 
         // Format the date with the desired format if originalDate is not LocalDate.MIN
         val formattedDate = originalDate?.format(dateFormatter) ?: ""
-        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+        // Parse updatedTime only if it's not empty
+        val timeFormat = if (updatedTime.isNotEmpty()) {
+            val updatedTimeString = LocalTime.parse(updatedTime, timeFormatter)
+            updatedTimeString.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        } else {
+            ""
+        }
+
+        val notificationTime = if (originalDate != null && updatedTime.isNotEmpty()) {
+            val updatedTimeString = LocalTime.parse(updatedTime, timeFormatter)
+            calculateNotificationTime(originalDate, updatedTimeString)
+        } else {
+            0L // Handle the case where either originalDate or updatedTime is missing
+        }
+
         val updatedData = HashMap<String, Any>()
         updatedData["id"] = id
-        updatedData["time"] = timeFormat.toString()
+        updatedData["time"] = timeFormat
         updatedData["date"] = formattedDate
-        completedTasksRef.child(id).updateChildren(updatedData)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(context, "UnMarkedUpdated successfully", Toast.LENGTH_SHORT).show()
-                    onDismiss.invoke()
-                } else {
-                    Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
+        updatedData["notificationTime"] = notificationTime
+        if (invokeOnDoneClick){
+            databaseRef.child(id).updateChildren(updatedData)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
+                        onDismiss.invoke()
+                    } else {
+                        Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
+        }
+        if (UnMarkedDateandTime){
+            completedTasksRef.child(id).updateChildren(updatedData)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
+                        onDismiss.invoke()
+                    } else {
+                        Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }
+
     }
 
     Dialog(
@@ -249,13 +254,7 @@ fun UpdatedCalendarAndTimePickerScreen(
 
                         Log.d("UpdatedDateString","$dateString")
                         onDateTimeSelected(dateString, timeString)
-                        if(invokeOnDoneClick){
-                            onDoneClick(dateString,timeString)
-                        }
-                        if (UnMarkedDateandTime){
-                            onCompletedDateandTimeClick(dateString,timeString)
-                        }
-
+                        onDoneClick(dateString,timeString)
                         onDismiss.invoke()
                     },
                     shape = RoundedCornerShape(53.dp),

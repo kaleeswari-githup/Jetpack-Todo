@@ -26,9 +26,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -514,29 +511,5 @@ fun TwoButtons(
 
 }
 
-@Composable
-fun RadialGradientBox(){
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val gradientColors = listOf(
-            Color(0xFFFF972A),
-            Color(0xFFFD7A11),
-            Color(0xFFFF852F)
-        )
-        val gradientCenter = Offset(0.2031f * size.width, 0.0938f * size.height)
-        val gradientRadius = 0.9062f * size.width.coerceAtMost(size.height)
-
-        val gradientBrush = Brush.radialGradient(
-            colors = gradientColors,
-            center = gradientCenter,
-            radius = gradientRadius
-        )
-
-        drawRoundRect(
-            brush = gradientBrush,
-            cornerRadius = CornerRadius(x = 73f,y = 73f),
-            size = size
-        )
-    }
-}
 
 

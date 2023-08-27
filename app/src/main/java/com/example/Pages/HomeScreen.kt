@@ -67,6 +67,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
+import java.time.Period
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
@@ -115,7 +116,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
-        var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
+        var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
         taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val data = snapshot.getValue(DataClass::class.java)
@@ -451,6 +452,18 @@ fun RoundedCircleCardDesign(
 
     val coroutineScope = rememberCoroutineScope()
     val mContext = LocalContext.current
+    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+    val dateString = if (date.isNotEmpty()) {
+        val parsedDate = LocalDate.parse(date, formatter)
+        if (time.isNotEmpty()){
+            "${formatDate(parsedDate)}, $time"
+        }else{
+            "${formatDate(parsedDate)}"
+        }
+
+    } else {
+        ""
+    }
     Box(
             modifier = Modifier
                 .size(172.dp)
@@ -514,7 +527,7 @@ fun RoundedCircleCardDesign(
                     modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
                 )
                 Text(
-                    text = "$date $time",
+                    text =dateString,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
                     fontSize = 11.sp,
@@ -551,7 +564,7 @@ fun RoundedCircleCardDesign(
                     }
                 }
                 UpdateTaskScreen(
-                    selectedDate = mutableStateOf(formattedDate ) ,
+                    selectedDate = mutableStateOf( date) ,
                     selectedTime = mutableStateOf(time) ,
                     textValue = message,
                     id = id,
@@ -568,6 +581,51 @@ fun RoundedCircleCardDesign(
     }
 
 }
+fun formatDate(date: LocalDate): String {
+    val currentDate = LocalDate.now()
+    val period = Period.between(date, currentDate)
+
+    val yearsAgo = period.years
+    val monthsAgo = period.months
+    val daysAgo = period.days
+
+    return when {
+        period.isZero -> "Today"
+        period.isNegative -> "Tomorrow" // This logic may need further refinement
+        period == Period.ofDays(1) -> "Yesterday"
+        yearsAgo == 0 && monthsAgo == 0 && daysAgo == 1 -> "Yesterday"
+        yearsAgo == 0 && monthsAgo == 0 && daysAgo == -1 -> "Tomorrow"
+        yearsAgo == 0 && monthsAgo == 0 && daysAgo < 7 -> "$daysAgo days ago"
+        yearsAgo == 0 && monthsAgo == 0 && daysAgo < 14 -> "1 week ago"
+        yearsAgo == 0 && monthsAgo == 0 -> "${daysAgo / 7} weeks ago"
+        yearsAgo == 0 && monthsAgo == 1 -> "1 month ago"
+        yearsAgo == 0 && monthsAgo > 1 -> "$monthsAgo months ago"
+        yearsAgo == 1 -> "1 year ago"
+        yearsAgo > 1 -> "$yearsAgo years ago"
+        else -> "Long ago"
+    }
+}
+private fun isToday(dateString: String): Boolean {
+    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+    val currentDate = LocalDate.now()
+    val formattedDate = try {
+        LocalDate.parse(dateString, formatter)
+    } catch (e: DateTimeParseException) {
+        return false
+    }
+    return formattedDate == currentDate
+}
+private fun isTomorrow(date: String) =
+    LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
+        .isEqual(LocalDate.now().plusDays(1))
+
+private fun isYesterday(date: String) =
+    LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
+        .isEqual(LocalDate.now().minusDays(1))
+
+
+
+
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
