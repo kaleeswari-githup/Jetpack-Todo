@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.theme.AppJetpackComposeTheme
 
 class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
@@ -19,10 +20,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-
+            AppJetpackComposeTheme {
                 MyMainApp()
-//HomeScreen(navController = navController)
-
+            }
         }
     }
     override fun onBackPressed() {

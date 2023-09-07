@@ -53,7 +53,10 @@ fun UpdatedCalendarAndTimePickerScreen(
     onDateTimeSelected: (String, String) -> Unit,
     id:String,
     invokeOnDoneClick: Boolean = true,
-    UnMarkedDateandTime:Boolean = true) {
+    UnMarkedDateandTime:Boolean = true,
+    isChecked: MutableState<Boolean>,
+    message: MutableState<String>) {
+
     var selectedDate = remember { mutableStateOf(LocalDate.now()) }
     var isTimePickerVisible by remember { mutableStateOf(false) }
     var selectedTime = remember {
@@ -101,6 +104,7 @@ fun UpdatedCalendarAndTimePickerScreen(
         }
 
         val updatedData = HashMap<String, Any>()
+        updatedData["message"] = message.value
         updatedData["id"] = id
         updatedData["time"] = timeFormat
         updatedData["date"] = formattedDate
@@ -187,6 +191,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         selectedDate.value = date
                     },
                     selectedTime = selectedTime,
+                    isChecked = isChecked
                 )
 
             }

@@ -52,7 +52,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.R
 import com.example.dothings.interDisplayFamily
-import com.example.ui.theme.FABDarkColor
+import com.example.ui.theme.FABRed
 import com.example.ui.theme.NewtaskColorGray
 import com.example.ui.theme.SurfaceGray
 import com.example.ui.theme.Text1
@@ -80,7 +80,9 @@ fun UnMarkCompletedTaskScreen(
     openKeyboard: Boolean,
     onDismiss : () -> Unit,
     onDeleteClick: (String) -> Unit,
-    onUnMarkCompletedClick:(String) -> Unit
+    onUnMarkCompletedClick:(String) -> Unit,
+    isChecked: MutableState<Boolean>,
+
 
 ) {
     var task = rememberSaveable {
@@ -173,7 +175,9 @@ fun UnMarkCompletedTaskScreen(
                             },
                             id = id,
                             openKeyboard = openKeyboard,
-                            isPickerOpen = isPickerOpen
+                            isPickerOpen = isPickerOpen,
+                            isChecked = isChecked,
+                            textValue = textValue
                         )
 
                         Box(
@@ -212,7 +216,8 @@ fun UnMarkCompletedCircleDesign(
     onTaskChange:(String) -> Unit,
     isPickerOpen: MutableState<Boolean>,
     openKeyboard:Boolean,
-
+    isChecked: MutableState<Boolean>,
+    textValue: String
     ){
     /* val selectedDate = remember { mutableStateOf(initialSelectedate.value) }
      val selectedTime = remember { mutableStateOf(initialSelectedtime.value) }*/
@@ -252,15 +257,14 @@ fun UnMarkCompletedCircleDesign(
 
     }
     val scale by animateFloatAsState(
-        targetValue = if (visible) 1f else 0.7f,
+        targetValue = if (visible) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = 0.45f,
+            dampingRatio = 0.7f,
             stiffness = Spring.StiffnessVeryLow
         )
     )
-
     val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else 40.dp,
+        targetValue = if (visible) 0.dp else 400.dp,
         animationSpec = spring(
             dampingRatio = 0.45f,
             stiffness = Spring.StiffnessMediumLow
@@ -271,7 +275,7 @@ fun UnMarkCompletedCircleDesign(
             .fillMaxWidth()
             .padding(start = 24.dp, end = 24.dp, top = 38.dp)
             .size(344.dp)
-            .offset(y= offsetY)
+            .offset(y = offsetY)
             .scale(scale)
             .aspectRatio(1f)
             .clip(CircleShape)
@@ -314,7 +318,7 @@ fun UnMarkCompletedCircleDesign(
                     backgroundColor = Color.Transparent,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = FABDarkColor
+                    cursorColor = FABRed
                 ),
                 placeholder = {
                     Text(text = "New Task",
@@ -446,7 +450,9 @@ fun UnMarkCompletedCircleDesign(
                         },
                         id = id,
                         invokeOnDoneClick = false,
-                        UnMarkedDateandTime = true
+                        UnMarkedDateandTime = true,
+                        isChecked = isChecked,
+                        message = message
 
                     )
 

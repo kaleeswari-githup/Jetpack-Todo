@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.dothings"
-        minSdk 33
+        minSdk 24
         targetSdk 33
         versionCode 1
         versionName "1.0"
@@ -80,6 +80,11 @@ dependencies {
     implementation "com.airbnb.android:lottie-compose:6.1.0"
     implementation "com.github.omkar-tenkale:ExplodingComposable:1.0.1"
 
+    implementation 'androidx.glance:glance:1.0.0-alpha05'
+    implementation "androidx.glance:glance-appwidget:1.0.0-alpha05"
+
+    implementation "androidx.compose.runtime:runtime:1.0.3" // Use the appropriate version
+    implementation "androidx.compose.runtime:runtime-livedata:1.0.3"
 
 
 }

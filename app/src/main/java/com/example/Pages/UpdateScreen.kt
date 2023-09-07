@@ -38,13 +38,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.*
 import com.example.dothings.R
-import com.example.ui.theme.FABDarkColor
+import com.example.ui.theme.FABRed
+
 import com.example.ui.theme.NewtaskColorGray
 import com.example.ui.theme.SurfaceGray
 import com.example.ui.theme.Text1
@@ -74,7 +74,9 @@ fun UpdateTaskScreen(
     onDeleteClick: (String) -> Unit,
     isPickerOpen:MutableState<Boolean>,
     isAddDaskOpen:MutableState<Boolean>,
-    index:Int
+    index:Int,
+    isChecked: MutableState<Boolean>,
+    isUpdatePickerOpen:MutableState<Boolean>
 ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
@@ -121,7 +123,6 @@ fun UpdateTaskScreen(
         updatedData["time"] = formattedTime?.format(timeFormat) ?: ""
         updatedData["date"] = formattedDate
         updatedData["notificationTime"] = notificationTime ?: 0L
-
         databaseRef.child(id).updateChildren(updatedData)
         onDismiss.invoke()
     }
@@ -130,9 +131,9 @@ fun UpdateTaskScreen(
     val onBackPressed: () -> Unit = {
         onDoneClick(selectedDate.value,selectedTime.value)
     }
-    var isPickerOpen = remember { mutableStateOf(false) }
+
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isPickerOpen.value -> 10.dp
+        isUpdatePickerOpen.value -> 25.dp
         else -> 0.dp
     })
 
@@ -155,8 +156,6 @@ fun UpdateTaskScreen(
             Column(modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally) {
-
-
                 UpdateCircleDesign(
                     initialSelectedate = selectedDate ,
                     initialSelectedtime = selectedTime  ,
@@ -168,22 +167,21 @@ fun UpdateTaskScreen(
                     },
                     id = id,
                     openKeyboard = openKeyboard,
-                    isPickerOpen = isPickerOpen,
+                    isUpdatePickerOpen = isUpdatePickerOpen,
                     isAddDaskOpen = isAddDaskOpen,
-                    index = index
+                    index = index,
+                    isChecked = isChecked,
+
                     )
 
                 Box(
                     modifier = Modifier
                         .padding(bottom = 40.dp)
-
                 ) {
                     UpdatedButtons( id = id,onDismiss, onMarkCompletedClick = onMarkCompletedClick,onDeleteClick)
                 }
-
             }
         }
-
         CrossFloatingActionButton(onClick = {
             onDoneClick.invoke(selectedDate.value,selectedTime.value)
         })
@@ -191,8 +189,6 @@ fun UpdateTaskScreen(
 }
 
 }
-
-
 @SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
@@ -203,8 +199,9 @@ fun UpdateCircleDesign(
     initialSelectedtime: MutableState<String> ,
     id:String,
     onTaskChange:(String) -> Unit,
-    isPickerOpen:MutableState<Boolean>,
+    isUpdatePickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
+    isChecked: MutableState<Boolean>,
     index:Int,
     isAddDaskOpen:MutableState<Boolean>
 
@@ -222,7 +219,6 @@ fun UpdateCircleDesign(
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val context = LocalContext.current
     val onDoneClick: () -> Unit = {
-
         val updatedData = HashMap<String, Any>()
         updatedData["id"] = id
         updatedData["message"] = message.value
@@ -236,37 +232,34 @@ fun UpdateCircleDesign(
                 }
             }
     }
-
-
     var visible by remember {
         mutableStateOf(false)
     }
-
     LaunchedEffect(Unit) {
         visible = true // Set the visibility to true to trigger the animation
-
     }
     val scale by animateFloatAsState(
-        targetValue = if (visible) 1f else 0.7f,
+        targetValue = if (visible) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = 0.45f,
+            dampingRatio = 0.7f,
             stiffness = Spring.StiffnessVeryLow
         )
     )
-
     val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else index*40.dp,
-        animationSpec = tween(durationMillis = 300,easing = LinearOutSlowInEasing)
+        targetValue = if (visible) 0.dp else 400.dp,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMediumLow
+        )
     )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 38.dp)
-
                 .size(377.dp)
-              .scale(scale)
                 .offset(y = offsetY)
-               // .alpha(opacity)
+                .scale(scale)
+                // .alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background( color = Color.White, shape = CircleShape)
@@ -306,7 +299,7 @@ fun UpdateCircleDesign(
                         backgroundColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = FABDarkColor
+                        cursorColor = FABRed
                     ),
                     placeholder = {
                         Text(text = "New Task",
@@ -346,7 +339,7 @@ fun UpdateCircleDesign(
 
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
-                            isPickerOpen.value = true
+                            isUpdatePickerOpen.value = true
                         }
 
                         .border(
@@ -418,7 +411,7 @@ fun UpdateCircleDesign(
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp))
                         }
                     }
-                    if (isPickerOpen.value) {
+                    if (isUpdatePickerOpen.value) {
                         val pattern = "EEE, d MMM yyyy"
                         val locale = Locale.ENGLISH
 
@@ -438,7 +431,7 @@ fun UpdateCircleDesign(
                         UpdatedCalendarAndTimePickerScreen(
                             userSelectedDate = localDate,
                             userSelectedTime = initialSelectedtime.value,
-                            onDismiss = { isPickerOpen.value = false },
+                            onDismiss = { isUpdatePickerOpen.value = false },
                             onDateTimeSelected = { date, time ->
                                 val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                                 val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -452,8 +445,9 @@ fun UpdateCircleDesign(
                             },
                             id = id,
                             invokeOnDoneClick = true,
-                            UnMarkedDateandTime = false
-
+                            UnMarkedDateandTime = false,
+                            isChecked = isChecked,
+                            message = message
                         )
 
                     }

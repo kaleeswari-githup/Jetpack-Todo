@@ -59,14 +59,15 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter", "SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MarkCompletedScreen(
     navController:NavController,onDismiss: () -> Unit,
     selectedMarkedItemId: MutableState<String>,
     isChecked:MutableState<Boolean>,
-    sharedPreferences:SharedPreferences){
+    sharedPreferences:SharedPreferences,
+    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -78,7 +79,7 @@ fun MarkCompletedScreen(
     val coroutineScope = rememberCoroutineScope()
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val context = LocalContext.current
-
+    val snackbarHostState = remember { SnackbarHostState() }
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             completedTasksCountState.value = snapshot.childrenCount.toInt()
@@ -103,11 +104,11 @@ fun MarkCompletedScreen(
     val onDeleteClick:(String)  -> Unit = {clickedTaskId ->
         var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
         coroutineScope.launch {
-            scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.currentSnackbarData?.dismiss()
             val data = completedTasksRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
             if (data != null) {
                 completedTasksRef.child(clickedTaskId).removeValue()
-                val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
+                val snackbarResult = snackbarHostState.showSnackbar(
                     message = "Task deleted",
                     actionLabel = "Undo",
                     duration = SnackbarDuration.Short
@@ -127,7 +128,7 @@ fun MarkCompletedScreen(
     val onUnMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
-
+        val completedNewTaskRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
         completedTasksRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val data = snapshot.getValue(DataClass::class.java)
@@ -135,9 +136,9 @@ fun MarkCompletedScreen(
                     completedTasksRef.removeValue()
                     taskRef.setValue(data)
                     coroutineScope.launch {
-                        scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
-                        val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
-                            message = "Task UnMark as Completed",
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        val snackbarResult = snackbarHostState.showSnackbar(
+                            message = "Task marked uncompleted",
                             actionLabel = "Undo",
                             duration = SnackbarDuration.Short
                         )
@@ -148,7 +149,7 @@ fun MarkCompletedScreen(
                                 taskRef.setValue(data)
                             }
                             SnackbarResult.ActionPerformed -> {
-                                completedTasksRef.setValue(data)
+                                completedNewTaskRef.setValue(data)
                                 taskRef.removeValue()
                             }
                         }
@@ -279,10 +280,11 @@ fun MarkCompletedScreen(
                                         fontWeight = FontWeight.Medium,
                                         color = Color.Black
                                     )
+                                    Spacer(modifier = Modifier.padding(top = 4.dp))
                                     Text(text = "${user?.email}",
                                         fontFamily = interDisplayFamily,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
                                         color = Text2
                                     )
                                 }
@@ -320,26 +322,47 @@ fun MarkCompletedScreen(
                                verticalArrangement = Arrangement.Center,
                                horizontalAlignment = Alignment.CenterHorizontally
                            ) {
-                               Text(text = "Completed (${completedTasksCountState.value})",
-                                   fontFamily = interDisplayFamily,
-                                   fontSize = 15.sp,
-                                   fontWeight = FontWeight.Medium,
-                                   color = Color.Black,
-                                   modifier = Modifier.padding(top = 24.dp))
-                               Spacer(modifier = Modifier.padding(top = 12.dp))
-                               Box(modifier = Modifier
-                                   .fillMaxWidth()
+                               val completedTasksCount = completedTasksCountState.value
 
-                                   .height(204.dp)
-                                   .padding(start = 24.dp, end = 24.dp)
-                                   .background(
-                                       color = MarkCompleteBack,
-                                       shape = RoundedCornerShape(24.dp)
+
+                                   Text(
+                                       text = "Completed ($completedTasksCount)",
+                                       fontFamily = interDisplayFamily,
+                                       fontSize = 15.sp,
+                                       fontWeight = FontWeight.Medium,
+                                       color = Color.Black,
+                                       modifier = Modifier.padding(top = 24.dp)
                                    )
-                                   ,
-                                   contentAlignment = Alignment.Center) {
 
-                                   LazyRowCompletedTask(onDismiss,onDeleteClick,onUnMarkCompletedClick,selectedMarkedItemId)
+                                   Spacer(modifier = Modifier.padding(top = 12.dp))
+
+                                   Box(
+                                       modifier = Modifier
+                                           .fillMaxWidth()
+                                           .height(204.dp)
+                                           .padding(start = 24.dp, end = 24.dp)
+                                           .background(
+                                               color = MarkCompleteBack,
+                                               shape = RoundedCornerShape(24.dp)
+                                           ),
+                                       contentAlignment = Alignment.Center
+                                   ) {
+                                       if (completedTasksCount > 0) {
+                                       LazyRowCompletedTask(
+                                           onDismiss, onDeleteClick, onUnMarkCompletedClick, selectedMarkedItemId, isChecked
+                                       )
+                                   }
+                                       else {
+                                           Text(
+                                               text = "No completed tasks",
+                                               fontFamily = interDisplayFamily,
+                                               fontSize = 15.sp,
+                                               fontWeight = FontWeight.Medium,
+                                               color = Text2,
+                                             //  modifier = Modifier.padding(top = 24.dp)
+                                           )
+                                       }
+
 
                                }
 
@@ -375,15 +398,17 @@ fun MarkCompletedScreen(
                                 interactionSource = remember { MutableInteractionSource() }) {
                                 isChecked.value = !isChecked.value
                                 saveIsChecked(isChecked.value)
-                                if(isChecked.value){
+                                if (isChecked.value) {
                                     coroutineScope.launch(Dispatchers.IO) {
-                                        val mMediaPlayer = MediaPlayer.create(context, R.raw.button_click)
+                                        val mMediaPlayer =
+                                            MediaPlayer.create(context, R.raw.notification_stone)
                                         mMediaPlayer.start()
                                         delay(mMediaPlayer.duration.toLong())
                                         mMediaPlayer.release()
                                     }
                                 }
-                                Vibration(context) },
+                                Vibration(context)
+                            },
                             contentAlignment = Alignment.Center
                         ) {
                             Row(modifier = Modifier
@@ -414,7 +439,7 @@ fun MarkCompletedScreen(
                                                     saveIsChecked(isChecked.value)
                                                     if(isChecked.value){
                                                         coroutineScope.launch(Dispatchers.IO) {
-                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.button_click)
+                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.notification_stone)
                                                             mMediaPlayer.start()
                                                             delay(mMediaPlayer.duration.toLong())
                                                             mMediaPlayer.release()
@@ -531,7 +556,13 @@ fun MarkCompletedScreen(
                 CrossFloatingActionButton {
                     onDismiss.invoke()
                 }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    snackbar = { CustomSnackbar(it)}
+                )
             }
+
         }
 
     }
@@ -544,7 +575,8 @@ fun MarkCompletedScreen(
 fun LazyRowCompletedTask(onDismiss: () -> Unit,
                          onDeletedClick: (String) -> Unit,
                          onUnMarkcompletedClick: (String) -> Unit,
-                         selectedMarkedItemId: MutableState<String>){
+                         selectedMarkedItemId: MutableState<String>,
+                         isChecked: MutableState<Boolean>){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -594,7 +626,8 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
             onDeletedClick,
             onUnMarkcompletedClick = onUnMarkcompletedClick,
                 selectedMarkedItemId,
-                modifier = Modifier.animateItemPlacement()
+                modifier = Modifier.animateItemPlacement(),
+                isChecked
             )
 
         }
@@ -612,16 +645,14 @@ fun MarkCompletedCircleDesign(image:Int,
                               onDeletedClick:(String) -> Unit,
                               onUnMarkcompletedClick:(String) -> Unit,
                               selectedMarkedItemId: MutableState<String>,
-                              modifier: Modifier=Modifier
+                              modifier: Modifier=Modifier,
+                              isChecked: MutableState<Boolean>
                               ){
     val painter: Painter = painterResource(image)
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
-    val completedTasksItem = remember { mutableStateOf("") }
 
-    var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     Box(
         modifier = modifier
             .size(172.dp)
@@ -688,7 +719,8 @@ fun MarkCompletedCircleDesign(image:Int,
                 openKeyboard = false,
                 onDismiss ={ selectedMarkedItemId.value = "" },
                 onDeletedClick,
-                onUnMarkCompletedClick = onUnMarkcompletedClick
+                onUnMarkCompletedClick = onUnMarkcompletedClick,
+                isChecked
             )
         }
     }

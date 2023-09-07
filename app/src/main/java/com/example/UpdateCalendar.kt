@@ -42,6 +42,7 @@ fun UpdatedCalendar(
     selectedTime: MutableState<LocalTime?>,
     selectedDate: MutableState<LocalDate>,
     onDateSelected: (LocalDate) -> Unit,
+    isChecked: MutableState<Boolean>
 ) {
     var isDoneButtonClicked by remember { mutableStateOf(false) }
     var isClearTextVisible by remember { mutableStateOf(true) }
@@ -51,13 +52,7 @@ fun UpdatedCalendar(
 
 
     Box(modifier = Modifier
-        .fillMaxWidth()
-
-
-       // .alpha(opacity)
-       // .scale(scale)
-            ,
-
+        .fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Column(modifier = Modifier
@@ -106,7 +101,7 @@ fun UpdatedCalendar(
             Box(
                 modifier = Modifier
                     .padding( bottom = 24.dp,)
-                    .height(2.dp)
+                    .height(1.dp)
                     .fillMaxWidth()
                     .background(color = SurfaceGray)
             )
@@ -124,7 +119,8 @@ fun UpdatedCalendar(
                     },
                     onTimeSelected = { time ->
                         selectedTime.value = time
-                    }
+                    },
+                    isChecked = isChecked
                 )
 
 

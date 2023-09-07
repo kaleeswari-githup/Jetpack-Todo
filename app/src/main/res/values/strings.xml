@@ -2,5 +2,6 @@
     <string name="app_name">Do Things</string>
     <string name="singin_google">Continue with Google</string>
     <string name="channel_id">channel1</string>
+    <string name = "coming_todo">Coming next</string>
 
 </resources>

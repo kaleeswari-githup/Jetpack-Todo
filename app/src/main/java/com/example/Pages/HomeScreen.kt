@@ -80,6 +80,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val scaffoldState = rememberScaffoldState()
+    val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -92,12 +93,19 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val onDeleteClick:(String) -> Unit = {clickedTaskId ->
         val databaseRef = database.reference.child("Task").child(uid.toString())
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(clickedTaskId.hashCode())
+        val notificationTag = "Notification_$clickedTaskId"
+        Log.d("NotificationTag", notificationTag)
+        val workManager = WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(notificationTag)
         coroutineScope.launch {
-            scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.currentSnackbarData?.dismiss()
             val data = databaseRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
             if (data != null) {
                 databaseRef.child(clickedTaskId).removeValue()
-                val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
+                val snackbarResult = snackbarHostState.showSnackbar(
                     message = "Task deleted",
                     actionLabel = "Undo",
                     duration = SnackbarDuration.Short
@@ -116,6 +124,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
+        val taskNewRef = database.reference.child("Task").child(uid.toString()).push()
         var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
         taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -126,13 +135,33 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                     notificationManager.cancel(clickedTaskId.hashCode())
                     val notificationTag = "Notification_$clickedTaskId"
+                    Log.d("NotificationTag", notificationTag)
                     val workManager = WorkManager.getInstance(context)
                     workManager.cancelUniqueWork(notificationTag)
 
                     coroutineScope.launch {
-                        scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Task Completed",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            when (result) {
+                                SnackbarResult.ActionPerformed -> {
+                                    //Do Something
+                                    taskNewRef.setValue(data)
+                                    completedTasksRef.removeValue()
+
+                                }
+                                SnackbarResult.Dismissed -> {
+                                    //Do Something
+                                    completedTasksRef.setValue(data)
+                                }
+
+                        }
+                      /*  scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
                         val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
-                            message = "Task Mark as Completed",
+                            message = "Task Completed",
                             actionLabel = "Undo",
                             duration = SnackbarDuration.Short
                         )
@@ -144,7 +173,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                                 taskRef.setValue(data)
                                 completedTasksRef.removeValue()
                             }
-                        }
+                        }*/
                     }
 
                 }
@@ -160,6 +189,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         mutableStateOf(false)
     }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
+    var isUpdatePickerOpen = remember { mutableStateOf(false) }
     var isPickerOpen = remember { mutableStateOf(false) }
     var isAddDaskOpen = remember { mutableStateOf(false) }
     val isChecked = getIsChecked()
@@ -169,11 +199,8 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
             isAddDaskScreenOpen.value -> 25.dp
             isMarkCompletedOpen.value -> 25.dp
             else -> 0.dp
-        },
-        animationSpec = tween(
-            durationMillis = 300, // Adjust the duration to your desired value
-            easing = EaseOutCirc // You can try different easing functions for smoother animations
-        )
+        }
+
     )
     val isCheckedState = mutableStateOf(isChecked)
     Scaffold(
@@ -182,9 +209,11 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         backgroundColor = Color.Transparent,
         ){
         BoxWithConstraints(modifier = Modifier
-            .blur(radius = blurEffectBackground)
-            .background(color = SurfaceGray)
             .fillMaxSize()
+            .background(color = SurfaceGray)
+            .blur(radius = blurEffectBackground)
+
+
             ){
             Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
             Box(modifier = Modifier.fillMaxSize(),
@@ -195,7 +224,9 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                         .blur(radius = 90.dp)
                         .align(Alignment.Center))
             }
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center) {
 
                 LazyGridLayout(
                     onMarkCompletedClick = onMarkCompletedClick,
@@ -205,7 +236,8 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     isAddDaskOpen,
                     scale = scale,
                     offset = offset,
-                    isChecked = isCheckedState
+                    isChecked = isCheckedState,
+                    isUpdatePickerOpen
                 )
             }
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -240,12 +272,55 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     sharedPreferences)
                 FloatingActionButton(isAddDaskScreenOpen,isPickerOpen,isCheckedState)
             }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                snackbar = { CustomSnackbar(it)}
+            )
         }
-        if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty() ){
+        if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty()||isUpdatePickerOpen.value ){
             Box(modifier = Modifier
                 .fillMaxSize()
                 .background(color = SurfaceGray, shape = RectangleShape)
             )
+        }
+    }
+}
+@Composable
+fun CustomSnackbar(snackbarData: SnackbarData) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(82.dp)
+            .padding(16.dp)
+            .shadow(elevation = 48.dp ,spotColor = Color(0x40000000), ambientColor = Color(0x40000000))
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start= 24.dp,end = 24.dp)
+        ) {
+            Text(
+                text = snackbarData.message,
+                color = Text1,
+                fontFamily = interDisplayFamily,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            snackbarData.actionLabel?.let { actionLabel ->
+                TextButton(onClick = { snackbarData.performAction() }) {
+                    Text(text = actionLabel,
+                        color = FABRed,
+                        fontFamily = interDisplayFamily,
+                        fontSize = 15.sp,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                        fontWeight = FontWeight.Medium)
+                }
+            }
         }
     }
 }
@@ -259,7 +334,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                    isAddDaskOpen:MutableState<Boolean>,
                    scale:Float,
                    offset: Dp,
-                   isChecked: MutableState<Boolean>
+                   isChecked: MutableState<Boolean>,
+                   isUpdatePickerOpen:MutableState<Boolean>
                    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -305,13 +381,11 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
     val gridColumns = 2
     if (cardDataList.size > 1) {
         LazyVerticalStaggeredGrid(
-
             columns = StaggeredGridCells.Fixed(gridColumns),
-
             verticalItemSpacing = 16.dp,
-            contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 36.dp)
+            contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
 
-        ) {
+            ) {
             itemsIndexed(cardDataList.reversed()) { index, cardData ->
                 val animationDelay = index
                 val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
@@ -327,12 +401,13 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
 
      Box(
          modifier = Modifier
-             .fillMaxWidth()
+             .fillMaxSize()
 
              .padding(
                  top = if (index == 1)100.dp else 0.dp,
                  bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
-             )
+             ),
+         contentAlignment = Alignment.Center
      ) {
 
          RoundedCircleCardDesign(
@@ -351,7 +426,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
              scale = scale,
              offset = offset,
              index = index,
-             isChecked = isChecked
+             isChecked = isChecked,
+             isUpdatePickerOpen = isUpdatePickerOpen
          )
 
  }
@@ -363,7 +439,11 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
         LazyColumn(){
             itemsIndexed(cardDataList){ index,cardData ->
 
-                Box(modifier = Modifier.padding(bottom = 50.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .size(300.dp)
+                    .padding(bottom = 50.dp)
+                    , contentAlignment = Alignment.Center) {
                     val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                     val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                     val dateStringFromDatabase = cardData.date
@@ -389,7 +469,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                         scale = scale,
                         offset = offset,
                         index = index,
-                        isChecked = isChecked
+                        isChecked = isChecked,
+                        isUpdatePickerOpen = isUpdatePickerOpen
                         )
                 }
             }
@@ -420,7 +501,8 @@ fun RoundedCircleCardDesign(
     scale:Float,
     offset: Dp,
     index:Int,
-    isChecked:MutableState<Boolean>
+    isChecked:MutableState<Boolean>,
+    isUpdatePickerOpen:MutableState<Boolean>
     )
 {
     val scaffoldState = rememberScaffoldState()
@@ -467,20 +549,10 @@ fun RoundedCircleCardDesign(
     Box(
             modifier = Modifier
                 .size(172.dp)
-                //   .scale(scale)
                 .offset(y = offset)
-                // .offset(y = offsetY)
                 .alpha(scale)
-               // .bounceClick()
-                .graphicsLayer {
-                    translationX = dx * travelDistance
-                    translationY = dy * travelDistance
-                }
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .shadow(
-                    elevation = 12.dp
-                )
                 .background(color = Color.White, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
@@ -505,7 +577,7 @@ fun RoundedCircleCardDesign(
                             interactionSource = remember { MutableInteractionSource() }) {
                             if(isChecked.value){
                                 coroutineScope.launch(Dispatchers.IO) {
-                                    val mMediaPlayer = MediaPlayer.create(mContext, R.raw.button_click)
+                                    val mMediaPlayer = MediaPlayer.create(mContext, R.raw.tick)
                                     mMediaPlayer.start()
                                     delay(mMediaPlayer.duration.toLong())
                                     mMediaPlayer.release()
@@ -539,30 +611,7 @@ fun RoundedCircleCardDesign(
             if(selectedItemId.value == id){
                 val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                 val currentDate = LocalDate.now()
-                val formattedDate: String = when {
-                    date == "Today" -> currentDate.format(formatter)
-                    date == "Yesterday" -> currentDate.minusDays(1).format(formatter)
-                    date == "Tomorrow" -> currentDate.plusDays(1).format(formatter)
-                    date.endsWith("day ago") || date.endsWith("days ago") -> {
-                        val daysAgo = date.split(" ")[0].toInt()
-                        currentDate.minusDays(daysAgo.toLong()).format(formatter)
-                    }
-                    date.endsWith("week ago") || date.endsWith("weeks ago") -> {
-                        val weeksAgo = date.split(" ")[0].toInt()
-                        currentDate.minusWeeks(weeksAgo.toLong()).format(formatter)
-                    }
-                    date.endsWith("year ago") || date.endsWith("years ago") -> {
-                        val yearsAgo = date.split(" ")[0].toInt()
-                        currentDate.minusYears(yearsAgo.toLong()).format(formatter)
-                    }
-                    else -> {
-                        try {
-                            LocalDate.parse(date, formatter).format(formatter)
-                        } catch (e: DateTimeParseException) {
-                            ""
-                        }
-                    }
-                }
+
                 UpdateTaskScreen(
                     selectedDate = mutableStateOf( date) ,
                     selectedTime = mutableStateOf(time) ,
@@ -574,13 +623,16 @@ fun RoundedCircleCardDesign(
                     onDeleteClick,
                     isPickerOpen,
                     isAddDaskOpen = isAddDaskOpen,
-                    index = index
+                    index = index,
+                    isChecked = isChecked,
+                    isUpdatePickerOpen
                 )
             }
 
     }
 
 }
+@RequiresApi(Build.VERSION_CODES.O)
 fun formatDate(date: LocalDate): String {
     val currentDate = LocalDate.now()
     val period = Period.between(date, currentDate)
@@ -588,13 +640,20 @@ fun formatDate(date: LocalDate): String {
     val yearsAgo = period.years
     val monthsAgo = period.months
     val daysAgo = period.days
-
+    val startOfRange = currentDate.plusDays(2) // Day after tomorrow
+    val endOfRange = LocalDate.MAX
     return when {
         period.isZero -> "Today"
-        period.isNegative -> "Tomorrow" // This logic may need further refinement
         period == Period.ofDays(1) -> "Yesterday"
-        yearsAgo == 0 && monthsAgo == 0 && daysAgo == 1 -> "Yesterday"
-        yearsAgo == 0 && monthsAgo == 0 && daysAgo == -1 -> "Tomorrow"
+        date == currentDate.plusDays(1) -> "Tomorrow"
+        date in startOfRange..endOfRange -> {
+            val formatter = if (date.year == currentDate.year) {
+                DateTimeFormatter.ofPattern("EEE, d MMM")
+            } else {
+                DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+            }
+            date.format(formatter)
+        }// Check if the date is the next day
         yearsAgo == 0 && monthsAgo == 0 && daysAgo < 7 -> "$daysAgo days ago"
         yearsAgo == 0 && monthsAgo == 0 && daysAgo < 14 -> "1 week ago"
         yearsAgo == 0 && monthsAgo == 0 -> "${daysAgo / 7} weeks ago"
@@ -602,9 +661,11 @@ fun formatDate(date: LocalDate): String {
         yearsAgo == 0 && monthsAgo > 1 -> "$monthsAgo months ago"
         yearsAgo == 1 -> "1 year ago"
         yearsAgo > 1 -> "$yearsAgo years ago"
-        else -> "Long ago"
+        else -> date.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
     }
 }
+@SuppressLint("NewApi")
+@RequiresApi(Build.VERSION_CODES.O)
 private fun isToday(dateString: String): Boolean {
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
     val currentDate = LocalDate.now()
@@ -615,15 +676,6 @@ private fun isToday(dateString: String): Boolean {
     }
     return formattedDate == currentDate
 }
-private fun isTomorrow(date: String) =
-    LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
-        .isEqual(LocalDate.now().plusDays(1))
-
-private fun isYesterday(date: String) =
-    LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
-        .isEqual(LocalDate.now().minusDays(1))
-
-
 
 
 @SuppressLint("UnrememberedMutableState")
@@ -675,14 +727,6 @@ fun FloatingActionButton(
                     ,
            onClick = {isAddDaskScreenOpen.value = true
                      Vibration(context)
-               if(isChecked.value){
-                   coroutineScope.launch(Dispatchers.IO) {
-                       val mMediaPlayer = MediaPlayer.create(mContext, R.raw.adddask_sound)
-                       mMediaPlayer.start()
-                       delay(mMediaPlayer.duration.toLong())
-                       mMediaPlayer.release()
-                   }
-               }
            },
             shape = CircleShape,
            // contentColor = Color.White,
@@ -704,7 +748,8 @@ fun FloatingActionButton(
          textValue = "",
          onDismiss = {isAddDaskScreenOpen.value = false},
          isPickerOpen = isPickerOpen,
-         modifier = Modifier
+         modifier = Modifier,
+         isChecked = isChecked
      )
  }
     }
@@ -807,13 +852,10 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
         val shape = RoundedCornerShape(16.dp)
         Text(
             text = "Do Things",
-            fontFamily = interDisplayFamily,
-            fontWeight = FontWeight.Black,
-            fontSize = 24.sp,
-            color = Color.White,
             modifier = Modifier
                 .offset(y = offsetY)
-                .alpha(opacity)
+                .alpha(opacity),
+            style = MaterialTheme.typography.h1
         )
         Box(modifier = Modifier
             .size(48.dp)

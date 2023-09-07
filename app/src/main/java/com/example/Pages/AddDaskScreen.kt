@@ -62,6 +62,7 @@ fun AddDaskScreen(
     textValue:String,
     onDismiss: () -> Unit,
     isPickerOpen: MutableState<Boolean>,
+    isChecked: MutableState<Boolean>,
     modifier: Modifier
 
 ) {
@@ -154,7 +155,10 @@ fun AddDaskScreen(
                             if (newTask.length <= maxValue){
                                 task.value = newTask
                             }
-                        },onDoneClick = onDoneClick,isPickerOpen)
+                        },onDoneClick = onDoneClick,
+                            isPickerOpen = isPickerOpen,
+                            isChecked = isChecked,
+                            textValue = textValue)
                         TwoButtons(
                             onDoneClick = onDoneClick,
                             onDismiss = onDismiss)
@@ -184,7 +188,9 @@ fun AddDaskCircleDesign(
     task:MutableState<String>,
     onTaskChange: (String) -> Unit,
     onDoneClick: () -> Unit,
-    isPickerOpen: MutableState<Boolean>){
+    isPickerOpen: MutableState<Boolean>,
+    textValue: String,
+    isChecked: MutableState<Boolean>){
     val focusRequester = remember { FocusRequester() }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
     var visible by remember {
@@ -266,7 +272,7 @@ fun AddDaskCircleDesign(
                         backgroundColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = FABDarkColor
+                        cursorColor = FABRed
                     ),
                     placeholder = {
                         Text(text = "New Task",
@@ -275,7 +281,8 @@ fun AddDaskCircleDesign(
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
-                            color = NewtaskColorGray
+                            color = NewtaskColorGray,
+                            fontFamily = interDisplayFamily
                         )
                     },
 
@@ -383,7 +390,9 @@ fun AddDaskCircleDesign(
                             userSelectedDate = if (selectedDate.value == null) null else selectedDate.value,
                             userSelectedTime = if (selectedDate.value == null) null else selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a")),
                             invokeOnDoneClick = false,
-                            UnMarkedDateandTime = false
+                            UnMarkedDateandTime = false,
+                            isChecked = isChecked,
+                            message = task
                         )
                     }
 

@@ -153,6 +153,7 @@ fun SignInScreen(navController: NavController){
                         .fillMaxWidth()
                         .padding(start = 48.dp, end = 48.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ){
                         Image(painter = painterResource(id = R.drawable.google_icon), contentDescription = "")
                         Text(

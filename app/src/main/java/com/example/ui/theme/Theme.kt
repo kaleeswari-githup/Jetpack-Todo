@@ -9,37 +9,35 @@ import androidx.compose.ui.graphics.Color
 
 private val DarkColorPalette = darkColors(
     primary = SurfaceGray,
-    primaryVariant = Purple700,
-    secondary = Teal200
+    primaryVariant = Text1,
+    secondary = FABRed
 )
 
 private val LightColorPalette = lightColors(
-    primary = FABDarkColor,
+    primary = Color.Black,
     primaryVariant = Color.Black,
-    secondary = Teal200
+    secondary = FABRed
 
-    /* Other default colors to override
-    background = Color.White,
-    surface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.Black,
-    onBackground = Color.Black,
-    onSurface = Color.Black,
-    */
 )
 
 @Composable
-fun DoThingsTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun AppJetpackComposeTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
     val colors = if (darkTheme) {
         DarkColorPalette
     } else {
         LightColorPalette
     }
-
+    val typography = if (darkTheme) {
+        DarkTypography
+    } else {
+        LightTypography
+    }
     MaterialTheme(
         colors = colors,
-        typography = Typography,
-        shapes = Shapes,
+        typography = typography,
         content = content
     )
 }
