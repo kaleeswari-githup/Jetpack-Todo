@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -26,10 +27,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -40,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -183,7 +181,7 @@ fun MarkCompletedScreen(
         )
     ){
 
-        (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+        ThemedBackground()
         Scaffold(
             scaffoldState = scaffoldState,
             modifier = Modifier.fillMaxSize(),
@@ -234,7 +232,10 @@ fun MarkCompletedScreen(
                             .offset(y = offsetY)
                             .alpha(opacity)
                             .padding(start = 24.dp, end = 24.dp, top = 120.dp)
-                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                            .background(
+                                color = MaterialTheme.colors.primary,
+                                shape = RoundedCornerShape(32.dp)
+                            )
                             .clickable(indication = null,
                                 interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -244,7 +245,10 @@ fun MarkCompletedScreen(
                             ) {
                                 Box(modifier = Modifier
                                     .size(48.dp)
-                                    .background(shape = CircleShape, color = SurfaceGray),
+                                    .background(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colors.primary
+                                    ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val firebaseAuth = FirebaseAuth.getInstance()
@@ -278,14 +282,14 @@ fun MarkCompletedScreen(
                                         fontFamily = interDisplayFamily,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.Black
+                                        color = MaterialTheme.colors.secondary
                                     )
                                     Spacer(modifier = Modifier.padding(top = 4.dp))
                                     Text(text = "${user?.email}",
                                         fontFamily = interDisplayFamily,
                                         fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Text2
+                                        fontWeight = FontWeight.Normal,
+                                        color = MaterialTheme.colors.secondary
                                     )
                                 }
                             }
@@ -314,7 +318,10 @@ fun MarkCompletedScreen(
                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                            .offset(y = offsetY)
                            .alpha(opacity)
-                           .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                           .background(
+                               color = MaterialTheme.colors.primary,
+                               shape = RoundedCornerShape(32.dp)
+                           )
                            .clickable(indication = null,
                                interactionSource = remember { MutableInteractionSource() }) { },
                            contentAlignment = Alignment.Center) {
@@ -330,7 +337,7 @@ fun MarkCompletedScreen(
                                        fontFamily = interDisplayFamily,
                                        fontSize = 15.sp,
                                        fontWeight = FontWeight.Medium,
-                                       color = Color.Black,
+                                       color = MaterialTheme.colors.secondary,
                                        modifier = Modifier.padding(top = 24.dp)
                                    )
 
@@ -342,7 +349,7 @@ fun MarkCompletedScreen(
                                            .height(204.dp)
                                            .padding(start = 24.dp, end = 24.dp)
                                            .background(
-                                               color = MarkCompleteBack,
+                                               color = MaterialTheme.colors.background,
                                                shape = RoundedCornerShape(24.dp)
                                            ),
                                        contentAlignment = Alignment.Center
@@ -358,7 +365,7 @@ fun MarkCompletedScreen(
                                                fontFamily = interDisplayFamily,
                                                fontSize = 15.sp,
                                                fontWeight = FontWeight.Medium,
-                                               color = Text2,
+                                               color = MaterialTheme.colors.secondary.copy(alpha = 0.50f),
                                              //  modifier = Modifier.padding(top = 24.dp)
                                            )
                                        }
@@ -393,7 +400,10 @@ fun MarkCompletedScreen(
                             .alpha(opacity)
                             .height(72.dp)
                             .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                            .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                            .background(
+                                color = MaterialTheme.colors.primary,
+                                shape = RoundedCornerShape(32.dp)
+                            )
                             .clickable(indication = null,
                                 interactionSource = remember { MutableInteractionSource() }) {
                                 isChecked.value = !isChecked.value
@@ -418,12 +428,12 @@ fun MarkCompletedScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween) {
                                 Box() {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Image(painter = painterResource(id = R.drawable.sound), contentDescription = null)
+                                        ThemedSoundIcon()
                                         Text(text = "Sound",
                                             fontFamily = interDisplayFamily,
                                             fontSize = 15.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color.Black,
+                                            color = MaterialTheme.colors.secondary,
                                             modifier = Modifier.padding(start = 8.dp)
                                         )
                                     }
@@ -454,7 +464,7 @@ fun MarkCompletedScreen(
                                             modifier = Modifier
                                                 .size(48.dp, 28.dp)
                                                 .background(
-                                                    if (isChecked.value) Color.Black else SmallBox,
+                                                    if (isChecked.value) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
                                                     shape = CircleShape
                                                 )
                                                 , contentAlignment = Alignment.Center
@@ -465,7 +475,10 @@ fun MarkCompletedScreen(
                                                         .padding(start = 4.dp, end = 4.dp)
                                                         .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
                                                         .size(20.dp)
-                                                        .background(Color.White, CircleShape)
+                                                        .background(
+                                                            MaterialTheme.colors.primary,
+                                                            CircleShape
+                                                        )
 
                                                 )
 
@@ -501,7 +514,10 @@ fun MarkCompletedScreen(
                           .alpha(opacity)
                           .height(72.dp)
                           .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                          .background(color = Color.White, shape = RoundedCornerShape(32.dp))
+                          .background(
+                              color = MaterialTheme.colors.primary,
+                              shape = RoundedCornerShape(32.dp)
+                          )
                           .clickable(indication = null,
                               interactionSource = remember { MutableInteractionSource() }) {
                               val auth = FirebaseAuth.getInstance()
@@ -526,12 +542,12 @@ fun MarkCompletedScreen(
                               horizontalArrangement = Arrangement.SpaceBetween) {
                               Box() {
                                   Row(verticalAlignment = Alignment.CenterVertically) {
-                                      Image(painter = painterResource(id = R.drawable.logout), contentDescription = null)
+                                      ThemedLogoutIcon()
                                       Text(text = "Log Out",
                                           fontFamily = interDisplayFamily,
                                           fontSize = 15.sp,
                                           fontWeight = FontWeight.Medium,
-                                          color = Color.Black,
+                                          color = MaterialTheme.colors.secondary,
                                           modifier = Modifier.padding(start = 8.dp)
                                       )
 
@@ -543,7 +559,7 @@ fun MarkCompletedScreen(
 
                                   .align(Alignment.CenterVertically)
                               ) {
-                                  Image(painter = painterResource(id = R.drawable.right), contentDescription = null)
+                                  ThemedRightIcon()
                               }
 
                           }
@@ -568,6 +584,51 @@ fun MarkCompletedScreen(
     }
 
 }
+@Composable
+fun ThemedRightIcon() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_right_icon
+    } else {
+        R.drawable.light_right_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+
+        )
+}
+@Composable
+fun ThemedSoundIcon() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_sound_icon
+    } else {
+        R.drawable.light_sound_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+
+        )
+}
+@Composable
+fun ThemedLogoutIcon() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_logout_icon
+    } else {
+        R.drawable.light_logout_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+
+        )
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -584,7 +645,7 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
-    val imageResource = R.drawable.black_square
+    val imageResource = R.drawable.light_black_square
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -617,7 +678,6 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
                 ""
             }
             MarkCompletedCircleDesign(
-                image = imageResource,
                 id = cardData.id,
                 message = cardData.message!!,
                 time = cardData.time!!,
@@ -636,7 +696,7 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MarkCompletedCircleDesign(image:Int,
+fun MarkCompletedCircleDesign(
                               id:String,
                               message:String,
                               time: String,
@@ -648,7 +708,6 @@ fun MarkCompletedCircleDesign(image:Int,
                               modifier: Modifier=Modifier,
                               isChecked: MutableState<Boolean>
                               ){
-    val painter: Painter = painterResource(image)
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -657,7 +716,7 @@ fun MarkCompletedCircleDesign(image:Int,
         modifier = modifier
             .size(172.dp)
             .bounceClick()
-            .background(color = Color.White, shape = CircleShape)
+            .background(color = MaterialTheme.colors.primary, shape = CircleShape)
             .clip(CircleShape)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
@@ -672,15 +731,13 @@ fun MarkCompletedCircleDesign(image:Int,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ){
-            Image(
-                painter = painter ,
-                contentDescription = "square image",
-                modifier = Modifier
-                    .padding(top = 32.dp)
-                    .clickable {
-                        onUnMarkcompletedClick(id)
+            ThemedFilledSquareImage(modifier = Modifier
+                .padding(top = 32.dp)
+                .clickable {
+                    onUnMarkcompletedClick(id)
 
-                    })
+                })
+
 
             Text(
                 text = buildAnnotatedString {
@@ -697,16 +754,16 @@ fun MarkCompletedCircleDesign(image:Int,
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 15.sp,
-                color = Text1,
+                color = MaterialTheme.colors.secondary,
                 modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
             )
             Text(
 
                 text = "$date, $time",
                 fontFamily = interDisplayFamily,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
-                color = Text2,
+                color = MaterialTheme.colors.secondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -724,4 +781,22 @@ fun MarkCompletedCircleDesign(image:Int,
             )
         }
     }
+}
+@Composable
+fun ThemedFilledSquareImage(modifier: Modifier) {
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_black_square
+    } else {
+        R.drawable.light_black_square
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+        modifier = modifier
+
+    )
+
 }

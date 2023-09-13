@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -40,14 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.*
 import com.example.dothings.R
 import com.example.ui.theme.FABRed
-
-import com.example.ui.theme.NewtaskColorGray
-import com.example.ui.theme.SurfaceGray
-import com.example.ui.theme.Text1
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import kotlinx.coroutines.launch
@@ -150,7 +144,8 @@ fun UpdateTaskScreen(
         .fillMaxSize()
         .clickable(indication = null,
             interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
-    ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+    ) {
+        ThemedBackground()
        // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
             Column(modifier = Modifier.fillMaxSize(),
@@ -262,9 +257,9 @@ fun UpdateCircleDesign(
                 // .alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background( color = Color.White, shape = CircleShape)
-                .clickable (indication = null,
-                    interactionSource = remember { MutableInteractionSource() }){  },
+                .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+                .clickable(indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { },
             contentAlignment = Alignment.Center
         ){
 
@@ -282,7 +277,7 @@ fun UpdateCircleDesign(
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) {
                                 isMessageFieldFocused.value = true
-                            }else{
+                            } else {
                                 keyboardController?.hide()
                                 isMessageFieldFocused.value = false
                             }
@@ -302,13 +297,13 @@ fun UpdateCircleDesign(
                         cursorColor = FABRed
                     ),
                     placeholder = {
-                        Text(text = "New Task",
+                        Text(text = "Task name",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 70.dp),
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
-                            color = NewtaskColorGray
+                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f)
                         )
                     },
 
@@ -317,7 +312,7 @@ fun UpdateCircleDesign(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = interDisplayFamily,
-                        color = Text1,
+                        color = MaterialTheme.colors.secondary,
                         letterSpacing = 0.sp
                     ),
 
@@ -335,7 +330,7 @@ fun UpdateCircleDesign(
                             end = 48.dp
                         )
                         .bounceClick()
-                     //   .background(color = SmallBox, shape = CircleShape)
+                        //   .background(color = SmallBox, shape = CircleShape)
 
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
@@ -344,10 +339,9 @@ fun UpdateCircleDesign(
 
                         .border(
                             width = 0.8.dp,
-                            color = Color.Black.copy(alpha = 0.8f), // Change to your desired border color
+                            color = MaterialTheme.colors.secondary, // Change to your desired border color
                             shape = CircleShape
                         )
-
 
 
                         .padding(8.dp)
@@ -355,30 +349,19 @@ fun UpdateCircleDesign(
 
                 ) {
                     if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
-
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                            modifier = Modifier
-                        )
-
-
+                        ThemedCalendarImage()
                     }else if(initialSelectedate != null && initialSelectedtime == null) {
                         val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
                         val formattedDate = initialSelectedate.value.format(formatter) ?: ""
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.calendar_icon),
-                                contentDescription = "calender_icon",
-                                modifier = Modifier
-                            )
+                            ThemedCalendarImage()
                             Text(
                                 text = formattedDate,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1
+                                color = MaterialTheme.colors.secondary
                             )
                         }
                     }else{
@@ -390,16 +373,13 @@ fun UpdateCircleDesign(
                         Log.d("timestring","$timeString")
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.calendar_icon),
-                                contentDescription = "calender_icon",
-                            )
+                           ThemedCalendarImage()
                             Text(
                                 text = dateString,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1,
+                                color = MaterialTheme.colors.secondary,
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                             Text(
@@ -407,7 +387,7 @@ fun UpdateCircleDesign(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1,
+                                color = MaterialTheme.colors.secondary,
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp))
                         }
                     }
@@ -431,7 +411,8 @@ fun UpdateCircleDesign(
                         UpdatedCalendarAndTimePickerScreen(
                             userSelectedDate = localDate,
                             userSelectedTime = initialSelectedtime.value,
-                            onDismiss = { isUpdatePickerOpen.value = false },
+                            onDismiss = { isUpdatePickerOpen.value = false
+                                keyboardController?.show()},
                             onDateTimeSelected = { date, time ->
                                 val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                                 val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -470,6 +451,7 @@ fun UpdateCircleDesign(
 
 
 
+@SuppressLint("UnrememberedMutableState")
 @Composable
 fun UpdatedButtons(id: String,
                    onDismiss : () -> Unit,
@@ -506,9 +488,9 @@ fun UpdatedButtons(id: String,
         .fillMaxWidth()
         .padding(start = 42.dp, end = 42.dp)
         .height(48.dp)
-        .offset(y=offsetY)
+        .offset(y = offsetY)
         .alpha(opacity)
-        .background(color = Color.White, shape = RoundedCornerShape(30.dp))
+        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp))
         ,
 contentAlignment = Alignment.Center
     ) {
@@ -525,14 +507,14 @@ contentAlignment = Alignment.Center
             },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-               Image(painter = painterResource(id = R.drawable.trash_delete), contentDescription = null )
+               ThemedTrashImage()
                Interfont(text = "Delete")
             }
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(color = SurfaceGray)
+                    .background(color = MaterialTheme.colors.background)
 
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -544,12 +526,26 @@ contentAlignment = Alignment.Center
                     }
             },
             verticalAlignment = Alignment.CenterVertically) {
-                Image(painter = painterResource(id = R.drawable.square), contentDescription = null)
+                ThemedSquareImage(modifier = Modifier)
                 Interfont(text = "Mark completed")
             }
         }
 
     }
+}
+@Composable
+fun ThemedTrashImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_trash_delete
+    } else {
+        R.drawable.light_trash_delete
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
 }
 @Composable
 fun Interfont(text:String){
@@ -558,7 +554,7 @@ fun Interfont(text:String){
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 15.sp,
-        color = Text1,
+        color = MaterialTheme.colors.secondary,
         style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
     )
 }
@@ -581,11 +577,24 @@ fun CrossFloatingActionButton(onClick:() -> Unit){
             elevation = FloatingActionButtonDefaults.elevation(0.dp),
             onClick = {onClick.invoke()},
             shape = CircleShape,
-            contentColor = Color.Black,
-            backgroundColor = Color.White
+            backgroundColor = MaterialTheme.colors.primary
 
             ) {
-            Image(painterResource(id =R.drawable.cross_icon )  , contentDescription = "")
+            ThemedCrossImage()
         }
     }
+}
+@Composable
+fun ThemedCrossImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_cross_icon
+    } else {
+        R.drawable.light_cross_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
 }

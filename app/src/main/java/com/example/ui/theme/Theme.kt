@@ -6,19 +6,21 @@ import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-
-private val DarkColorPalette = darkColors(
-    primary = SurfaceGray,
-    primaryVariant = Text1,
-    secondary = FABRed
-)
-
 private val LightColorPalette = lightColors(
-    primary = Color.Black,
-    primaryVariant = Color.Black,
-    secondary = FABRed
+    primary = Color.White,
+    primaryVariant = FABRed,
+    secondary = Text1,
+    background = MarkCompleteBack
 
 )
+private val DarkColorPalette = darkColors(
+    primary = Text1,
+    primaryVariant = FABRed,
+    secondary = Color.White,
+    background = Color.Black
+)
+
+
 
 @Composable
 fun AppJetpackComposeTheme(

@@ -127,7 +127,7 @@ fun AddDaskScreen(
             var visible by remember {
                 mutableStateOf(false)
             }
-           (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+
             val offsetY by animateDpAsState(
                 targetValue = if (visible) 0.dp else 400.dp,
                 animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
@@ -140,13 +140,13 @@ fun AddDaskScreen(
             // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier
 
-                     .blur(radius = blurEffectBackground)
+                    .blur(radius = blurEffectBackground)
                     .fillMaxSize()
                     // .offset(y = offsetY)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
                 ) {
-
+                   ThemedBackground()
                     Column(modifier = Modifier,
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -176,6 +176,17 @@ fun AddDaskScreen(
 
 }
 
+@Composable
+fun ThemedBackground() {
+    val isDarkTheme = isSystemInDarkTheme()
+     if (isDarkTheme) {
+         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(1f)
+    } else {
+         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+    }
+
+
+}
 
 
 @SuppressLint("SuspiciousIndentation")
@@ -234,13 +245,13 @@ fun AddDaskCircleDesign(
                 .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
-              //  .alpha(opacity)
+                //  .alpha(opacity)
 
                 .aspectRatio(1f)
 
                 .clip(CircleShape)
 
-                .background( color = Color.White, shape = CircleShape)
+                .background(MaterialTheme.colors.primary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -259,7 +270,7 @@ fun AddDaskCircleDesign(
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) {
                                 focusRequester.requestFocus()
-                                //softwareKeyboardController?.show()
+                                softwareKeyboardController?.show()
                             }
                         },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -275,13 +286,13 @@ fun AddDaskCircleDesign(
                         cursorColor = FABRed
                     ),
                     placeholder = {
-                        Text(text = "New Task",
+                        Text(text = "Task name",
                             modifier = Modifier
                                 .fillMaxWidth(),
                             textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
-                            color = NewtaskColorGray,
+                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
                             fontFamily = interDisplayFamily
                         )
                     },
@@ -291,7 +302,7 @@ fun AddDaskCircleDesign(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = interDisplayFamily,
-                        color = Text1
+                        color = MaterialTheme.colors.secondary
                     ),
                     maxLines = 2
                 )
@@ -309,38 +320,28 @@ fun AddDaskCircleDesign(
                         }
                         .border(
                             width = 0.8.dp,
-                            color = Color.Black.copy(alpha = 0.8f), // Change to your desired border color
+                            color = MaterialTheme.colors.secondary, // Change to your desired border color
                             shape = CircleShape
                         )
-                       // .padding(top = 4.dp,start = 8.dp,end = 8.dp, bottom =  4.dp)
+                        // .padding(top = 4.dp,start = 8.dp,end = 8.dp, bottom =  4.dp)
                         .padding(8.dp)
 
 
                 ) {
                     if (selectedDate.value == null && selectedTime.value == null){
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                            modifier = Modifier
-                        )
-
-
+                       ThemedCalendarImage()
                     }else if(selectedDate != null && selectedTime == null) {
                         val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.calendar_icon),
-                                contentDescription = "calender_icon",
-                                modifier = Modifier
-                            )
+                            ThemedCalendarImage()
                             Text(
                                 text = formattedDate,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1
+                                color = MaterialTheme.colors.secondary
                             )
                         }
                     }else{
@@ -352,28 +353,26 @@ fun AddDaskCircleDesign(
                         Log.d("Time string","$timeString")
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.calendar_icon),
-                                contentDescription = "calender_icon",
-                            )
+                          ThemedCalendarImage()
                             Text(
                                 text = dateString,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1
+                                color = MaterialTheme.colors.secondary
                             )
                             Text(
                                 text = timeString,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Text1)
+                                color = MaterialTheme.colors.secondary)
                         }
                     }
                     if (isPickerOpen.value) {
                         UpdatedCalendarAndTimePickerScreen(
-                            onDismiss = { isPickerOpen.value = false },
+                            onDismiss = { isPickerOpen.value = false
+                                softwareKeyboardController?.show()},
                             onDateTimeSelected = {date,time ->
                                 val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                                 val parsedDate = LocalDate.parse(date, dateFormatter)
@@ -410,14 +409,27 @@ fun AddDaskCircleDesign(
     }
 
 }
+@Composable
+fun ThemedCalendarImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_calendar_icon
+    } else {
+        R.drawable.light_calendar_icon
+    }
 
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+        )
+}
 @Composable
 fun TextStyle(text:String){
     Text(text = text,
     fontFamily = interDisplayFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 11.sp,
-    color = VeryLightGray
+    color = MaterialTheme.colors.secondary.copy(alpha = 0.25f)
    )
 }
 
@@ -464,7 +476,7 @@ fun TwoButtons(
                 .alpha(opacity)
                 .bounceClick()
 
-                .background(shape = RoundedCornerShape(53.dp), color = Color.White)
+                .background(shape = RoundedCornerShape(53.dp), color = MaterialTheme.colors.primary)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
                     onDismiss.invoke()
@@ -477,7 +489,7 @@ fun TwoButtons(
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 15.sp,
-                color = Text1
+                color = MaterialTheme.colors.secondary
             )
         }
 
@@ -491,26 +503,20 @@ fun TwoButtons(
                 .bounceClick()
                 .offset(y = offsetY)
                 .alpha(opacity),
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Black),
+            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary),
             elevation = ButtonDefaults.elevation(0.dp)
 
 
 
         ) {
-
-            Image(
-                painter = painterResource(id = R.drawable.tick),
-                contentDescription = "Save Tick",
-                modifier = Modifier
-                    .size(16.dp)
-            )
+            ThemedTickImage()
             Text(
                 text = "Save",
                 fontFamily = interDisplayFamily,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                color = Color.White,
+                color = MaterialTheme.colors.primary,
                 modifier = Modifier.padding(start = 12.dp)
             )
             }
@@ -520,5 +526,18 @@ fun TwoButtons(
 
 }
 
+@Composable
+fun ThemedTickImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_tick
+    } else {
+        R.drawable.light_tick
+    }
 
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
+}
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -43,7 +44,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dothings.R
 import com.example.dothings.Screen
 import com.example.dothings.interDisplayFamily
-import com.example.ui.theme.SurfaceGray
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -117,11 +117,11 @@ fun SignInScreen(navController: NavController){
 
     Box(modifier = Modifier
         .fillMaxSize()
-        .background(color = SurfaceGray),
+        .background(color = MaterialTheme.colors.background),
 
     ){
         var isLoading by remember { mutableStateOf(false) }
-        Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+        ThemedGridImage()
         Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center){
             Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
@@ -135,16 +135,20 @@ fun SignInScreen(navController: NavController){
             Column(modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(painter = painterResource(id = R.drawable.black_tick_ball), contentDescription = "")
+                ThemedImage()
                 Box(modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 42.dp, end = 42.dp,top = 172.dp)
+                    .padding(start = 42.dp, end = 42.dp, top = 172.dp)
                     .height(72.dp)
-                    .background(color = Color.White, shape = RoundedCornerShape(64.dp))
+                    .background(
+                        color = MaterialTheme.colors.primary,
+                        shape = RoundedCornerShape(64.dp)
+                    )
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         val signInIntent = googleSignInClient.signInIntent
                         activityResultLauncher.launch(signInIntent)
+                        Vibration(context)
 
                     },
                     contentAlignment = Alignment.Center
@@ -161,7 +165,7 @@ fun SignInScreen(navController: NavController){
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp,
-                            color = Color.Black,
+                            color = MaterialTheme.colors.secondary,
                             modifier = Modifier.padding(start = 16.dp)
                         )
                     }
@@ -177,4 +181,18 @@ fun SignInScreen(navController: NavController){
 fun signinPreview(){
     SignInScreen(navController = rememberNavController())
 }
+@Composable
+fun ThemedImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_theme_ball
+    } else {
+        R.drawable.black_tick_ball
+    }
 
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+
+    )
+}

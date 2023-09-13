@@ -12,7 +12,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,8 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -49,13 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
-import com.example.dothings.R
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.FABRed
-import com.example.ui.theme.NewtaskColorGray
-import com.example.ui.theme.SurfaceGray
-import com.example.ui.theme.Text1
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -153,11 +145,13 @@ fun UnMarkCompletedTaskScreen(
 
             Box(modifier = Modifier
                .blur(radius = blurEffectBackground)
-            ) {(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+            ) {
+                ThemedBackground()
                 // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
-                Box(modifier = Modifier.fillMaxSize()
-                    .clickable (indication = null,
-                        interactionSource = remember { MutableInteractionSource() }){ onDismiss.invoke() }
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
                     , contentAlignment = Alignment.Center){
                     Column(modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.SpaceBetween,
@@ -279,9 +273,9 @@ fun UnMarkCompletedCircleDesign(
             .scale(scale)
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(color = Color.White, shape = CircleShape)
-            .clickable (indication = null,
-                interactionSource = remember { MutableInteractionSource() }){  },
+            .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) { },
 
         contentAlignment = Alignment.Center
     ){
@@ -321,13 +315,13 @@ fun UnMarkCompletedCircleDesign(
                     cursorColor = FABRed
                 ),
                 placeholder = {
-                    Text(text = "New Task",
+                    Text(text = "Task name",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 70.dp),
                         fontWeight = FontWeight.Medium,
                         fontSize = 24.sp,
-                        color = NewtaskColorGray
+                        color = MaterialTheme.colors.secondary.copy(alpha = 0.5f)
                     )
                 },
 
@@ -336,7 +330,7 @@ fun UnMarkCompletedCircleDesign(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = interDisplayFamily,
-                    color = Text1,
+                    color = MaterialTheme.colors.secondary,
                     textDecoration = TextDecoration.LineThrough
                 ),
 
@@ -352,40 +346,32 @@ fun UnMarkCompletedCircleDesign(
                         start = 48.dp,
                         end = 48.dp
                     )
-                    .background(color = Color.White, shape = CircleShape)
+                    // .background(color = Color.White, shape = CircleShape)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         isPickerOpen.value = true
                     }
                     .border(
-                        width = 0.6.dp,
-                        color = Color.Black.copy(alpha = 0.4f), // Change to your desired border color
+                        width = 0.8.dp,
+                        color = MaterialTheme.colors.secondary, // Change to your desired border color
                         shape = CircleShape
                     )
                     .padding(8.dp)
             ) {
                 if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
-                    Icon(
-                        painter = painterResource(id = R.drawable.calendar_icon),
-                        contentDescription = "calender_icon",
-                        modifier = Modifier
-                    )
+                    ThemedCalendarImage()
                 }else if(initialSelectedate != null && initialSelectedtime == null) {
                     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
                     val formattedDate = initialSelectedate.value.format(formatter) ?: ""
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                            modifier = Modifier
-                        )
+                        ThemedCalendarImage()
                         Text(
                             text = formattedDate,
                             fontFamily = interDisplayFamily,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Text1
+                            color = MaterialTheme.colors.secondary
                         )
                     }
                 }else{
@@ -397,23 +383,20 @@ fun UnMarkCompletedCircleDesign(
                     Log.d("timestring","$timeString")
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendar_icon),
-                            contentDescription = "calender_icon",
-                        )
+                       ThemedCalendarImage()
                         Text(
                             text = dateString,
                             fontFamily = interDisplayFamily,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Text1
+                            color =  MaterialTheme.colors.secondary
                         )
                         Text(
                             text = timeString,
                             fontFamily = interDisplayFamily,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Text1
+                            color =  MaterialTheme.colors.secondary
                         )
                     }
                 }
@@ -436,7 +419,8 @@ fun UnMarkCompletedCircleDesign(
                     UpdatedCalendarAndTimePickerScreen(
                         userSelectedDate = localDate,
                         userSelectedTime = initialSelectedtime.value,
-                        onDismiss = { isPickerOpen.value = false },
+                        onDismiss = { isPickerOpen.value = false
+                                    keyboardController?.show()},
                         onDateTimeSelected = { date, time ->
                             val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -506,9 +490,9 @@ fun UnMarkCompletedButtons(id: String,
         .fillMaxWidth()
         .padding(start = 42.dp, end = 42.dp)
         .height(48.dp)
-        .offset(y=offsetY)
+        .offset(y = offsetY)
         .alpha(opacity)
-        .background(color = Color.White, shape = RoundedCornerShape(30.dp)),
+        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
         contentAlignment = Alignment.Center
     ) {
         Row(modifier = Modifier
@@ -524,14 +508,14 @@ fun UnMarkCompletedButtons(id: String,
                                                                                  },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(painter = painterResource(id = R.drawable.trash_delete), contentDescription = null )
+                ThemedTrashImage()
                 Interfont(text = "Delete")
             }
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .fillMaxHeight()
-                    .background(color = SurfaceGray)
+                    .background(color = MaterialTheme.colors.background)
 
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -541,7 +525,7 @@ fun UnMarkCompletedButtons(id: String,
                     onDismiss.invoke()
                 },
                 verticalAlignment = Alignment.CenterVertically) {
-                Image(painter = painterResource(id = R.drawable.square), contentDescription = null)
+                ThemedSquareImage(modifier = Modifier)
                 Interfont(text = "Mark uncompleted")
             }
         }

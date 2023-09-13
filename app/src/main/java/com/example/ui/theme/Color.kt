@@ -13,6 +13,7 @@ val NewtaskColorGray = Color(0x502D2D2D)
 val VeryLightGray = Color(0x252D2D2D)
 val MarkCompleteBack = Color(0xFFEDEDED)
 val FABRed = Color(0xFFFF0000)
+val Black = Color(0xFF000000)
 
 
 

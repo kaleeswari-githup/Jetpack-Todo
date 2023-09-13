@@ -12,7 +12,6 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
-import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -210,12 +209,12 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         ){
         BoxWithConstraints(modifier = Modifier
             .fillMaxSize()
-            .background(color = SurfaceGray)
+            .background(color = MaterialTheme.colors.background)
             .blur(radius = blurEffectBackground)
 
 
             ){
-            Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+            ThemedGridImage()
             Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center){
                 Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
@@ -240,20 +239,38 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     isUpdatePickerOpen
                 )
             }
+            val isDarkTheme = isSystemInDarkTheme()
             Canvas(modifier = Modifier.fillMaxSize()) {
+
                 val gradientBrush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFEDEDED),
-                        Color(0x00EDEDED)
-                    ),
+                    colors = if(isDarkTheme){
+                        listOf(
+                            Color(0xFF000000),
+                            Color(0x00000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0xFFEDEDED),
+                            Color(0x00EDEDED)
+                        )
+                    }
+                    ,
                     startY = 0f,
                     endY = size.height.coerceAtMost(100.dp.toPx())
                 )
                 val opacityBrush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0x00EDEDED),
-                        Color(0xFFEDEDED)
-                    ),
+                    colors = if (isDarkTheme){
+                        listOf(
+                            Color(0x00000000),
+                            Color(0xFF000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0x00EDEDED),
+                            Color(0xFFEDEDED)
+                        )
+                    }
+                    ,
                     startY = (size.height - 84.dp.toPx()).coerceAtLeast(0f),
                     endY = size.height
                 )
@@ -264,7 +281,6 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
 
             Column {
                 TopSectionHomeScreen(
-                    image = R.drawable.home_icon,
                     navController,
                     isMarkCompletedOpen,
                     selectedMarkedItemId,
@@ -286,16 +302,55 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         }
     }
 }
+/*@Composable
+fun ThemedCanvas() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val gradientBrush = Brush.verticalGradient(
+        colors = if (isDarkTheme) {
+            listOf(Color(0xFF222222), Color(0xFF000000))
+        } else {
+            listOf(Color(0xFFEDEDED), Color(0x00EDEDED))
+        },
+        startY = 0f,
+        endY = 100f
+    )
+    val opacityBrush = Brush.verticalGradient(
+        colors = if (isDarkTheme) {
+            listOf(Color(0xFF000000), Color(0xFF222222))
+        } else {
+            listOf(Color(0x00EDEDED), Color(0xFFEDEDED))
+        },
+        startY = 0f,
+        endY = 100f
+    )
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(
+            brush = gradientBrush,
+            topLeft = Offset(0f, 0f),
+           // size = Size(size.width, 100.dp.toPx())
+        )
+        drawRect(
+            brush = opacityBrush,
+            topLeft = Offset(0f, (size.height - 84.dp.toPx()).coerceAtLeast(0f)),
+            size = Size(size.width, size.height)
+        )
+    }
+}*/
 @Composable
 fun CustomSnackbar(snackbarData: SnackbarData) {
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = Color.White,
+        color = MaterialTheme.colors.primary,
         modifier = Modifier
             .fillMaxWidth()
             .height(82.dp)
             .padding(16.dp)
-            .shadow(elevation = 48.dp ,spotColor = Color(0x40000000), ambientColor = Color(0x40000000))
+            .shadow(
+                elevation = 48.dp,
+                spotColor = Color(0x40000000),
+                ambientColor = Color(0x40000000)
+            )
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -303,7 +358,7 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
         ) {
             Text(
                 text = snackbarData.message,
-                color = Text1,
+                color = MaterialTheme.colors.secondary,
                 fontFamily = interDisplayFamily,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
@@ -341,7 +396,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
-    val imageResource = R.drawable.square // Resource ID of the image
+    val imageResource = R.drawable.light_square // Resource ID of the image
     var isNotificationSet by remember { mutableStateOf(false) }
 
     var cardDataList = remember {
@@ -404,7 +459,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
              .fillMaxSize()
 
              .padding(
-                 top = if (index == 1)100.dp else 0.dp,
+                 top = if (index == 1) 100.dp else 0.dp,
                  bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
              ),
          contentAlignment = Alignment.Center
@@ -511,7 +566,8 @@ fun RoundedCircleCardDesign(
     val painter:Painter = painterResource(image)
     val animateX = animationDelay % 2 == 0
     val animateY = animationDelay % 2 != 0
-
+    val coroutineScope = rememberCoroutineScope()
+    val mContext = LocalContext.current
     val dx by infiniteTransition.animateFloat(
         initialValue = if (animateX) -0.4f else 0f,
         targetValue = if (animateX) 0.5f else 0f,
@@ -532,8 +588,7 @@ fun RoundedCircleCardDesign(
     val travelDistance = with(LocalDensity.current) { 4.dp.toPx() }
    // val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.exploade_animation))
 
-    val coroutineScope = rememberCoroutineScope()
-    val mContext = LocalContext.current
+
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
     val dateString = if (date.isNotEmpty()) {
         val parsedDate = LocalDate.parse(date, formatter)
@@ -553,7 +608,7 @@ fun RoundedCircleCardDesign(
                 .alpha(scale)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(color = Color.White, shape = CircleShape)
+                .background(MaterialTheme.colors.primary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
                     selectedItemId.value = id
@@ -568,14 +623,12 @@ fun RoundedCircleCardDesign(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painter,
-                    contentDescription = "square image",
+                ThemedSquareImage(
                     modifier = Modifier
-                        .padding(top = 32.dp)
+                    .padding(top = 32.dp)
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
-                            if(isChecked.value){
+                            if (isChecked.value) {
                                 coroutineScope.launch(Dispatchers.IO) {
                                     val mMediaPlayer = MediaPlayer.create(mContext, R.raw.tick)
                                     mMediaPlayer.start()
@@ -585,25 +638,23 @@ fun RoundedCircleCardDesign(
                             }
 
                             onMarkCompletedClick(id)
-                        }
-
-                )
+                        })
                 Text(
                     text = "$message",
                     textAlign = TextAlign.Center,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
                     fontSize = 15.sp,
-                    color = Text1,
+                    color = MaterialTheme.colors.secondary,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
                 )
                 Text(
                     text =dateString,
                     fontFamily = interDisplayFamily,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
-                    color = Text2,
+                    color = MaterialTheme.colors.secondary,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -718,7 +769,7 @@ fun FloatingActionButton(
     ) {
         androidx.compose.material.FloatingActionButton(
             modifier = Modifier
-                .size(84.dp)
+                .size(96.dp)
                 .offset(y = offsetYSecond)
                 .alpha(opacitySecond)
                 .zIndex(opacitySecond)
@@ -803,8 +854,7 @@ fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String)
 }
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun TopSectionHomeScreen(@DrawableRes image:Int
-                         ,navController: NavController,
+fun TopSectionHomeScreen(navController: NavController,
                          isMarkCompletedOpen:MutableState<Boolean>,
                          selectedMarkedItemId: MutableState<String>,
                          isChecked:MutableState<Boolean>,
@@ -855,7 +905,11 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
             modifier = Modifier
                 .offset(y = offsetY)
                 .alpha(opacity),
-            style = MaterialTheme.typography.h1
+            fontFamily = interDisplayFamily,
+            fontWeight = FontWeight.Black,
+            fontSize = 24.sp,
+            color = MaterialTheme.colors.primary,
+
         )
         Box(modifier = Modifier
             .size(48.dp)
@@ -867,16 +921,11 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
                 Vibration(context)
             }
             .clip(shape)
-            .background(color = SmallBox)
+            .background(color = MaterialTheme.colors.primary),
+            contentAlignment = Alignment.Center
 
         ) {
-            Image(
-                painter = painterResource(image),
-                contentDescription = "home_icon",
-                modifier = Modifier
-                    .size(24.dp)
-                    .align(Alignment.Center)
-            )
+           ThemedTopSectionImage()
         }
         if (isMarkCompletedOpen.value){
             MarkCompletedScreen(
@@ -888,6 +937,41 @@ fun TopSectionHomeScreen(@DrawableRes image:Int
             )
         }
     }
+}
+@Composable
+fun ThemedTopSectionImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_home_icon
+    } else {
+        R.drawable.light_home_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+        modifier = Modifier
+            .size(24.dp)
+    )
+
+}
+@Composable
+fun ThemedSquareImage(modifier: Modifier) {
+    val isDarkTheme = isSystemInDarkTheme()
+
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_square
+    } else {
+        R.drawable.light_square
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+        modifier = modifier
+
+    )
+
 }
 fun Vibration(context:Context){
     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator

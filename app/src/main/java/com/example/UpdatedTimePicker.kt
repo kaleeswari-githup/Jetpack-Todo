@@ -8,11 +8,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +55,7 @@ val context = LocalContext.current
             Box(
                 modifier = Modifier
                     .padding(start = 24.dp)
-                    .width(70.dp) // Set a fixed width to match the width of WheelTimePicker
+                    .width(80.dp) // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.time_slide) }
@@ -72,7 +72,8 @@ val context = LocalContext.current
                     text = selectedTimeText,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colors.secondary
                 )
             }
 
@@ -94,12 +95,14 @@ val context = LocalContext.current
                             textStyle = TextStyle(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+
                             ),
+                            textColor = MaterialTheme.colors.secondary ,
                             selectorProperties = WheelPickerDefaults.selectorProperties(
                                 enabled = true,
-                                color = Color.White,
-                                border = BorderStroke(width = 0.dp, color = Color.White)
+                                color = MaterialTheme.colors.primary,
+                                border = BorderStroke(width = 0.dp, color = MaterialTheme.colors.primary)
                             )
 
                         ) { snappedTime ->

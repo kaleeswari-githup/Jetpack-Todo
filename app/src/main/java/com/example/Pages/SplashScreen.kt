@@ -2,8 +2,10 @@ package com.example.Pages
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -16,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.dothings.R
 import com.example.dothings.Screen
-import com.example.ui.theme.SurfaceGray
 import kotlinx.coroutines.delay
 
 @Composable
@@ -30,9 +31,10 @@ fun SplashScreen(navController: NavController){
         // Navigate to the sign-in page using the provided NavController
         navController.navigate(Screen.Main.route)
     }
-    Box(modifier = Modifier.fillMaxSize()
-        .background(color = SurfaceGray)) {
-        Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(color = MaterialTheme.colors.background)) {
+        ThemedGridImage()
         Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center){
             Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
@@ -44,7 +46,21 @@ fun SplashScreen(navController: NavController){
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
         ) {
-            Image(painter = painterResource(id = R.drawable.black_tick_ball), contentDescription = "")
+            ThemedImage()
         }
     }
+}
+@Composable
+fun ThemedGridImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.dark_grid_lines
+    } else {
+        R.drawable.light_grid_lines
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
 }

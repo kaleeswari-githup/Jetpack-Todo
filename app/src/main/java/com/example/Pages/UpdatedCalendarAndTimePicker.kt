@@ -5,13 +5,13 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,20 +19,14 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import com.example.UpdatedCalendar
-import com.example.dothings.R
 import com.example.dothings.interDisplayFamily
-import com.example.ui.theme.Text1
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -142,8 +136,9 @@ fun UpdatedCalendarAndTimePickerScreen(
             usePlatformDefaultWidth = false
         )
     ) {
-        (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
-        Column(modifier = Modifier.fillMaxSize()
+        ThemedBackground()
+        Column(modifier = Modifier
+            .fillMaxSize()
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             verticalArrangement = Arrangement.Center,
@@ -176,8 +171,8 @@ fun UpdatedCalendarAndTimePickerScreen(
             )
             Box(
                 modifier = Modifier
-                    .padding(start = 8.dp,end = 8.dp)
-                    .offset (y = offsetY)
+                    .padding(start = 8.dp, end = 8.dp)
+                    .offset(y = offsetY)
                     .scale(scale),
 
                 contentAlignment = Alignment.Center
@@ -234,7 +229,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         .bounceClick()
                         ,
 
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary),
                    elevation = ButtonDefaults.elevation(0.dp)
 
                 ) {
@@ -244,7 +239,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         fontWeight = FontWeight.Medium,
                         style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                         fontSize = 15.sp,
-                        color = Text1
+                        color = MaterialTheme.colors.secondary
                     )
                 }
                 Spacer(modifier = Modifier.padding(40.dp))
@@ -270,22 +265,17 @@ fun UpdatedCalendarAndTimePickerScreen(
 
                         .bounceClick()
                         ,
-                    colors = ButtonDefaults.buttonColors(backgroundColor =Color.Black),
+                    colors = ButtonDefaults.buttonColors(backgroundColor =MaterialTheme.colors.secondary),
                     elevation = ButtonDefaults.elevation(0.dp)
 
                     ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.tick),
-                        contentDescription = "Save Tick",
-                        modifier = Modifier
-                            .size(16.dp)
-                    )
+                   ThemedTickImage()
                     Text(
                         text = "Done",
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color.White,
+                        color = MaterialTheme.colors.primary,
                         modifier = Modifier.padding(start = 12.dp),
                         style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                     )

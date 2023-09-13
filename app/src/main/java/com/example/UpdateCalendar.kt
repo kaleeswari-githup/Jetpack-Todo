@@ -25,8 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.FABRed
-import com.example.ui.theme.SurfaceGray
-import com.example.ui.theme.Text3
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -58,7 +56,7 @@ fun UpdatedCalendar(
         Column(modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .background(shape = RoundedCornerShape(20.dp), color = Color.White)
+            .background(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colors.primary)
             .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {  }
@@ -88,11 +86,12 @@ fun UpdatedCalendar(
                     Text(
                         text = setDateText,
                         modifier = Modifier
-                            ,
+                        ,
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                        color= MaterialTheme.colors.secondary
                     )
                 }
 
@@ -103,7 +102,7 @@ fun UpdatedCalendar(
                     .padding( bottom = 24.dp,)
                     .height(1.dp)
                     .fillMaxWidth()
-                    .background(color = SurfaceGray)
+                    .background(color = MaterialTheme.colors.background)
             )
             Log.d("SecondInitialtime","$userSelectedtime")
             if (isTimePickervisible){
@@ -148,7 +147,8 @@ fun UpdatedCalendar(
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                        color = MaterialTheme.colors.secondary
                     )
 
                     if ((newUserSelectedtime != null && newUserSelectedtime.isNotEmpty() && isClearTextVisible) || selectedTime.value != null) {
@@ -240,14 +240,18 @@ fun UpdatedShrinkCalendar(
             fontSize = 15.sp,
             style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
             modifier = Modifier
-                .weight(1f)
+                .weight(1f),
+            color = MaterialTheme.colors.secondary
         )
         IconButton(
             onClick = {
                 monthOffset--
             }
         ) {
-            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "Previous Month")
+            Icon(
+                Icons.Filled.KeyboardArrowLeft,
+                contentDescription = "Previous Month",
+               tint = MaterialTheme.colors.secondary)
         }
 
         IconButton(
@@ -255,7 +259,9 @@ fun UpdatedShrinkCalendar(
                 monthOffset++
             }
         ) {
-            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "Next Month")
+            Icon(Icons.Filled.KeyboardArrowRight,
+                contentDescription = "Next Month",
+                tint = MaterialTheme.colors.secondary)
         }
     }
 
@@ -273,7 +279,7 @@ fun UpdatedShrinkCalendar(
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
-                color = Text3,
+                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center,
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                 modifier = Modifier.width(32.dp)
@@ -300,7 +306,7 @@ fun UpdatedShrinkCalendar(
                 val textColor = when {
                     isSelectedDate -> Color.White
                     isCurrentDate -> FABRed
-                    isCurrentMonth -> Color.Black
+                    isCurrentMonth -> MaterialTheme.colors.secondary
                     else -> Color.Transparent
                 }
                 val background = if (isSelectedDate && isCurrentMonth) {
