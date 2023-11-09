@@ -136,8 +136,8 @@ fun MarkCompletedScreen(
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                         val snackbarResult = snackbarHostState.showSnackbar(
-                            message = "Task marked uncompleted",
-                            actionLabel = "Undo",
+                            message = "TASK MARKED UNCOMPLETED",
+                            actionLabel = "UNDO",
                             duration = SnackbarDuration.Short
                         )
                         when (snackbarResult) {
@@ -278,18 +278,14 @@ fun MarkCompletedScreen(
 
                                 }
                                 Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                                    Text(text = "${user?.displayName}",
-                                        fontFamily = interDisplayFamily,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colors.secondary
-                                    )
+                                    ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase())
                                     Spacer(modifier = Modifier.padding(top = 4.dp))
                                     Text(text = "${user?.email}",
                                         fontFamily = interDisplayFamily,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Normal,
-                                        color = MaterialTheme.colors.secondary
+                                        color = MaterialTheme.colors.secondary,
+                                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                                     )
                                 }
                             }
@@ -331,22 +327,13 @@ fun MarkCompletedScreen(
                            ) {
                                val completedTasksCount = completedTasksCountState.value
 
-
-                                   Text(
-                                       text = "Completed ($completedTasksCount)",
-                                       fontFamily = interDisplayFamily,
-                                       fontSize = 15.sp,
-                                       fontWeight = FontWeight.Medium,
-                                       color = MaterialTheme.colors.secondary,
-                                       modifier = Modifier.padding(top = 24.dp)
-                                   )
-
-                                   Spacer(modifier = Modifier.padding(top = 12.dp))
-
-                                   Box(
+                               Spacer(modifier = Modifier.padding(top = 24.dp))
+                               ButtonTextWhiteTheme(text = ("Completed ($completedTasksCount)").uppercase())
+                               Spacer(modifier = Modifier.padding(top = 12.dp))
+                               Box(
                                        modifier = Modifier
                                            .fillMaxWidth()
-                                           .height(204.dp)
+                                           .height(218.dp)
                                            .padding(start = 24.dp, end = 24.dp)
                                            .background(
                                                color = MaterialTheme.colors.background,
@@ -361,9 +348,9 @@ fun MarkCompletedScreen(
                                    }
                                        else {
                                            Text(
-                                               text = "No completed tasks",
+                                               text = ("No completed tasks").uppercase(),
                                                fontFamily = interDisplayFamily,
-                                               fontSize = 15.sp,
+                                               fontSize = 13.sp,
                                                fontWeight = FontWeight.Medium,
                                                color = MaterialTheme.colors.secondary.copy(alpha = 0.50f),
                                              //  modifier = Modifier.padding(top = 24.dp)
@@ -411,7 +398,7 @@ fun MarkCompletedScreen(
                                 if (isChecked.value) {
                                     coroutineScope.launch(Dispatchers.IO) {
                                         val mMediaPlayer =
-                                            MediaPlayer.create(context, R.raw.notification_stone)
+                                            MediaPlayer.create(context, R.raw.toggle_button)
                                         mMediaPlayer.start()
                                         delay(mMediaPlayer.duration.toLong())
                                         mMediaPlayer.release()
@@ -429,13 +416,9 @@ fun MarkCompletedScreen(
                                 Box() {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ThemedSoundIcon()
-                                        Text(text = "Sound",
-                                            fontFamily = interDisplayFamily,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colors.secondary,
-                                            modifier = Modifier.padding(start = 8.dp)
-                                        )
+                                        Spacer(modifier = Modifier.padding(start = 8.dp))
+                                        ButtonTextWhiteTheme(text = ("Sound").uppercase())
+
                                     }
 
                                 }
@@ -449,7 +432,7 @@ fun MarkCompletedScreen(
                                                     saveIsChecked(isChecked.value)
                                                     if(isChecked.value){
                                                         coroutineScope.launch(Dispatchers.IO) {
-                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.notification_stone)
+                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_button)
                                                             mMediaPlayer.start()
                                                             delay(mMediaPlayer.duration.toLong())
                                                             mMediaPlayer.release()
@@ -543,14 +526,8 @@ fun MarkCompletedScreen(
                               Box() {
                                   Row(verticalAlignment = Alignment.CenterVertically) {
                                       ThemedLogoutIcon()
-                                      Text(text = "Log Out",
-                                          fontFamily = interDisplayFamily,
-                                          fontSize = 15.sp,
-                                          fontWeight = FontWeight.Medium,
-                                          color = MaterialTheme.colors.secondary,
-                                          modifier = Modifier.padding(start = 8.dp)
-                                      )
-
+                                      Spacer(modifier = Modifier.padding(start = 8.dp))
+                                      ButtonTextWhiteTheme(text = ("Log Out").uppercase())
                                   }
 
                               }
@@ -671,12 +648,21 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
             val dateStringFromDatabase = cardData.date
-            val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+            val formattedDate = if (!dateStringFromDatabase.isNullOrEmpty()) {
                 val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
+                val currentYear = LocalDate.now().year
+
+                val desiredDateFormat = if (originalDate.year == currentYear) {
+                    DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)
+                } else {
+                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                }
+
                 originalDate.format(desiredDateFormat)
             } else {
                 ""
             }
+
             MarkCompletedCircleDesign(
                 id = cardData.id,
                 message = cardData.message!!,
@@ -714,7 +700,7 @@ fun MarkCompletedCircleDesign(
 
     Box(
         modifier = modifier
-            .size(172.dp)
+            .size(184.dp)
             .bounceClick()
             .background(color = MaterialTheme.colors.primary, shape = CircleShape)
             .clip(CircleShape)
@@ -753,9 +739,10 @@ fun MarkCompletedCircleDesign(
                 textAlign = TextAlign.Center,
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 color = MaterialTheme.colors.secondary,
-                modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+                modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp),
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
             )
             Text(
 
@@ -763,8 +750,10 @@ fun MarkCompletedCircleDesign(
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
+                textAlign = TextAlign.Center,
                 color = MaterialTheme.colors.secondary,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp),
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
             )
         }
         if (selectedMarkedItemId.value == id){

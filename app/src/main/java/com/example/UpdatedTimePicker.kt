@@ -58,7 +58,7 @@ val context = LocalContext.current
                     .width(80.dp) // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
-                val mediaPlayer = remember { MediaPlayer.create(context, R.raw.time_slide) }
+                val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_time) }
                 val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase().orEmpty()
               if (isChecked.value){
                   LaunchedEffect(selectedTimeText) {
@@ -66,27 +66,21 @@ val context = LocalContext.current
                       // Delay to play the sound effect, adjust the delay as needed
                       delay(mediaPlayer.duration.toLong())
                       mediaPlayer.pause()
+
                   }
+              }else{
+                  Vibration(context = context)
               }
                 Text(
                     text = selectedTimeText,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colors.secondary
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colors.secondary,
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
                 )
             }
-
-           /* Box(
-                modifier = Modifier
-                   // .wrapContentSize()
-                  //  .align(Alignment.CenterVertically)
-            ) {*/
-                val context = LocalContext.current
-
-
-              //  val parsedTime = parseTime(initialTime)
-               // Log.d("userTime","$parsedTime")
+            val context = LocalContext.current
                         WheelTimePicker(
                             startTime = initialTime!! ,
                             timeFormat = TimeFormat.AM_PM,
@@ -94,8 +88,9 @@ val context = LocalContext.current
                             rowCount = 5,
                             textStyle = TextStyle(
                                 fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
+                                letterSpacing = 1.sp
 
                             ),
                             textColor = MaterialTheme.colors.secondary ,
@@ -114,7 +109,7 @@ val context = LocalContext.current
                   //  }
 
             Text(
-                text = "Clear",
+                text = "CLEAR",
                 modifier = Modifier
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
@@ -127,7 +122,8 @@ val context = LocalContext.current
                 color = FABRed,
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
             )
                 }
 

@@ -2,6 +2,7 @@ package com.example
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.os.Handler
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
@@ -28,6 +29,7 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.unit.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
@@ -43,6 +45,11 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.sql.Time
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 
 object CounterWidget: GlanceAppWidget() {
@@ -56,33 +63,53 @@ object CounterWidget: GlanceAppWidget() {
 
     // Initialize the data with default values or null
     var messageText by mutableStateOf<String?>(null)
-    var dateText  = mutableStateOf<String>("")
-    var timeText = mutableStateOf<String>("")
+    var dateText  = mutableStateOf<Date?>(null)
+    var timeText = mutableStateOf<Date?>(null)
     var idText by mutableStateOf<String?>(null)
-
+   
     // Function to fetch data from Firebase
     private fun fetchDataFromFirebase() {
         databaseRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                for (childSnapshot in dataSnapshot.children) {
-                    val data = childSnapshot.getValue(DataClass::class.java)
-                    data?.let {
-                        // Assuming you want the first item's message and date
-                        messageText = it.message
-                        dateText.value = it.date!!
-                        timeText.value = it.time!!
-                        idText = it.id
+                // Get the first item in the database
+                val currentDateTime = Calendar.getInstance()
+                var nearestDateTimeDifference = Long.MAX_VALUE
+                var nearestItem: DataSnapshot? = null
 
-                        // You can also update other Composables here
+                // Loop through the database items to find the one with the nearest date and time
+                for (itemSnapshot in dataSnapshot.children) {
+                    val item = itemSnapshot.getValue(DataClass::class.java)
+                    val itemDate = item?.date // Replace 'date' with your actual date field
+                    val itemTime = item?.time // Replace 'time' with your actual time field
+
+                    if (itemDate != null && itemTime != null) {
+                        val itemDateTime = Calendar.getInstance()
+                        itemDateTime.time = SimpleDateFormat("MM/dd/yyyy hh:mm a").parse("$itemDate $itemTime")
+
+                        val dateTimeDifference = Math.abs(itemDateTime.timeInMillis - currentDateTime.timeInMillis)
+                        if (dateTimeDifference < nearestDateTimeDifference) {
+                            nearestDateTimeDifference = dateTimeDifference
+                            nearestItem = itemSnapshot
+                        }
                     }
+                }
+
+                // Check if we found a nearest item
+                if (nearestItem != null) {
+                    // Update the widget with the nearest item's data
+                    messageText = nearestItem.getValue(DataClass::class.java)?.message
+                    val nearestItemDate = SimpleDateFormat("MM/dd/yyyy").parse(nearestItem.getValue(DataClass::class.java)?.date)
+                    dateText.value = nearestItemDate
+                    val nearestItemTime = SimpleDateFormat("hh:mm a").parse(nearestItem.getValue(DataClass::class.java)?.time)
+                    timeText.value = nearestItemTime
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 // Handle database error
-                Log.e("FirebaseError", "Database operation cancelled: $error")
             }
         })
+
     }
 
     init {
@@ -114,19 +141,31 @@ val isOpen = remember{
                 text =  messageText ?: "",
                 style = TextStyle(
                     fontWeight = FontWeight.Medium,
-                    color = ColorProvider(Text1,Text2),
+                    color = ColorProvider(day = Color.Black, night = Color.White),
                     fontSize = 14.sp,
                 ),
             )
-            Text(
-                text =  dateText.value ?: "",
-                modifier = GlanceModifier.padding(top = 8.dp),
-                style = TextStyle(
-                    fontWeight = FontWeight.Medium,
-                    color = ColorProvider(Text2, Text1),
-                    fontSize = 11.sp
+            Row() {
+                Text(
+                    text = dateText.value?.let { SimpleDateFormat("EEE, d MMM ,", Locale.getDefault()).format(it) } ?: "",
+                    modifier = GlanceModifier.padding(top = 8.dp),
+                    style = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = ColorProvider(day = Color.Black, night = Color.White),
+                        fontSize = 11.sp
+                    )
                 )
-            )
+                Text(
+                    text =  timeText.value?.let { SimpleDateFormat("hh:mm a", Locale.getDefault()).format(it) } ?: "",
+                    modifier = GlanceModifier.padding(top = 8.dp),
+                    style = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        color = ColorProvider(day = Color.Black, night = Color.White),
+                        fontSize = 11.sp
+                    )
+                )
+            }
+
 
 
 

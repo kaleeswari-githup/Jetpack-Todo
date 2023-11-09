@@ -51,7 +51,7 @@ fun SetupNavGraph(navController: NavHostController){
                 ),
 
                 )
-            val opacitySecond by animateFloatAsState(
+            val scale by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
                 animationSpec = keyframes {
                     durationMillis = 500
@@ -61,7 +61,7 @@ fun SetupNavGraph(navController: NavHostController){
             )
 
 
-            HomeScreen( navController,opacitySecond,offsetY)
+            HomeScreen( navController,scale,offsetY)
         }
        /* composable(route = Screen.AddNewTask.route ){
 

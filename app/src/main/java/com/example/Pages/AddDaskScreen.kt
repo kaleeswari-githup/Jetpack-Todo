@@ -241,7 +241,7 @@ fun AddDaskCircleDesign(
             modifier = Modifier
 
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 38.dp)
+                .padding(start = 24.dp, end = 24.dp, top = 54.dp)
                 .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
@@ -258,14 +258,15 @@ fun AddDaskCircleDesign(
             contentAlignment = Alignment.Center
         ) {
             Column(modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center) {
+                ) {
                 TextField(
                     value = task.value,
                     onValueChange = onTaskChange ,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 32.dp, end = 32.dp, top = 60.dp)
+                        .padding(start = 32.dp, end = 32.dp)
                         .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) {
@@ -273,6 +274,7 @@ fun AddDaskCircleDesign(
                                 softwareKeyboardController?.show()
                             }
                         },
+
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
                         onDone ={
@@ -293,7 +295,8 @@ fun AddDaskCircleDesign(
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
                             color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
-                            fontFamily = interDisplayFamily
+                            fontFamily = interDisplayFamily,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
                     },
 
@@ -302,16 +305,19 @@ fun AddDaskCircleDesign(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = interDisplayFamily,
-                        color = MaterialTheme.colors.secondary
+                        color = MaterialTheme.colors.secondary,
+                        letterSpacing = 1.sp
+
                     ),
-                    maxLines = 2
+                    maxLines = 2,
+
                 )
 
                 TextStyle(text = "${task.value.length} / 32")
                 Box(
                     modifier = Modifier
                         .wrapContentSize(Alignment.Center)
-                        .padding(top = 48.dp)
+                        .padding(top = 20.dp)
                         .bounceClick()
                         //.background(color = SmallBox, shape = CircleShape)
                         .clickable(indication = null,
@@ -319,7 +325,7 @@ fun AddDaskCircleDesign(
                             isPickerOpen.value = true
                         }
                         .border(
-                            width = 0.8.dp,
+                            width = 0.4.dp,
                             color = MaterialTheme.colors.secondary, // Change to your desired border color
                             shape = CircleShape
                         )
@@ -330,8 +336,8 @@ fun AddDaskCircleDesign(
                 ) {
                     if (selectedDate.value == null && selectedTime.value == null){
                        ThemedCalendarImage()
-                    }else if(selectedDate != null && selectedTime == null) {
-                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+                    }else if(selectedDate.value != null && selectedTime.value == null) {
+                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -341,16 +347,16 @@ fun AddDaskCircleDesign(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                         }
                     }else{
-                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
                         val dateString:String = formattedDate
                         val timeFormat = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
                         val timeString:String = timeFormat
-                        Log.d("Time string","$timeString")
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                           ThemedCalendarImage()
@@ -359,14 +365,17 @@ fun AddDaskCircleDesign(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                             Text(
-                                text = timeString,
+                                text = ", $timeString",
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary)
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp))
+
                         }
                     }
                     if (isPickerOpen.value) {
@@ -484,13 +493,7 @@ fun TwoButtons(
                 ,
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Cancel",
-                fontFamily = interDisplayFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-                color = MaterialTheme.colors.secondary
-            )
+            ButtonTextWhiteTheme(text = "CANCEL")
         }
 
         Spacer(modifier = Modifier.padding(40.dp))
@@ -510,15 +513,9 @@ fun TwoButtons(
 
         ) {
             ThemedTickImage()
-            Text(
-                text = "Save",
-                fontFamily = interDisplayFamily,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                color = MaterialTheme.colors.primary,
-                modifier = Modifier.padding(start = 12.dp)
-            )
+            Spacer(modifier = Modifier.padding(start = 8.dp))
+            ButtonTextDarkTheme(text = "SAVE")
+
             }
 
         }

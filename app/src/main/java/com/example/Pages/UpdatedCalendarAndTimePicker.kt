@@ -107,7 +107,6 @@ fun UpdatedCalendarAndTimePickerScreen(
             databaseRef.child(id).updateChildren(updatedData)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
                         onDismiss.invoke()
                     } else {
                         Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
@@ -233,14 +232,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                    elevation = ButtonDefaults.elevation(0.dp)
 
                 ) {
-                    Text(
-                        text = "Cancel",
-                        fontFamily = interDisplayFamily,
-                        fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colors.secondary
-                    )
+                    ButtonTextWhiteTheme(text = "CANCEL")
                 }
                 Spacer(modifier = Modifier.padding(40.dp))
                 Button(
@@ -270,15 +262,9 @@ fun UpdatedCalendarAndTimePickerScreen(
 
                     ) {
                    ThemedTickImage()
-                    Text(
-                        text = "Done",
-                        fontFamily = interDisplayFamily,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colors.primary,
-                        modifier = Modifier.padding(start = 12.dp),
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                    )
+                    Spacer(modifier = Modifier.padding(start = 8.dp))
+                    ButtonTextDarkTheme(text = "DONE")
+                    
                 }
             }
 

@@ -3,6 +3,7 @@
 
     <style name="Theme.DoThings" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/SurfaceGray</item>
+        <item name="android:windowIsTranslucent">true</item>
 
         <item name="android:windowLightStatusBar" tools:ignore="NewApi">true</item>
         <item name = "android:navigationBarColor" tools:ignore = "NewApi">@color/SurfaceGray</item>

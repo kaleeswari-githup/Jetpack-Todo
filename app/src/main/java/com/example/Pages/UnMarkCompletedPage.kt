@@ -235,7 +235,7 @@ fun UnMarkCompletedCircleDesign(
         completedTasksRef.child(id).updateChildren(updatedData)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
+                    //Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
 
                 } else {
                     Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
@@ -321,7 +321,7 @@ fun UnMarkCompletedCircleDesign(
                             .padding(horizontal = 70.dp),
                         fontWeight = FontWeight.Medium,
                         fontSize = 24.sp,
-                        color = MaterialTheme.colors.secondary.copy(alpha = 0.5f)
+                        color = MaterialTheme.colors.secondary.copy(alpha = -1f)
                     )
                 },
 
@@ -331,7 +331,8 @@ fun UnMarkCompletedCircleDesign(
                     fontWeight = FontWeight.Medium,
                     fontFamily = interDisplayFamily,
                     color = MaterialTheme.colors.secondary,
-                    textDecoration = TextDecoration.LineThrough
+                    textDecoration = TextDecoration.LineThrough,
+                  //  letterSpacing = -1.sp
                 ),
 
                 )
@@ -371,7 +372,8 @@ fun UnMarkCompletedCircleDesign(
                             fontFamily = interDisplayFamily,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colors.secondary
+                            color = MaterialTheme.colors.secondary,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = -0.sp)
                         )
                     }
                 }else{
@@ -387,16 +389,18 @@ fun UnMarkCompletedCircleDesign(
                         Text(
                             text = dateString,
                             fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color =  MaterialTheme.colors.secondary
+                            color =  MaterialTheme.colors.secondary,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
                         Text(
                             text = timeString,
                             fontFamily = interDisplayFamily,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color =  MaterialTheme.colors.secondary
+                            color =  MaterialTheme.colors.secondary,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
                     }
                 }
@@ -487,16 +491,14 @@ fun UnMarkCompletedButtons(id: String,
 
     )
     Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(start = 42.dp, end = 42.dp)
+        .wrapContentWidth()
         .height(48.dp)
         .offset(y = offsetY)
         .alpha(opacity)
         .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
-        contentAlignment = Alignment.Center
     ) {
         Row(modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             .padding(start = 24.dp, end = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
@@ -509,24 +511,28 @@ fun UnMarkCompletedButtons(id: String,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ThemedTrashImage()
-                Interfont(text = "Delete")
+                ButtonTextWhiteTheme(text = "DELETE")
             }
             Box(
                 modifier = Modifier
+                    .padding(start = 12.dp)
                     .width(1.dp)
+
                     .fillMaxHeight()
                     .background(color = MaterialTheme.colors.background)
 
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
-                , modifier = Modifier.clickable(indication = null,
+                , modifier = Modifier
+                    .padding(start = 12.dp)
+                    .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
                     onUnMarkCompletedClick(id)
                     onDismiss.invoke()
                 },
                 verticalAlignment = Alignment.CenterVertically) {
                 ThemedSquareImage(modifier = Modifier)
-                Interfont(text = "Mark uncompleted")
+                ButtonTextWhiteTheme(text = "MARK UNCOMPLETED")
             }
         }
 

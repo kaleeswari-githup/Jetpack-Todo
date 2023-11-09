@@ -2,9 +2,12 @@ package com.example.Pages
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -58,22 +61,10 @@ import java.util.*
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun UpdateTaskScreen(
-    selectedDate: MutableState<String>,
-    selectedTime:MutableState<String>,
-    textValue:String,
-    id:String,
-    openKeyboard: Boolean,
-    onDismiss : () -> Unit,
-    onMarkCompletedClick: (String) -> Unit,
-    onDeleteClick: (String) -> Unit,
-    isPickerOpen:MutableState<Boolean>,
-    isAddDaskOpen:MutableState<Boolean>,
-    index:Int,
-    isChecked: MutableState<Boolean>,
-    isUpdatePickerOpen:MutableState<Boolean>
+    params: UpdateTaskScreenParams
 ) {
     var task = rememberSaveable {
-        mutableStateOf(textValue)
+        mutableStateOf(params.textValue)
     }
 
     val maxValue = 32
@@ -112,22 +103,22 @@ fun UpdateTaskScreen(
             null
         }
         val updatedData = HashMap<String, Any>()
-        updatedData["id"] = id
+        updatedData["id"] = params.id
         updatedData["message"] = task.value ?: ""
         updatedData["time"] = formattedTime?.format(timeFormat) ?: ""
         updatedData["date"] = formattedDate
         updatedData["notificationTime"] = notificationTime ?: 0L
-        databaseRef.child(id).updateChildren(updatedData)
-        onDismiss.invoke()
+        databaseRef.child(params.id).updateChildren(updatedData)
+        params.onDismiss.invoke()
     }
 
 
     val onBackPressed: () -> Unit = {
-        onDoneClick(selectedDate.value,selectedTime.value)
+        onDoneClick(params.selectedDate.value,params.selectedTime.value)
     }
 
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isUpdatePickerOpen.value -> 25.dp
+        params.isUpdatePickerOpen.value -> 25.dp
         else -> 0.dp
     })
 
@@ -143,7 +134,7 @@ fun UpdateTaskScreen(
         .blur(radius = blurEffectBackground)
         .fillMaxSize()
         .clickable(indication = null,
-            interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
+            interactionSource = remember { MutableInteractionSource() }) { params.onDismiss.invoke() }
     ) {
         ThemedBackground()
        // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
@@ -152,20 +143,20 @@ fun UpdateTaskScreen(
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 UpdateCircleDesign(
-                    initialSelectedate = selectedDate ,
-                    initialSelectedtime = selectedTime  ,
+                    initialSelectedate = params.selectedDate ,
+                    initialSelectedtime = params.selectedTime  ,
                     message = task,
                     onTaskChange = { newTask ->
                         if (newTask.length <= maxValue){
                             task.value = newTask
                         }
                     },
-                    id = id,
-                    openKeyboard = openKeyboard,
-                    isUpdatePickerOpen = isUpdatePickerOpen,
-                    isAddDaskOpen = isAddDaskOpen,
-                    index = index,
-                    isChecked = isChecked,
+                    id = params.id,
+                    openKeyboard = params.openKeyboard,
+                    isUpdatePickerOpen = params.isUpdatePickerOpen,
+                    isAddDaskOpen = params.isAddDaskOpen,
+                    index = params.index,
+                    isChecked = params.isChecked,
 
                     )
 
@@ -173,12 +164,12 @@ fun UpdateTaskScreen(
                     modifier = Modifier
                         .padding(bottom = 40.dp)
                 ) {
-                    UpdatedButtons( id = id,onDismiss, onMarkCompletedClick = onMarkCompletedClick,onDeleteClick)
+                    UpdatedButtons( id = params.id,params.onDismiss, onMarkCompletedClick = params.onMarkCompletedClick,params.onDeleteClick)
                 }
             }
         }
         CrossFloatingActionButton(onClick = {
-            onDoneClick.invoke(selectedDate.value,selectedTime.value)
+            onDoneClick.invoke(params.selectedDate.value,params.selectedTime.value)
         })
     }
 }
@@ -220,7 +211,7 @@ fun UpdateCircleDesign(
         databaseRef.child(id).updateChildren(updatedData)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
+                   // Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
 
                 } else {
                     Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
@@ -250,8 +241,8 @@ fun UpdateCircleDesign(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 38.dp)
-                .size(377.dp)
+                .padding(start = 24.dp, end = 24.dp, top = 54.dp)
+                .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
                 // .alpha(opacity)
@@ -272,6 +263,7 @@ fun UpdateCircleDesign(
                     onValueChange = onTaskChange ,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .wrapContentHeight()
                         .padding(start = 32.dp, end = 32.dp)
                         .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
@@ -300,10 +292,14 @@ fun UpdateCircleDesign(
                         Text(text = "Task name",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 70.dp),
+                               // .padding(horizontal = 70.dp)
+                                    ,
+                            textAlign = TextAlign.Center,
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
-                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f)
+                            fontFamily = interDisplayFamily,
+                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
                     },
 
@@ -313,7 +309,7 @@ fun UpdateCircleDesign(
                         fontWeight = FontWeight.Medium,
                         fontFamily = interDisplayFamily,
                         color = MaterialTheme.colors.secondary,
-                        letterSpacing = 0.sp
+                        letterSpacing = -1.sp
                     ),
 
                     )
@@ -326,8 +322,8 @@ fun UpdateCircleDesign(
                         .wrapContentSize(Alignment.Center)
                         .padding(
                             top = 20.dp,
-                            start = 48.dp,
-                            end = 48.dp
+                            start = 32.dp,
+                            end = 32.dp
                         )
                         .bounceClick()
                         //   .background(color = SmallBox, shape = CircleShape)
@@ -338,7 +334,7 @@ fun UpdateCircleDesign(
                         }
 
                         .border(
-                            width = 0.8.dp,
+                            width = 0.4.dp,
                             color = MaterialTheme.colors.secondary, // Change to your desired border color
                             shape = CircleShape
                         )
@@ -361,7 +357,8 @@ fun UpdateCircleDesign(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                         }
                     }else{
@@ -383,7 +380,7 @@ fun UpdateCircleDesign(
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                             Text(
-                                text = timeString,
+                                text = ", $timeString",
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
@@ -485,8 +482,7 @@ fun UpdatedButtons(id: String,
 
     )
     Box(modifier = Modifier
-        .fillMaxWidth()
-        .padding(start = 42.dp, end = 42.dp)
+        .wrapContentWidth()
         .height(48.dp)
         .offset(y = offsetY)
         .alpha(opacity)
@@ -495,7 +491,7 @@ fun UpdatedButtons(id: String,
 contentAlignment = Alignment.Center
     ) {
         Row(modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             .padding(start = 24.dp, end = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween) {
@@ -508,17 +504,20 @@ contentAlignment = Alignment.Center
                 verticalAlignment = Alignment.CenterVertically
             ) {
                ThemedTrashImage()
-               Interfont(text = "Delete")
+               ButtonTextWhiteTheme(text = "DELETE")
             }
             Box(
                 modifier = Modifier
+                    .padding(start = 12.dp)
                     .width(1.dp)
                     .fillMaxHeight()
                     .background(color = MaterialTheme.colors.background)
 
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
-            , modifier = Modifier.clickable(indication = null,
+            , modifier = Modifier
+                    .padding(12.dp)
+                .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
                     coroutineScope.launch {
                         onMarkCompletedClick(id)
@@ -527,12 +526,40 @@ contentAlignment = Alignment.Center
             },
             verticalAlignment = Alignment.CenterVertically) {
                 ThemedSquareImage(modifier = Modifier)
-                Interfont(text = "Mark completed")
+                ButtonTextWhiteTheme(text = "MARK COMPLETED")
             }
         }
 
     }
 }
+data class UpdateTaskScreenParams(
+    val selectedDate: MutableState<String>,
+    val selectedTime: MutableState<String>,
+    val textValue: String,
+    val id: String,
+    val openKeyboard: Boolean,
+    val onDismiss: () -> Unit,
+    val onMarkCompletedClick: (String) -> Unit,
+    val onDeleteClick: (String) -> Unit,
+    val isPickerOpen: MutableState<Boolean>,
+    val isAddDaskOpen: MutableState<Boolean>,
+    val index: Int,
+    val isChecked: MutableState<Boolean>,
+    val isUpdatePickerOpen: MutableState<Boolean>
+)
+/*class NotificationActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Extract the data from the intent
+        val taskId = intent.getStringExtra("taskId")
+
+        setContent {
+            // Display the UpdateTaskScreen Composable
+            UpdateTaskScreenContent(taskId)
+        }
+    }
+}*/
 @Composable
 fun ThemedTrashImage() {
     val isDarkTheme = isSystemInDarkTheme()
@@ -548,14 +575,25 @@ fun ThemedTrashImage() {
     )
 }
 @Composable
-fun Interfont(text:String){
+fun ButtonTextWhiteTheme(text:String){
     Text(
         text = text,
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 15.sp,
+        fontSize = 14.sp,
         color = MaterialTheme.colors.secondary,
-        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
+    )
+}
+@Composable
+fun ButtonTextDarkTheme(text:String){
+    Text(
+        text = text,
+        fontFamily = interDisplayFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        color = MaterialTheme.colors.primary,
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
     )
 }
 

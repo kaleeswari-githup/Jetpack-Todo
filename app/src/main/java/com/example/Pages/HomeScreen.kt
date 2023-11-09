@@ -5,7 +5,9 @@ package com.example.Pages
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.os.Build
@@ -105,8 +107,8 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
             if (data != null) {
                 databaseRef.child(clickedTaskId).removeValue()
                 val snackbarResult = snackbarHostState.showSnackbar(
-                    message = "Task deleted",
-                    actionLabel = "Undo",
+                    message = "TASK DELETED",
+                    actionLabel = "UNDO",
                     duration = SnackbarDuration.Short
                 )
                 when (snackbarResult) {
@@ -141,8 +143,8 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
-                                message = "Task Completed",
-                                actionLabel = "Undo",
+                                message = "TASK COMPLETED",
+                                actionLabel = "UNDO",
                                 duration = SnackbarDuration.Short
                             )
                             when (result) {
@@ -356,29 +358,22 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start= 24.dp,end = 24.dp)
         ) {
-            Text(
-                text = snackbarData.message,
-                color = MaterialTheme.colors.secondary,
-                fontFamily = interDisplayFamily,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
-            )
-
+            ButtonTextWhiteTheme(text = snackbarData.message)
             Spacer(Modifier.weight(1f))
-
             snackbarData.actionLabel?.let { actionLabel ->
                 TextButton(onClick = { snackbarData.performAction() }) {
                     Text(text = actionLabel,
                         color = FABRed,
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
                         fontWeight = FontWeight.Medium)
                 }
             }
         }
     }
 }
+@OptIn(ExperimentalFoundationApi::class)
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -576,7 +571,18 @@ fun RoundedCircleCardDesign(
             repeatMode = RepeatMode.Reverse
         )
     )
+    val dialogIntent = Intent(mContext, MainActivity::class.java).apply {
+        action = "OPEN_UPDATE_TASK_DIALOG"
+        putExtra("taskId", id) // You can pass any necessary data
+    }
 
+// Create a PendingIntent for the intent
+    val pendingIntent = PendingIntent.getActivity(
+        mContext,
+        0,
+        dialogIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
     val dy by infiniteTransition.animateFloat(
         initialValue = if (animateY) -0.4f else 0f,
         targetValue = if (animateY) 0.5f else 0f,
@@ -591,7 +597,7 @@ fun RoundedCircleCardDesign(
 
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
     val dateString = if (date.isNotEmpty()) {
-        val parsedDate = LocalDate.parse(date, formatter)
+        val parsedDate = LocalDate.parse(date,formatter)
         if (time.isNotEmpty()){
             "${formatDate(parsedDate)}, $time"
         }else{
@@ -603,7 +609,7 @@ fun RoundedCircleCardDesign(
     }
     Box(
             modifier = Modifier
-                .size(172.dp)
+                .size(184.dp)
                 .offset(y = offset)
                 .alpha(scale)
                 .aspectRatio(1f)
@@ -625,12 +631,13 @@ fun RoundedCircleCardDesign(
             ) {
                 ThemedSquareImage(
                     modifier = Modifier
-                    .padding(top = 32.dp)
+                        .padding(top = 32.dp)
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             if (isChecked.value) {
                                 coroutineScope.launch(Dispatchers.IO) {
-                                    val mMediaPlayer = MediaPlayer.create(mContext, R.raw.tick)
+                                    val mMediaPlayer =
+                                        MediaPlayer.create(mContext, R.raw.tab_button)
                                     mMediaPlayer.start()
                                     delay(mMediaPlayer.duration.toLong())
                                     mMediaPlayer.release()
@@ -640,30 +647,29 @@ fun RoundedCircleCardDesign(
                             onMarkCompletedClick(id)
                         })
                 Text(
-                    text = "$message",
+                    text = ("$message"),
                     textAlign = TextAlign.Center,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     color = MaterialTheme.colors.secondary,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+
                 )
                 Text(
                     text =dateString,
                     fontFamily = interDisplayFamily,
+                    textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
                     color = MaterialTheme.colors.secondary,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp)
                 )
             }
             if(selectedItemId.value == id){
-                val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                val currentDate = LocalDate.now()
-
-                UpdateTaskScreen(
+                val updateTaskParams = UpdateTaskScreenParams(
                     selectedDate = mutableStateOf( date) ,
                     selectedTime = mutableStateOf(time) ,
                     textValue = message,
@@ -678,6 +684,7 @@ fun RoundedCircleCardDesign(
                     isChecked = isChecked,
                     isUpdatePickerOpen
                 )
+                UpdateTaskScreen(updateTaskParams)
             }
 
     }
@@ -901,14 +908,14 @@ fun TopSectionHomeScreen(navController: NavController,
     ) {
         val shape = RoundedCornerShape(16.dp)
         Text(
-            text = "Do Things",
+            text = "DOTHING",
             modifier = Modifier
                 .offset(y = offsetY)
                 .alpha(opacity),
             fontFamily = interDisplayFamily,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.W100,
             fontSize = 24.sp,
-            color = MaterialTheme.colors.primary,
+            color = MaterialTheme.colors.secondary,
 
         )
         Box(modifier = Modifier
@@ -925,7 +932,20 @@ fun TopSectionHomeScreen(navController: NavController,
             contentAlignment = Alignment.Center
 
         ) {
-           ThemedTopSectionImage()
+           Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+               Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                   Box(modifier = Modifier.size(4.dp)
+                       .background(shape = CircleShape,color = FABRed))
+                   Box(modifier = Modifier.size(4.dp)
+                       .background(color = MaterialTheme.colors.background,shape = CircleShape))
+               }
+               Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                   Box(modifier = Modifier.size(4.dp)
+                       .background(shape = CircleShape,color = MaterialTheme.colors.background))
+                   Box(modifier = Modifier.size(4.dp)
+                       .background(color = MaterialTheme.colors.background,shape= CircleShape))
+               }
+           }
         }
         if (isMarkCompletedOpen.value){
             MarkCompletedScreen(
@@ -938,23 +958,7 @@ fun TopSectionHomeScreen(navController: NavController,
         }
     }
 }
-@Composable
-fun ThemedTopSectionImage() {
-    val isDarkTheme = isSystemInDarkTheme()
-    val imageRes = if (isDarkTheme) {
-        R.drawable.dark_home_icon
-    } else {
-        R.drawable.light_home_icon
-    }
 
-    Image(
-        painter = painterResource(id = imageRes),
-        contentDescription = null,
-        modifier = Modifier
-            .size(24.dp)
-    )
-
-}
 @Composable
 fun ThemedSquareImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()

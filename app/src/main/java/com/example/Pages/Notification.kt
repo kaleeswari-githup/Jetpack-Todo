@@ -25,12 +25,12 @@ class NotificationWorker(
     override suspend fun doWork(): Result {
         val id = System.currentTimeMillis().toString() + (0..1000).random()
         val email = FirebaseAuth.getInstance().currentUser?.email
-        val titleExtra = "titleExtra"
         val messageExtra = "messageExtra"
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
 
         val mainIntent = Intent(context, MainActivity::class.java)
+
         val pendingMainIntent = PendingIntent.getActivity(
             context,
             0,
@@ -68,7 +68,7 @@ class NotificationWorker(
         }
 
         val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.cancel(notificationID)
+        notificationManager.cancel(notificationID.hashCode())
         notificationManager.notify(id.hashCode(), notificationBuilder.build())
 
         return Result.success()

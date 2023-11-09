@@ -21,8 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.Pages.ButtonTextWhiteTheme
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.FABRed
 import java.time.LocalDate
@@ -57,9 +59,14 @@ fun UpdatedCalendar(
             .fillMaxWidth()
             .wrapContentHeight()
             .background(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colors.primary)
-            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
             .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) {  }
+                interactionSource = remember { MutableInteractionSource() }) { }
         ) {
             // Month navigation buttons
           //  UpdatedShrinkCalendar(startDate = startDate, selectedDate = selectedDate)
@@ -70,36 +77,27 @@ fun UpdatedCalendar(
                     isDatePickervisible = false
                     ""
                 } else {
-                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM")).toString()
+                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM")).toString().toUpperCase()
                 }
                 Row(modifier = Modifier
 
                     .fillMaxWidth()
-                    .clickable (indication = null,
-                        interactionSource = remember { MutableInteractionSource() }){
+                    .clickable(indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) {
                         isDatePickervisible = true
                         isTimePickervisible = false
                     }
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp,bottom = 24.dp)
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)
                     ,
                     ) {
-                    Text(
-                        text = setDateText,
-                        modifier = Modifier
-                        ,
-                        fontFamily = interDisplayFamily,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                        color= MaterialTheme.colors.secondary
-                    )
+                    ButtonTextWhiteTheme(text = setDateText)
                 }
 
             }
 
             Box(
                 modifier = Modifier
-                    .padding( bottom = 24.dp,)
+                    .padding(bottom = 24.dp,)
                     .height(1.dp)
                     .fillMaxWidth()
                     .background(color = MaterialTheme.colors.background)
@@ -131,14 +129,16 @@ fun UpdatedCalendar(
                 } else if (!isTimePickervisible && isDatePickervisible && selectedTime.value != null) {
                     parseTime(userSelectedtime)?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase()
                 } else {
-                    "Set time"
+                    "SET TIME"
                 }
                 Log.d("selectedtime.value","$selectedTime.value")
                 Row(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp)
                     .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) { isTimePickervisible = true },
+                        interactionSource = remember { MutableInteractionSource() }) {
+                        isTimePickervisible = true
+                    },
                     horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         text = setTimeText!!,
@@ -147,13 +147,13 @@ fun UpdatedCalendar(
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing =1.sp),
                         color = MaterialTheme.colors.secondary
                     )
 
                     if ((newUserSelectedtime != null && newUserSelectedtime.isNotEmpty() && isClearTextVisible) || selectedTime.value != null) {
                         Text(
-                            text = "Clear",
+                            text = "CLEAR",
                             modifier = Modifier
                                 .clickable(indication = null,
                                     interactionSource = remember { MutableInteractionSource() }) {
@@ -165,7 +165,7 @@ fun UpdatedCalendar(
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 12.sp,
-                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
                         )
                     }
                 }
@@ -234,11 +234,11 @@ fun UpdatedShrinkCalendar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+            text = (currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))).uppercase(),
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+            fontSize = 14.sp,
+            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
             modifier = Modifier
                 .weight(1f),
             color = MaterialTheme.colors.secondary
@@ -272,7 +272,7 @@ fun UpdatedShrinkCalendar(
             .padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        val daysOfWeek = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        val daysOfWeek = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
         for (dayOfWeek in daysOfWeek) {
             Text(
                 text = dayOfWeek,
@@ -281,7 +281,7 @@ fun UpdatedShrinkCalendar(
                 fontSize = 12.sp,
                 color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center,
-                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
                 modifier = Modifier.width(32.dp)
             )
         }
@@ -334,7 +334,7 @@ fun UpdatedShrinkCalendar(
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,
-                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
                             color = textColor
 
                         )
