@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -27,11 +29,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,7 +99,6 @@ fun AddDaskScreen(
         val userSelectedDate = if (formattedDate.isNullOrBlank()) null else formattedDate
         val userSelectedTime = if (timeFormat.isNullOrBlank()) null else timeFormat
         val id:String = databaseRef.push().key.toString()
-        Log.d("StoreTag", "id: $id")
         val notificationTime: Long? = if (userSelectedDate != null && userSelectedTime != null) {
             val combinedDateTime = "$userSelectedDate $userSelectedTime"
             val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
@@ -120,7 +123,8 @@ fun AddDaskScreen(
             properties = DialogProperties(
                 dismissOnClickOutside = true,
                 dismissOnBackPress = true,
-                usePlatformDefaultWidth = false)
+                usePlatformDefaultWidth = false,
+                )
 
         ){
 
@@ -133,11 +137,7 @@ fun AddDaskScreen(
                 animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
             )
 
-           /* Box(modifier = Modifier.fillMaxSize()
-                .blur(60.dp)
-                .background(color = SurfaceGray.copy(alpha = 0.9f))
-                )*/
-            // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
+
                 Box(modifier = Modifier
 
                     .blur(radius = blurEffectBackground)
@@ -145,8 +145,11 @@ fun AddDaskScreen(
                     // .offset(y = offsetY)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
+                    .background(color = Color.Transparent)
                 ) {
                    ThemedBackground()
+                    //(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.8f)
+
                     Column(modifier = Modifier,
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -180,7 +183,7 @@ fun AddDaskScreen(
 fun ThemedBackground() {
     val isDarkTheme = isSystemInDarkTheme()
      if (isDarkTheme) {
-         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(1f)
+         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
     } else {
          (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
     }
@@ -204,6 +207,7 @@ fun AddDaskCircleDesign(
     isChecked: MutableState<Boolean>){
     val focusRequester = remember { FocusRequester() }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
     var visible by remember {
         mutableStateOf(false)
     }
@@ -261,57 +265,68 @@ fun AddDaskCircleDesign(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                TextField(
-                    value = task.value,
-                    onValueChange = onTaskChange ,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 32.dp, end = 32.dp)
-                        .focusRequester(focusRequester)
-                        .onFocusChanged { focusState ->
-                            if (focusState.isFocused) {
-                                focusRequester.requestFocus()
-                                softwareKeyboardController?.show()
-                            }
-                        },
-
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone ={
-                            onDoneClick()
-                        }
-                    ),
-                    colors = TextFieldDefaults.textFieldColors(
-                        backgroundColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = FABRed
-                    ),
-                    placeholder = {
-                        Text(text = "Task name",
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 24.sp,
-                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
-                            fontFamily = interDisplayFamily,
-                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                        )
-                    },
-
-                    textStyle = LocalTextStyle.current.copy(
-                        textAlign = TextAlign.Center,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Medium,
-                        fontFamily = interDisplayFamily,
-                        color = MaterialTheme.colors.secondary,
-                        letterSpacing = 1.sp
-
-                    ),
-                    maxLines = 2,
+                val customTextSelectionColors = TextSelectionColors(
+                    handleColor = Color.Red,
+                    backgroundColor = Color.Red.copy(alpha = 0.4f),
 
                 )
+                CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors){
+                    TextField(
+                        value = task.value,
+                        onValueChange = onTaskChange ,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 32.dp, end = 32.dp)
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { focusState ->
+                                if (focusState.isFocused) {
+                                    focusRequester.requestFocus()
+                                    softwareKeyboardController?.show()
+                                }
+                            },
+
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            capitalization = KeyboardCapitalization.Sentences),
+                        keyboardActions = KeyboardActions(
+                            onDone ={
+                                onDoneClick()
+                            }
+                        ),
+                        colors = TextFieldDefaults.textFieldColors(
+                           backgroundColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            cursorColor = FABRed,
+                        ),
+                        placeholder = {
+                            Text(text = "Task name",
+                                modifier = Modifier
+                                    .fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 24.sp,
+                                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                fontFamily = interDisplayFamily,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                            )
+                        },
+
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = interDisplayFamily,
+                            color = MaterialTheme.colors.secondary,
+                            letterSpacing = 1.sp
+
+                        ),
+                        maxLines = 2,
+
+
+                        )
+                }
+
 
                 TextStyle(text = "${task.value.length} / 32")
                 Box(

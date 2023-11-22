@@ -12,7 +12,7 @@ val Text3 = Color(0x50000000)
 val NewtaskColorGray = Color(0x502D2D2D)
 val VeryLightGray = Color(0x252D2D2D)
 val MarkCompleteBack = Color(0xFFEDEDED)
-val FABRed = Color(0xFFD71A21)
+val FABRed = Color(0xFFEE0000)
 val Black = Color(0xFF000000)
 
 

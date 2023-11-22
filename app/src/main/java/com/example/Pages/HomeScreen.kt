@@ -3,12 +3,16 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.AlarmManager
 import android.app.Dialog
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -50,6 +54,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.work.ExistingWorkPolicy
@@ -67,12 +74,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.ParseException
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition",
     "UnrememberedMutableState"
@@ -87,6 +97,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var context = LocalContext.current
+    val isDarkTheme = isSystemInDarkTheme()
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     fun getIsChecked(): Boolean {
         return sharedPreferences.getBoolean("isChecked", false)
@@ -95,17 +106,13 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         val databaseRef = database.reference.child("Task").child(uid.toString())
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(clickedTaskId.hashCode())
-        val notificationTag = "Notification_$clickedTaskId"
-        Log.d("NotificationTag", notificationTag)
-        val workManager = WorkManager.getInstance(context)
-        workManager.cancelUniqueWork(notificationTag)
         coroutineScope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
             val data = databaseRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
+
             if (data != null) {
                 databaseRef.child(clickedTaskId).removeValue()
+                cancelNotifications(context, clickedTaskId)
                 val snackbarResult = snackbarHostState.showSnackbar(
                     message = "TASK DELETED",
                     actionLabel = "UNDO",
@@ -133,13 +140,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                 if (data != null) {
                     taskRef.removeValue()
                     completedTasksRef.setValue(data)
-                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                    notificationManager.cancel(clickedTaskId.hashCode())
-                    val notificationTag = "Notification_$clickedTaskId"
-                    Log.d("NotificationTag", notificationTag)
-                    val workManager = WorkManager.getInstance(context)
-                    workManager.cancelUniqueWork(notificationTag)
-
+                    cancelNotifications(context, data.id)
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
@@ -194,11 +195,14 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     var isPickerOpen = remember { mutableStateOf(false) }
     var isAddDaskOpen = remember { mutableStateOf(false) }
     val isChecked = getIsChecked()
+
+    val completedTasksCountState = remember { mutableStateOf(0) }
     val blurEffectBackground by animateDpAsState(
         targetValue = when {
-            selectedItemId.value.isNotEmpty() -> 25.dp
-            isAddDaskScreenOpen.value -> 25.dp
-            isMarkCompletedOpen.value -> 25.dp
+            selectedItemId.value.isNotEmpty() -> 60.dp
+            isAddDaskScreenOpen.value -> 60.dp
+            isMarkCompletedOpen.value -> 60.dp
+
             else -> 0.dp
         }
 
@@ -228,7 +232,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center) {
-
+                val completedTasksCount = completedTasksCountState.value
                 LazyGridLayout(
                     onMarkCompletedClick = onMarkCompletedClick,
                     onDeleteClick,
@@ -241,7 +245,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     isUpdatePickerOpen
                 )
             }
-            val isDarkTheme = isSystemInDarkTheme()
+
             Canvas(modifier = Modifier.fillMaxSize()) {
 
                 val gradientBrush = Brush.verticalGradient(
@@ -299,46 +303,17 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty()||isUpdatePickerOpen.value ){
             Box(modifier = Modifier
                 .fillMaxSize()
-                .background(color = SurfaceGray, shape = RectangleShape)
-            )
+                .background(
+                    color = if (isDarkTheme) {
+                        Color.Black
+                    } else {
+                        SurfaceGray
+                    }
+                ))
+
         }
     }
 }
-/*@Composable
-fun ThemedCanvas() {
-    val isDarkTheme = isSystemInDarkTheme()
-    val gradientBrush = Brush.verticalGradient(
-        colors = if (isDarkTheme) {
-            listOf(Color(0xFF222222), Color(0xFF000000))
-        } else {
-            listOf(Color(0xFFEDEDED), Color(0x00EDEDED))
-        },
-        startY = 0f,
-        endY = 100f
-    )
-    val opacityBrush = Brush.verticalGradient(
-        colors = if (isDarkTheme) {
-            listOf(Color(0xFF000000), Color(0xFF222222))
-        } else {
-            listOf(Color(0x00EDEDED), Color(0xFFEDEDED))
-        },
-        startY = 0f,
-        endY = 100f
-    )
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawRect(
-            brush = gradientBrush,
-            topLeft = Offset(0f, 0f),
-           // size = Size(size.width, 100.dp.toPx())
-        )
-        drawRect(
-            brush = opacityBrush,
-            topLeft = Offset(0f, (size.height - 84.dp.toPx()).coerceAtLeast(0f)),
-            size = Size(size.width, size.height)
-        )
-    }
-}*/
 @Composable
 fun CustomSnackbar(snackbarData: SnackbarData) {
     Surface(
@@ -393,10 +368,32 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val imageResource = R.drawable.light_square // Resource ID of the image
     var isNotificationSet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+    val offsetYSecond by animateDpAsState(
+        targetValue = if (visible) 0.dp else 42.dp,
+        animationSpec = tween(
+            durationMillis = 400,
+            delayMillis = 300,
+            easing = EaseOutCirc
+        )
+    )
+    val opacitySecond by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 500
+
+            delayMillis = 300// Total duration of the animation
+        }
+    )
+    val notificationSet = mutableMapOf<String, Boolean>()
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -418,82 +415,49 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
     }
     if (isNotificationSet){
         cardDataList.forEach { data ->
-            val selectedDateTime = data.notificationTime
+            var selectedDateTime = data.notificationTime
             val itemId = data.id
             val message = data.message
-            scheduleNotification(selectedDateTime, itemId, message!!)
+
+            Log.d("MyApp", "Setting notification for item $itemId, title: ${data.message}")
+            scheduleNotification(context = context,selectedDateTime,itemId,message!!)
+
+
         }
     }
-
-
-   // var animatedItemIndexes by remember { mutableStateOf(emptyList<Int>()) }
-    val selectedItemIndex = remember { mutableStateOf(-1) }
     val gridColumns = 2
-    if (cardDataList.size > 1) {
-        LazyVerticalStaggeredGrid(
-            columns = StaggeredGridCells.Fixed(gridColumns),
-            verticalItemSpacing = 16.dp,
-            contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
-
-            ) {
-            itemsIndexed(cardDataList.reversed()) { index, cardData ->
-                val animationDelay = index
-                val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                val dateStringFromDatabase = cardData.date
-                val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
-                    val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-                    originalDate.format(desiredDateFormat)
-                } else {
-                    ""
-                }
-
-
-     Box(
-         modifier = Modifier
-             .fillMaxSize()
-
-             .padding(
-                 top = if (index == 1) 100.dp else 0.dp,
-                 bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
-             ),
-         contentAlignment = Alignment.Center
-     ) {
-
-         RoundedCircleCardDesign(
-             image = imageResource,
-             message = cardData.message!!,
-             time = cardData.time!!,
-             date = formattedDate,
-             id = cardData.id,
-             animationDelay = animationDelay,
-             onMarkCompletedClick = onMarkCompletedClick,
-             onDeleteClick = onDeleteClick,
-             selectedItemId = selectedItemId,
-             isPickerOpen = isPickerOpen,
-             isAddDaskOpen = isAddDaskOpen,
-
-             scale = scale,
-             offset = offset,
-             index = index,
-             isChecked = isChecked,
-             isUpdatePickerOpen = isUpdatePickerOpen
-         )
-
- }
-
-
-            }
+    if (cardDataList.isEmpty()){
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                bottom = 216.dp,
+                start = 50.dp, end = 50.dp
+            )
+            .offset(y = offsetYSecond)
+            .alpha(opacitySecond),
+            contentAlignment = Alignment.BottomCenter
+        ){
+            Text(text =  "Focus on what's essential. \n" +
+                    "Limit your priorities to three to achieve more.",
+                textAlign = TextAlign.Center,
+                fontFamily = interDisplayFamily,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                lineHeight = 20.sp
+            )
         }
-    }else if (cardDataList.size == 1) {
-        LazyColumn(){
-            itemsIndexed(cardDataList){ index,cardData ->
 
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .size(300.dp)
-                    .padding(bottom = 50.dp)
-                    , contentAlignment = Alignment.Center) {
+    }else{
+        if (cardDataList.size > 1) {
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Fixed(gridColumns),
+                verticalItemSpacing = 16.dp,
+                contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
+
+                ) {
+                itemsIndexed(cardDataList.reversed()) { index, cardData ->
+                    val animationDelay = index
                     val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                     val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                     val dateStringFromDatabase = cardData.date
@@ -503,29 +467,87 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                     } else {
                         ""
                     }
-                    RoundedCircleCardDesign(
-                        image = imageResource,
-                        message = cardDataList[0].message!!,
-                        time = cardDataList[0].time!!,
-                        date = formattedDate,
-                        id = cardDataList[0].id,
-                        animationDelay = 0,
-                        onMarkCompletedClick = onMarkCompletedClick,
-                        onDeleteClick = onDeleteClick,
-                        selectedItemId = selectedItemId,
-                        isPickerOpen = isPickerOpen,
-                        isAddDaskOpen = isAddDaskOpen,
 
-                        scale = scale,
-                        offset = offset,
-                        index = index,
-                        isChecked = isChecked,
-                        isUpdatePickerOpen = isUpdatePickerOpen
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+
+                            .padding(
+                                top = if (index == 1) 100.dp else 0.dp,
+                                bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+
+                        RoundedCircleCardDesign(
+                            image = imageResource,
+                            message = cardData.message!!,
+                            time = cardData.time!!,
+                            date = formattedDate,
+                            id = cardData.id,
+                            animationDelay = animationDelay,
+                            onMarkCompletedClick = onMarkCompletedClick,
+                            onDeleteClick = onDeleteClick,
+                            selectedItemId = selectedItemId,
+                            isPickerOpen = isPickerOpen,
+                            isAddDaskOpen = isAddDaskOpen,
+
+                            scale = scale,
+                            offset = offset,
+                            index = index,
+                            isChecked = isChecked,
+                            isUpdatePickerOpen = isUpdatePickerOpen
                         )
+
+                    }
+
+
+                }
+            }
+        }else if (cardDataList.size == 1) {
+            LazyColumn(){
+                itemsIndexed(cardDataList){ index,cardData ->
+
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .size(300.dp)
+                        .padding(bottom = 50.dp)
+                        , contentAlignment = Alignment.Center) {
+                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                        val dateStringFromDatabase = cardData.date
+                        val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                            val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
+                            originalDate.format(desiredDateFormat)
+                        } else {
+                            ""
+                        }
+                        RoundedCircleCardDesign(
+                            image = imageResource,
+                            message = cardDataList[0].message!!,
+                            time = cardDataList[0].time!!,
+                            date = formattedDate,
+                            id = cardDataList[0].id,
+                            animationDelay = 0,
+                            onMarkCompletedClick = onMarkCompletedClick,
+                            onDeleteClick = onDeleteClick,
+                            selectedItemId = selectedItemId,
+                            isPickerOpen = isPickerOpen,
+                            isAddDaskOpen = isAddDaskOpen,
+
+                            scale = scale,
+                            offset = offset,
+                            index = index,
+                            isChecked = isChecked,
+                            isUpdatePickerOpen = isUpdatePickerOpen
+                        )
+                    }
                 }
             }
         }
     }
+
 }
 
 
@@ -641,7 +663,9 @@ fun RoundedCircleCardDesign(
                                     mMediaPlayer.start()
                                     delay(mMediaPlayer.duration.toLong())
                                     mMediaPlayer.release()
+
                                 }
+                                Vibration(context = mContext)
                             }
 
                             onMarkCompletedClick(id)
@@ -663,7 +687,7 @@ fun RoundedCircleCardDesign(
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
-                    color = MaterialTheme.colors.secondary,
+                    color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp)
                 )
@@ -722,20 +746,6 @@ fun formatDate(date: LocalDate): String {
         else -> date.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
     }
 }
-@SuppressLint("NewApi")
-@RequiresApi(Build.VERSION_CODES.O)
-private fun isToday(dateString: String): Boolean {
-    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-    val currentDate = LocalDate.now()
-    val formattedDate = try {
-        LocalDate.parse(dateString, formatter)
-    } catch (e: DateTimeParseException) {
-        return false
-    }
-    return formattedDate == currentDate
-}
-
-
 @SuppressLint("UnrememberedMutableState")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -748,7 +758,9 @@ fun FloatingActionButton(
     var visible by remember { mutableStateOf(false) }
      val context = LocalContext.current
     LaunchedEffect(Unit) {
+        delay(200)
         visible = true
+
     }
     val offsetYSecond by animateDpAsState(
         targetValue = if (visible) 0.dp else 42.dp,
@@ -840,7 +852,57 @@ fun Modifier.bounceClick() = composed {
             }
         }
 }
+
+@SuppressLint("ScheduleExactAlarm")
 @Composable
+fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: String, message: String) {
+    val now = Calendar.getInstance().timeInMillis
+    val notificationTag = "Notification_$itemId"
+
+    if (selectedDateTime > now) {
+        val intent = Intent(context, NotificationReceiver::class.java)
+        intent.putExtra("itemId", itemId)
+        intent.putExtra("messageExtra", message)
+        val requestCode = notificationTag.hashCode()
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+        Log.d("Notification", "requestCode: $requestCode, notificationTag: $notificationTag")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.setExact(
+            AlarmManager.RTC_WAKEUP,
+            selectedDateTime,
+            pendingIntent
+        )
+    }
+}
+fun cancelNotifications(context: Context, itemId: String) {
+    val notificationTag = "Notification_$itemId"
+    val intent = Intent(context, NotificationReceiver::class.java)
+    val requestCode = notificationTag.hashCode()
+    val pendingIntent = PendingIntent.getBroadcast(
+        context,
+        requestCode,
+        intent,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+    )
+
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    alarmManager.cancel(pendingIntent)
+    Log.d("Notification", "Cancelled notification with requestCode: $requestCode, notificationTag: $notificationTag")
+}
+/*@Composable
 fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String) {
     val now = Calendar.getInstance().timeInMillis
     var context = LocalContext.current
@@ -857,8 +919,54 @@ fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(notificationTag, ExistingWorkPolicy.REPLACE, notificationWorkRequest)
     }
-   // Toast.makeText(context, "Alarm set", Toast.LENGTH_SHORT).show()
-}
+    // Toast.makeText(context, "Alarm set", Toast.LENGTH_SHORT).show()
+}*/
+
+
+/*
+@SuppressLint("ScheduleExactAlarm")
+@Composable
+fun setNotification(toDo: DataClass) {
+    val id = toDo.id ?: return
+    val date = toDo.date
+    val time = toDo.time
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy hh:mm a", Locale.getDefault())
+    val calendar = Calendar.getInstance()
+    val context = LocalContext.current
+
+    try {
+        calendar.time = dateFormat.parse("$date $time")
+    } catch (e: ParseException) {
+        e.printStackTrace()
+    }
+
+    val currentTimeMillis = System.currentTimeMillis()
+    if (calendar.timeInMillis < currentTimeMillis) {
+        return
+    }
+
+
+        val intent = Intent(context, Notification::class.java)
+        intent.putExtra(titleExtra, "Todo Remainder")
+        intent.putExtra(messageExtra, toDo.message)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            id.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
+
+
+}*/
+
+
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun TopSectionHomeScreen(navController: NavController,
@@ -874,14 +982,15 @@ fun TopSectionHomeScreen(navController: NavController,
     val offsetY by animateDpAsState(
         targetValue = if (visible) 0.dp else -52.dp,
         animationSpec = tween(
-            durationMillis = 700,
+            durationMillis = 500,
+            delayMillis = 300,
             easing = EaseOutCirc
         )
         )
     val offsetYSecond by animateDpAsState(
         targetValue = if (visible) 0.dp else -52.dp,
         animationSpec = tween(
-            durationMillis = 700,
+            durationMillis = 500,
             delayMillis = 300,
             easing = EaseOutCirc
         )
@@ -889,13 +998,14 @@ fun TopSectionHomeScreen(navController: NavController,
     val opacity by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = keyframes {
-            durationMillis = 700 // Total duration of the animation
+            durationMillis = 500
+            delayMillis = 200
         }
     )
     val opacitySecond by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = keyframes {
-            durationMillis = 700
+            durationMillis = 500
         delayMillis = 300// Total duration of the animation
         }
     )
@@ -911,7 +1021,8 @@ fun TopSectionHomeScreen(navController: NavController,
             text = "DOTHING",
             modifier = Modifier
                 .offset(y = offsetY)
-                .alpha(opacity),
+                .alpha(opacity)
+            ,
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.W100,
             fontSize = 24.sp,
@@ -934,16 +1045,20 @@ fun TopSectionHomeScreen(navController: NavController,
         ) {
            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                   Box(modifier = Modifier.size(4.dp)
-                       .background(shape = CircleShape,color = FABRed))
-                   Box(modifier = Modifier.size(4.dp)
-                       .background(color = MaterialTheme.colors.background,shape = CircleShape))
+                   Box(modifier = Modifier
+                       .size(4.dp)
+                       .background(shape = CircleShape, color = FABRed))
+                   Box(modifier = Modifier
+                       .size(4.dp)
+                       .background(color = MaterialTheme.colors.background, shape = CircleShape))
                }
                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                   Box(modifier = Modifier.size(4.dp)
-                       .background(shape = CircleShape,color = MaterialTheme.colors.background))
-                   Box(modifier = Modifier.size(4.dp)
-                       .background(color = MaterialTheme.colors.background,shape= CircleShape))
+                   Box(modifier = Modifier
+                       .size(4.dp)
+                       .background(shape = CircleShape, color = MaterialTheme.colors.background))
+                   Box(modifier = Modifier
+                       .size(4.dp)
+                       .background(color = MaterialTheme.colors.background, shape = CircleShape))
                }
            }
         }
@@ -987,3 +1102,18 @@ fun Vibration(context:Context){
         vibrator.vibrate(vibrationEffect2)
     }
 }
+
+/*
+                   val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                   val requestCode = "Notification_$clickedTaskId".hashCode()
+                   notificationManager.cancel(requestCode)
+                   val notificationTag = "Notification_$clickedTaskId"
+                   Log.d("NotificationTag", notificationTag)
+                   val workManager = WorkManager.getInstance(context)
+                   workManager.cancelUniqueWork(notificationTag)
+val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+notificationManager.cancel(clickedTaskId.hashCode())
+val notificationTag = "Notification_$clickedTaskId"
+Log.d("NotificationTag", notificationTag)
+val workManager = WorkManager.getInstance(context)
+workManager.cancelUniqueWork(notificationTag)*/

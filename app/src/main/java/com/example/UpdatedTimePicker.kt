@@ -58,7 +58,7 @@ val context = LocalContext.current
                     .width(80.dp) // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
-                val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_time) }
+                val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
                 val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase().orEmpty()
               if (isChecked.value){
                   LaunchedEffect(selectedTimeText) {
@@ -66,6 +66,7 @@ val context = LocalContext.current
                       // Delay to play the sound effect, adjust the delay as needed
                       delay(mediaPlayer.duration.toLong())
                       mediaPlayer.pause()
+                      Vibration(context = context)
 
                   }
               }else{

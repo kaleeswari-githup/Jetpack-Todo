@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -35,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -66,9 +69,9 @@ fun SplashScreen(navController: NavController){
         targetValue = if (visible) 0f else 1f,
         animationSpec = tween(
 
-                durationMillis =400,
-            delayMillis = 400,
-           // easing = EaseInBack
+                durationMillis =300,
+            delayMillis = 500,
+            easing = EaseInBack
         )
 
     )
@@ -85,7 +88,7 @@ fun SplashScreen(navController: NavController){
     )
     LaunchedEffect(Unit) {
         // Wait for a certain duration (e.g., 2 seconds) using delay()
-        delay(800)
+        delay(900)
 
         // Navigate to the sign-in page using the provided NavController
         navController.navigate(Screen.Main.route)
@@ -105,6 +108,45 @@ fun SplashScreen(navController: NavController){
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
         ) {
+            val isDarkTheme = isSystemInDarkTheme()
+            Canvas(modifier = Modifier.fillMaxSize()) {
+
+                val gradientBrush = Brush.verticalGradient(
+                    colors = if(isDarkTheme){
+                        listOf(
+                            Color(0xFF000000),
+                            Color(0x00000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0xFFEDEDED),
+                            Color(0x00EDEDED)
+                        )
+                    }
+                    ,
+                    startY = 0f,
+                    endY = size.height.coerceAtMost(100.dp.toPx())
+                )
+                val opacityBrush = Brush.verticalGradient(
+                    colors = if (isDarkTheme){
+                        listOf(
+                            Color(0x00000000),
+                            Color(0xFF000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0x00EDEDED),
+                            Color(0xFFEDEDED)
+                        )
+                    }
+                    ,
+                    startY = (size.height - 84.dp.toPx()).coerceAtLeast(0f),
+                    endY = size.height
+                )
+                drawRect(brush = gradientBrush)
+                drawRect(brush = opacityBrush)
+                //  drawRect(brush = gradientBrush)
+            }
             ThemedImage(modifier = Modifier.scale(scale).offset(y=offsetY).alpha(opacity))
         }
     }

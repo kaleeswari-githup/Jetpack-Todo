@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,6 +42,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -279,63 +282,72 @@ fun UnMarkCompletedCircleDesign(
 
         contentAlignment = Alignment.Center
     ){
-
+        val customTextSelectionColors = TextSelectionColors(
+            handleColor = Color.Red,
+            backgroundColor = Color.Red.copy(alpha = 0.4f)
+        )
         Column(modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {
             val messageState = remember { mutableStateOf(message.value) }
-            TextField(
-                value = message.value,
-                onValueChange = onTaskChange ,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 32.dp, end = 32.dp)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            isMessageFieldFocused.value = true
-                        } else {
-                            keyboardController?.hide()
-                            isMessageFieldFocused.value = false
+            CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors){
+                TextField(
+                    value = message.value,
+                    onValueChange = onTaskChange ,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 32.dp, end = 32.dp)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                isMessageFieldFocused.value = true
+                            } else {
+                                keyboardController?.hide()
+                                isMessageFieldFocused.value = false
+                            }
+                        },
+
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
+                        capitalization = KeyboardCapitalization.Sentences),
+                    keyboardActions = KeyboardActions(
+                        onDone ={
+                            keyboardController?.hideSoftwareKeyboard()
+                            focusManager.clearFocus(true)
+                            onDoneClick.invoke()
                         }
+                    ),
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = FABRed
+                    ),
+                    placeholder = {
+                        Text(text = "Task name",
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 24.sp,
+                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                            fontFamily = interDisplayFamily,
+                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                        )
                     },
 
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone ={
-                        keyboardController?.hideSoftwareKeyboard()
-                        focusManager.clearFocus(true)
-                        onDoneClick.invoke()
-                    }
-                ),
-                colors = TextFieldDefaults.textFieldColors(
-                    backgroundColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = FABRed
-                ),
-                placeholder = {
-                    Text(text = "Task name",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 70.dp),
-                        fontWeight = FontWeight.Medium,
+                    textStyle = LocalTextStyle.current.copy(
+                        textAlign = TextAlign.Center,
                         fontSize = 24.sp,
-                        color = MaterialTheme.colors.secondary.copy(alpha = -1f)
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = interDisplayFamily,
+                        color = MaterialTheme.colors.secondary,
+                        textDecoration = TextDecoration.LineThrough,
+                        //  letterSpacing = -1.sp
+                    ),
+
                     )
-                },
+            }
 
-                textStyle = LocalTextStyle.current.copy(
-                    textAlign = TextAlign.Center,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = interDisplayFamily,
-                    color = MaterialTheme.colors.secondary,
-                    textDecoration = TextDecoration.LineThrough,
-                  //  letterSpacing = -1.sp
-                ),
-
-                )
             if (isMessageFieldFocused.value){
                 TextStyle(text = "${message.value.length} / 32")
             }
@@ -343,9 +355,7 @@ fun UnMarkCompletedCircleDesign(
                 modifier = Modifier
                     .wrapContentSize(Alignment.Center)
                     .padding(
-                        top = 20.dp,
-                        start = 48.dp,
-                        end = 48.dp
+                        top = 20.dp
                     )
                     // .background(color = Color.White, shape = CircleShape)
                     .clickable(indication = null,
@@ -353,22 +363,26 @@ fun UnMarkCompletedCircleDesign(
                         isPickerOpen.value = true
                     }
                     .border(
-                        width = 0.8.dp,
+                        width = 0.4.dp,
                         color = MaterialTheme.colors.secondary, // Change to your desired border color
                         shape = CircleShape
                     )
                     .padding(8.dp)
             ) {
+                val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
+                val formattedDate = initialSelectedate.value.format(formatter) ?: ""
+                val dateString:String = formattedDate
+                val timeFormat = initialSelectedtime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+                val timeString:String = timeFormat
+                Log.d("timestring","$timeString")
                 if (initialSelectedate.value.isNullOrEmpty() && initialSelectedtime.value.isNullOrEmpty()){
                     ThemedCalendarImage()
-                }else if(initialSelectedate != null && initialSelectedtime == null) {
-                    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
-                    val formattedDate = initialSelectedate.value.format(formatter) ?: ""
+                }else if(initialSelectedate.value.isNotEmpty() && initialSelectedtime.value.isNullOrEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         ThemedCalendarImage()
                         Text(
-                            text = formattedDate,
+                            text = dateString,
                             fontFamily = interDisplayFamily,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
@@ -377,31 +391,19 @@ fun UnMarkCompletedCircleDesign(
                         )
                     }
                 }else{
-                    val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
-                    val formattedDate = initialSelectedate.value.format(formatter) ?: ""
-                    val dateString:String = formattedDate
-                    val timeFormat = initialSelectedtime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
-                    val timeString:String = timeFormat
-                    Log.d("timestring","$timeString")
+
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                        ThemedCalendarImage()
                         Text(
-                            text = dateString,
+                            text = "$dateString, $timeString",
                             fontFamily = interDisplayFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color =  MaterialTheme.colors.secondary,
                             style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                         )
-                        Text(
-                            text = timeString,
-                            fontFamily = interDisplayFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color =  MaterialTheme.colors.secondary,
-                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                        )
+
                     }
                 }
                 if (isPickerOpen.value) {

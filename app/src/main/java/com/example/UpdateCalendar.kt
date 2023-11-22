@@ -304,13 +304,13 @@ fun UpdatedShrinkCalendar(
                 val isCurrentDate = day == LocalDate.now()
                 val isSelectedDate = day == selectedDate.value
                 val textColor = when {
-                    isSelectedDate -> Color.White
+                    isSelectedDate -> MaterialTheme.colors.primary
                     isCurrentDate -> FABRed
                     isCurrentMonth -> MaterialTheme.colors.secondary
                     else -> Color.Transparent
                 }
                 val background = if (isSelectedDate && isCurrentMonth) {
-                    Color.Black
+                    MaterialTheme.colors.secondary
                 } else {
                     Color.Transparent
                 }

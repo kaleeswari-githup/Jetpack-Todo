@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -117,7 +119,6 @@ fun UpdatedCalendarAndTimePickerScreen(
             completedTasksRef.child(id).updateChildren(updatedData)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
                         onDismiss.invoke()
                     } else {
                         Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
@@ -139,7 +140,8 @@ fun UpdatedCalendarAndTimePickerScreen(
         Column(modifier = Modifier
             .fillMaxSize()
             .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
+                interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
+            .background(color = Color.Transparent),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -264,7 +266,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                    ThemedTickImage()
                     Spacer(modifier = Modifier.padding(start = 8.dp))
                     ButtonTextDarkTheme(text = "DONE")
-                    
+
                 }
             }
 

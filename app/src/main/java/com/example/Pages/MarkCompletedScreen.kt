@@ -280,7 +280,8 @@ fun MarkCompletedScreen(
                                 Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
                                     ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase())
                                     Spacer(modifier = Modifier.padding(top = 4.dp))
-                                    Text(text = "${user?.email}",
+                                    Text(
+                                        text = if (user?.email?.length ?: 0 > 32) user?.email?.substring(0, 32) + "..." else user?.email.orEmpty(),
                                         fontFamily = interDisplayFamily,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Normal,
@@ -395,10 +396,9 @@ fun MarkCompletedScreen(
                                 interactionSource = remember { MutableInteractionSource() }) {
                                 isChecked.value = !isChecked.value
                                 saveIsChecked(isChecked.value)
-                                if (isChecked.value) {
+                                if(isChecked.value){
                                     coroutineScope.launch(Dispatchers.IO) {
-                                        val mMediaPlayer =
-                                            MediaPlayer.create(context, R.raw.toggle_button)
+                                        val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
                                         mMediaPlayer.start()
                                         delay(mMediaPlayer.duration.toLong())
                                         mMediaPlayer.release()
@@ -432,7 +432,7 @@ fun MarkCompletedScreen(
                                                     saveIsChecked(isChecked.value)
                                                     if(isChecked.value){
                                                         coroutineScope.launch(Dispatchers.IO) {
-                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_button)
+                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
                                                             mMediaPlayer.start()
                                                             delay(mMediaPlayer.duration.toLong())
                                                             mMediaPlayer.release()
@@ -684,7 +684,7 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
 @Composable
 fun MarkCompletedCircleDesign(
                               id:String,
-                              message:String,
+                              message:String?,
                               time: String,
                               date:String,
                               onDismiss: () -> Unit,
@@ -713,6 +713,17 @@ fun MarkCompletedCircleDesign(
 
         contentAlignment = Alignment.Center
     ){
+        val dateString = if (date.isNotEmpty()) {
+           // val parsedDate = LocalDate.parse(date,formatter)
+            if (time.isNotEmpty()){
+                "$date, $time"
+            }else{
+                "$date"
+            }
+
+        } else {
+            ""
+        }
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -733,7 +744,7 @@ fun MarkCompletedCircleDesign(
                             textDecoration = TextDecoration.LineThrough
                         ),
                         start = 0,
-                        end = message.length
+                        end = message!!.length
                     )
                 },
                 textAlign = TextAlign.Center,
@@ -746,12 +757,12 @@ fun MarkCompletedCircleDesign(
             )
             Text(
 
-                text = "$date, $time",
+                text = dateString,
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colors.secondary,
+                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
                 modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp),
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
             )
@@ -760,7 +771,7 @@ fun MarkCompletedCircleDesign(
             UnMarkCompletedTaskScreen(
                 selectedDate = mutableStateOf(date),
                 selectedTime = mutableStateOf(time),
-                textValue = message,
+                textValue = message!!,
                 id = id,
                 openKeyboard = false,
                 onDismiss ={ selectedMarkedItemId.value = "" },
