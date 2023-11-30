@@ -97,14 +97,7 @@ fun SplashScreen(navController: NavController){
         .fillMaxSize()
         .background(color = MaterialTheme.colors.background)) {
         ThemedGridImage()
-        Box(modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center){
-            Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
-                modifier = Modifier
-                    .graphicsLayer(alpha = 0.06f)
-                    .blur(radius = 84.dp)
-                    .align(Alignment.Center))
-        }
+
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
         ) {

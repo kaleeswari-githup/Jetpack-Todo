@@ -1,6 +1,7 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.os.Build
@@ -47,6 +48,8 @@ import com.example.dothings.R.DataClass
 import com.example.dothings.Screen
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import kotlinx.coroutines.Dispatchers
@@ -506,13 +509,14 @@ fun MarkCompletedScreen(
                               val auth = FirebaseAuth.getInstance()
                               // Sign out from Firebase
                               auth.signOut()
-
+                              val googleSignInClient = GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN)
                               // Sign out from Google
                               googleSignInClient
                                   .signOut()
                                   .addOnCompleteListener {
                                       // Optional: Perform any additional actions after sign out
-                                      navController.navigate(route = Screen.Main.route)
+                                     val intent = Intent(context,SigninActivity::class.java)
+                                      context.startActivity(intent)
                                       onDismiss.invoke()
                                   }
                           },

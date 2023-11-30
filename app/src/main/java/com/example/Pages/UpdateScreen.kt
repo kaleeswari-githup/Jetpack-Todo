@@ -230,8 +230,10 @@ fun UpdateCircleDesign(
     val scale by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = Spring.StiffnessVeryLow
+            dampingRatio = 0.8f,
+            stiffness = Spring.StiffnessVeryLow,
+
+
         )
     )
     val offsetY by animateDpAsState(

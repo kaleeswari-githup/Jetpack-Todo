@@ -632,9 +632,10 @@ fun RoundedCircleCardDesign(
     Box(
             modifier = Modifier
                 .size(184.dp)
-                .offset(y = offset)
-                .alpha(scale)
+               // .offset(y = offset)
+               // .alpha(scale)
                 .aspectRatio(1f)
+                .bounceClick()
                 .clip(CircleShape)
                 .background(MaterialTheme.colors.primary, shape = CircleShape)
                 .clickable(indication = null,
@@ -789,9 +790,9 @@ fun FloatingActionButton(
         androidx.compose.material.FloatingActionButton(
             modifier = Modifier
                 .size(96.dp)
-                .offset(y = offsetYSecond)
-                .alpha(opacitySecond)
-                .zIndex(opacitySecond)
+               // .offset(y = offsetYSecond)
+                //.alpha(opacitySecond)
+              //  .zIndex(opacitySecond)
                 .align(Alignment.BottomCenter)
                 .bounceClick()
                     ,
@@ -829,7 +830,7 @@ enum class ButtonState { Pressed, Idle }
 @Composable
 fun Modifier.bounceClick() = composed {
     var buttonState by remember { mutableStateOf(ButtonState.Idle) }
-    val scale by animateFloatAsState(if (buttonState == ButtonState.Pressed) 0.70f else 1f)
+    val scale by animateFloatAsState(if (buttonState == ButtonState.Pressed) 0.90f else 1f)
     this
         .graphicsLayer {
             scaleX = scale
@@ -1020,8 +1021,8 @@ fun TopSectionHomeScreen(navController: NavController,
         Text(
             text = "DOTHING",
             modifier = Modifier
-                .offset(y = offsetY)
-                .alpha(opacity)
+               // .offset(y = offsetY)
+               // .alpha(opacity)
             ,
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.W100,
@@ -1031,8 +1032,8 @@ fun TopSectionHomeScreen(navController: NavController,
         )
         Box(modifier = Modifier
             .size(48.dp)
-            .offset(y = offsetYSecond)
-            .alpha(opacitySecond)
+           // .offset(y = offsetYSecond)
+           // .alpha(opacitySecond)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 isMarkCompletedOpen.value = true
