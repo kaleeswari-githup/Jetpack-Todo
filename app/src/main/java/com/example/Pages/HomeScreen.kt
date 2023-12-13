@@ -18,6 +18,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.app.ActivityCompat
+import androidx.core.app.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.NavController
@@ -90,6 +92,7 @@ import kotlin.math.abs
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
+
     val scaffoldState = rememberScaffoldState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -101,6 +104,12 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     fun getIsChecked(): Boolean {
         return sharedPreferences.getBoolean("isChecked", false)
+    }
+    BackHandler {
+        // Handle back button press here
+        // You can close the app or navigate back, depending on your use case
+        // For example, to close the app:
+        (context as? ComponentActivity)?.finish()
     }
     val onDeleteClick:(String) -> Unit = {clickedTaskId ->
         val databaseRef = database.reference.child("Task").child(uid.toString())
@@ -161,21 +170,6 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                                 }
 
                         }
-                      /*  scaffoldState.snackbarHostState.currentSnackbarData?.dismiss()
-                        val snackbarResult = scaffoldState.snackbarHostState.showSnackbar(
-                            message = "Task Completed",
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short
-                        )
-                        when (snackbarResult) {
-                            SnackbarResult.Dismissed -> {
-                                completedTasksRef.setValue(data)
-                            }
-                            SnackbarResult.ActionPerformed -> {
-                                taskRef.setValue(data)
-                                completedTasksRef.removeValue()
-                            }
-                        }*/
                     }
 
                 }
@@ -185,6 +179,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
             }
         })
     }
+
     val selectedItemId = remember { mutableStateOf("") }
     val selectedMarkedItemId = remember { mutableStateOf("") }
     var isAddDaskScreenOpen = remember {
@@ -207,6 +202,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
         }
 
     )
+
     val isCheckedState = mutableStateOf(isChecked)
     Scaffold(
         scaffoldState = scaffoldState,
@@ -221,19 +217,12 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
 
             ){
             ThemedGridImage()
-            Box(modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center){
-                Image(painter = painterResource(id = R.drawable.shadowcenter), contentDescription = null,
-                    modifier = Modifier
-                        .graphicsLayer(alpha = 0.04f)
-                        .blur(radius = 90.dp)
-                        .align(Alignment.Center))
-            }
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center) {
                 val completedTasksCount = completedTasksCountState.value
                 LazyGridLayout(
+                    navController = navController,
                     onMarkCompletedClick = onMarkCompletedClick,
                     onDeleteClick,
                     selectedItemId,
@@ -352,7 +341,8 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
+fun LazyGridLayout(navController: NavController,
+    onMarkCompletedClick: (String) -> Unit,
                    onDeleteClick: (String) -> Unit,
                    selectedItemId: MutableState<String>,
                    isPickerOpen:MutableState<Boolean>,
@@ -497,7 +487,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                             offset = offset,
                             index = index,
                             isChecked = isChecked,
-                            isUpdatePickerOpen = isUpdatePickerOpen
+                            isUpdatePickerOpen = isUpdatePickerOpen,
+                            navController = navController
                         )
 
                     }
@@ -540,7 +531,8 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
                             offset = offset,
                             index = index,
                             isChecked = isChecked,
-                            isUpdatePickerOpen = isUpdatePickerOpen
+                            isUpdatePickerOpen = isUpdatePickerOpen,
+                            navController = navController
                         )
                     }
                 }
@@ -559,6 +551,7 @@ fun LazyGridLayout(onMarkCompletedClick: (String) -> Unit,
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun RoundedCircleCardDesign(
+    navController: NavController,
     id:String,
     image:Int,
     message:String,
@@ -593,18 +586,18 @@ fun RoundedCircleCardDesign(
             repeatMode = RepeatMode.Reverse
         )
     )
-    val dialogIntent = Intent(mContext, MainActivity::class.java).apply {
+   /* val dialogIntent = Intent(mContext, MainActivity::class.java).apply {
         action = "OPEN_UPDATE_TASK_DIALOG"
         putExtra("taskId", id) // You can pass any necessary data
-    }
+    }*/
 
 // Create a PendingIntent for the intent
-    val pendingIntent = PendingIntent.getActivity(
+  /*  val pendingIntent = PendingIntent.getActivity(
         mContext,
         0,
         dialogIntent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
+    )*/
     val dy by infiniteTransition.animateFloat(
         initialValue = if (animateY) -0.4f else 0f,
         targetValue = if (animateY) 0.5f else 0f,
@@ -632,15 +625,21 @@ fun RoundedCircleCardDesign(
     Box(
             modifier = Modifier
                 .size(184.dp)
-               // .offset(y = offset)
-               // .alpha(scale)
+                .offset(y = offset)
+                .alpha(scale)
                 .aspectRatio(1f)
                 .bounceClick()
                 .clip(CircleShape)
                 .background(MaterialTheme.colors.primary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
-                    selectedItemId.value = id
+                    navController.navigate(
+                        route = Screen.Update.passUpdateValues(
+                            id = id,
+                        )
+                    )
+                    // navController.navigate(route = Screen.Test.passId("$message"))
+
 
                     // isAddDaskOpen.value = true
                 }
@@ -694,22 +693,17 @@ fun RoundedCircleCardDesign(
                 )
             }
             if(selectedItemId.value == id){
-                val updateTaskParams = UpdateTaskScreenParams(
+
+              // navController.navigate("update_screen/$date/$time/$message/$id")
+
+               /* UpdateTaskScreen(
+                    navController = navController,
                     selectedDate = mutableStateOf( date) ,
                     selectedTime = mutableStateOf(time) ,
                     textValue = message,
                     id = id,
                     openKeyboard = false,
-                    onDismiss = { selectedItemId.value = ""  },
-                    onMarkCompletedClick = onMarkCompletedClick,
-                    onDeleteClick,
-                    isPickerOpen,
-                    isAddDaskOpen = isAddDaskOpen,
-                    index = index,
-                    isChecked = isChecked,
-                    isUpdatePickerOpen
-                )
-                UpdateTaskScreen(updateTaskParams)
+                    )*/
             }
 
     }
@@ -790,9 +784,9 @@ fun FloatingActionButton(
         androidx.compose.material.FloatingActionButton(
             modifier = Modifier
                 .size(96.dp)
-               // .offset(y = offsetYSecond)
+                // .offset(y = offsetYSecond)
                 //.alpha(opacitySecond)
-              //  .zIndex(opacitySecond)
+                //  .zIndex(opacitySecond)
                 .align(Alignment.BottomCenter)
                 .bounceClick()
                     ,
@@ -864,6 +858,7 @@ fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: Strin
         val intent = Intent(context, NotificationReceiver::class.java)
         intent.putExtra("itemId", itemId)
         intent.putExtra("messageExtra", message)
+        Log.d("messageExtra","$message")
         val requestCode = notificationTag.hashCode()
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -1032,8 +1027,8 @@ fun TopSectionHomeScreen(navController: NavController,
         )
         Box(modifier = Modifier
             .size(48.dp)
-           // .offset(y = offsetYSecond)
-           // .alpha(opacitySecond)
+            // .offset(y = offsetYSecond)
+            // .alpha(opacitySecond)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 isMarkCompletedOpen.value = true

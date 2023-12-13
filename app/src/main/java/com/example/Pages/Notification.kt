@@ -8,43 +8,65 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.dothings.MainActivity
 import com.example.dothings.R
+import com.example.dothings.R.DataClass
+
+import com.example.dothings.Screen
+import com.example.dothings.UPDATE_ID_VALUE
+import com.example.dothings.uri
+
+
 import com.google.firebase.auth.FirebaseAuth
 
- const val notificationID = 1
+const val notificationID = 1
 const val channelID = "channel1"
 const val titleExtra = "titleExtra"
 const val messageExtra = "messageExtra"
+const val itemId = "id"
 
 class NotificationReceiver : BroadcastReceiver() {
-    var counter = 0
+
     val user = FirebaseAuth.getInstance().currentUser
     val email = user?.email
     override fun onReceive(context: Context, intent: Intent) {
         val id = System.currentTimeMillis().toString() + (0..1000).random()
-        counter++
+        val itemId = intent.getStringExtra("itemId") ?: ""
+
+       // val notificationID = itemId.hashCode()
+
+       Log.d("Notificationid","$id")
+
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
 
+        val deepLinkIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://www.example.com/update_screen/$itemId"),
+            context,
+            MainActivity::class.java
+        )
 
-        val mainIntent = Intent(context,MainActivity::class.java)
-        val pendingMainIntent = if(Build.VERSION.SDK_INT >=23){
-            PendingIntent.getActivity(context,
-                0 ,
-                mainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        }else{
-            PendingIntent.getActivity(context,
-                0 ,
-                mainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT )
-        }
+
+        // Create a PendingIntent for the deep link
+        val pendingDeepLinkIntent = PendingIntent.getActivity(
+            context,
+            0,
+            deepLinkIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelID,
@@ -58,7 +80,7 @@ class NotificationReceiver : BroadcastReceiver() {
             notificationBuilder.setSmallIcon(R.drawable.tick_for_notification_icon)
                 .setContentText("$email")
                 .setContentTitle(intent.getStringExtra(messageExtra))
-                .setContentIntent(pendingMainIntent)
+                .setContentIntent(pendingDeepLinkIntent)
                // .setColor(ContextCompat.getColor(context, R.color.savebtnbg))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -68,20 +90,18 @@ class NotificationReceiver : BroadcastReceiver() {
             notificationBuilder.setSmallIcon(R.drawable.tick_for_notification_icon)
                 .setContentText("$email")
                 .setContentTitle(intent.getStringExtra(messageExtra))
-                .setContentIntent(pendingMainIntent)
+                .setContentIntent(pendingDeepLinkIntent)
                // .setColor(ContextCompat.getColor(context, R.color.savebtnbg))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setDefaults(Notification.DEFAULT_SOUND or Notification.DEFAULT_VIBRATE)
                 .build()
         }
-
-
-
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(notificationID)
         manager.notify(id.hashCode(), notificationBuilder.build())
     }
+
 }
 /*
 val channelID = "channel1"

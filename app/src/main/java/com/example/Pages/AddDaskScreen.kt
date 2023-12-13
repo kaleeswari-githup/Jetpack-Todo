@@ -1,8 +1,8 @@
 package com.example.Pages
 
+
 import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -31,7 +31,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -41,9 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
+import com.example.dothings.ThemedBackground
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
@@ -147,7 +146,7 @@ fun AddDaskScreen(
                         interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
                     .background(color = Color.Transparent)
                 ) {
-                   ThemedBackground()
+                    ThemedBackground()
                     //(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.8f)
 
                     Column(modifier = Modifier,
@@ -179,17 +178,6 @@ fun AddDaskScreen(
 
 }
 
-@Composable
-fun ThemedBackground() {
-    val isDarkTheme = isSystemInDarkTheme()
-     if (isDarkTheme) {
-         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
-    } else {
-         (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
-    }
-
-
-}
 
 
 @SuppressLint("SuspiciousIndentation")
@@ -397,7 +385,7 @@ fun AddDaskCircleDesign(
                         UpdatedCalendarAndTimePickerScreen(
                             onDismiss = { isPickerOpen.value = false
                                 softwareKeyboardController?.show()},
-                            onDateTimeSelected = {date,time ->
+                            onDateTimeSelected = { date, time ->
                                 val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                                 val parsedDate = LocalDate.parse(date, dateFormatter)
                                 val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -414,8 +402,8 @@ fun AddDaskCircleDesign(
                             userSelectedTime = if (selectedDate.value == null) null else selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a")),
                             invokeOnDoneClick = false,
                             UnMarkedDateandTime = false,
-                            isChecked = isChecked,
-                            message = task
+                            //isChecked = isChecked,
+                            message = task!!.toString()
                         )
                     }
 

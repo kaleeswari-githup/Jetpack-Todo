@@ -91,7 +91,7 @@ fun SplashScreen(navController: NavController){
         delay(900)
 
         // Navigate to the sign-in page using the provided NavController
-        navController.navigate(Screen.Main.route)
+      //  navController.navigate(Screen.Main.route)
     }
     Box(modifier = Modifier
         .fillMaxSize()

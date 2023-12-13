@@ -69,6 +69,7 @@ class SigninActivity : ComponentActivity() {
                 SignInScreen()
             }
         }
+
     }
     override fun onStart() {
         super.onStart()
@@ -80,6 +81,10 @@ class SigninActivity : ComponentActivity() {
             startActivity(intent)
             finish()
         }
+    }
+    override fun onBackPressed() {
+        // Exit the app when the back button is pressed
+        finishAffinity()
     }
 }
 

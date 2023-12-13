@@ -46,6 +46,7 @@ import coil.request.ImageRequest
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
 import com.example.dothings.Screen
+import com.example.dothings.ThemedBackground
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -517,7 +518,7 @@ fun MarkCompletedScreen(
                                       // Optional: Perform any additional actions after sign out
                                      val intent = Intent(context,SigninActivity::class.java)
                                       context.startActivity(intent)
-                                      onDismiss.invoke()
+                                     // onDismiss.invoke()
                                   }
                           },
                           contentAlignment = Alignment.Center

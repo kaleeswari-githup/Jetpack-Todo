@@ -6,10 +6,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.theme.AppJetpackComposeTheme
+
+
 
 class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
@@ -21,29 +33,48 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppJetpackComposeTheme {
+               // SetStatusBarColor(color = MaterialTheme.colorScheme.background)
+
                 MyMainApp()
             }
         }
     }
-    override fun onBackPressed() {
-        if (navController.currentBackStackEntry?.destination?.route == Screen.Home.route) {
-            // Exit the app if back button is pressed on screen A
-            finish()
-        } else {
-            super.onBackPressed()
-        }
-    }
+   /* override fun onBackPressed() {
+
+            if (navController.currentBackStackEntry?.destination?.route == Screen.Home.route) {
+                // Exit the app if back button is pressed on screen A
+                finish()
+            } else {
+                super.onBackPressed()
+            }
+
+
+    }*/
 }
+
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyMainApp() {
+
+
     val navController = rememberNavController()
     SetupNavGraph(navController = navController)
     // HomeScreen(navController = navController)
 }
 
 
+@Composable
+fun ThemedBackground() {
+    val isDarkTheme = isSystemInDarkTheme()
+    if (isDarkTheme) {
+        (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+    } else {
+        (LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.1f)
+    }
 
+
+}
 
 
 

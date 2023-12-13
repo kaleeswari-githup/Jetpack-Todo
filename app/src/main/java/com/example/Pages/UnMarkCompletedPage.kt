@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.dothings.ThemedBackground
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.FABRed
 import com.google.firebase.auth.FirebaseAuth
@@ -441,8 +442,8 @@ fun UnMarkCompletedCircleDesign(
                         id = id,
                         invokeOnDoneClick = false,
                         UnMarkedDateandTime = true,
-                        isChecked = isChecked,
-                        message = message
+                        //isChecked = isChecked,
+                        message = message.toString()
 
                     )
 

@@ -38,7 +38,7 @@ fun UpdatedScrollableTimePicker(
     onClearClick: () -> Unit,
     initialTime: LocalTime?,
     onTimeSelected: (LocalTime) -> Unit,
-    isChecked: MutableState<Boolean>
+   // isChecked: MutableState<Boolean>
 ){
 val context = LocalContext.current
     Box(
@@ -60,7 +60,7 @@ val context = LocalContext.current
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
                 val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase().orEmpty()
-              if (isChecked.value){
+             /* if (isChecked.value){
                   LaunchedEffect(selectedTimeText) {
                       mediaPlayer.start()
                       // Delay to play the sound effect, adjust the delay as needed
@@ -71,7 +71,7 @@ val context = LocalContext.current
                   }
               }else{
                   Vibration(context = context)
-              }
+              }*/
                 Text(
                     text = selectedTimeText,
                     fontFamily = interDisplayFamily,

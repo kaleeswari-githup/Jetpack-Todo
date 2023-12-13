@@ -15,11 +15,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navArgument
+import androidx.navigation.navDeepLink
 import com.example.Pages.*
 import java.util.*
-
+const val DEEP_LINK_UPDATE_TASK = "updateTask/{date}/{time}/{message}/{id}"
+val uri = "https://www.example.com"
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SetupNavGraph(navController: NavHostController){
@@ -59,6 +63,53 @@ fun SetupNavGraph(navController: NavHostController){
 
             HomeScreen( navController,scale,offsetY)
         }
+        composable(Screen.Update.route,
+            arguments = listOf(
+                navArgument(UPDATE_ID_VALUE){
+                    type = NavType.StringType
+                },
+
+        ),
+                deepLinks = listOf(navDeepLink { uriPattern = "$uri/update_screen/{$UPDATE_ID_VALUE}" })
+
+        ){backStackEntry->
+                UpdateTaskScreen(
+                    navController = navController,
+                    id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
+                    openKeyboard = false
+
+                )
+            }
+
+      /*  composable(Screen.Test.route,
+            arguments = listOf(navArgument(DETAIL_ARGUMENT_KEY){
+                type = NavType.StringType
+            }),
+            deepLinks = listOf(navDeepLink { uriPattern = "$uri/$DETAIL_ARGUMENT_KEY = {$DETAIL_ARGUMENT_KEY}" })
+        ){ backStackEntry ->
+           TextComposable(navController = navController,
+                backStackEntry.arguments?.getString(DETAIL_ARGUMENT_KEY).toString()
+            )
+        }*/
+
+        /*composable(route = "update_screen/{date}/{time}/{message}/{id}"){navBackstackEntry ->
+            val selectedDate= navBackstackEntry.arguments?.getString("date")?:""
+            val selectedTime= navBackstackEntry.arguments?.getString("time")?:""
+            val textValue= navBackstackEntry.arguments?.getString("message")?:""
+            val userId= navBackstackEntry.arguments?.getString("id")?:""
+            UpdateTaskScreen(
+                navController = navController,
+                selectedDate = remember {
+                    mutableStateOf(selectedDate)
+                },
+                selectedTime = remember {
+                    mutableStateOf(selectedTime)
+                },
+                textValue = textValue,
+                id = userId,
+                openKeyboard = false
+            )
+        }*/
        /* composable(route = Screen.AddNewTask.route ){
 
             AddDaskScreen(navController,selectedDate = null ,selectedTime = null, textValue = "")

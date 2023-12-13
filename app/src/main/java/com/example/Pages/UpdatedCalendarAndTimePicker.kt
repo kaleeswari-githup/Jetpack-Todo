@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -22,13 +21,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.UpdatedCalendar
-import com.example.dothings.interDisplayFamily
+import com.example.dothings.ThemedBackground
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -50,8 +47,9 @@ fun UpdatedCalendarAndTimePickerScreen(
     id:String,
     invokeOnDoneClick: Boolean = true,
     UnMarkedDateandTime:Boolean = true,
-    isChecked: MutableState<Boolean>,
-    message: MutableState<String>) {
+    //isChecked: MutableState<Boolean>,
+    message: String
+) {
 
     var selectedDate = remember { mutableStateOf(LocalDate.now()) }
     var isTimePickerVisible by remember { mutableStateOf(false) }
@@ -100,7 +98,7 @@ fun UpdatedCalendarAndTimePickerScreen(
         }
 
         val updatedData = HashMap<String, Any>()
-        updatedData["message"] = message.value
+        updatedData["message"] = message
         updatedData["id"] = id
         updatedData["time"] = timeFormat
         updatedData["date"] = formattedDate
@@ -187,7 +185,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         selectedDate.value = date
                     },
                     selectedTime = selectedTime,
-                    isChecked = isChecked
+                   // isChecked = isChecked
                 )
 
             }
@@ -227,8 +225,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         .size(width = 105.dp, height = 48.dp)
                         .offset(y = offsetY)
                         .alpha(opacity)
-                        .bounceClick()
-                        ,
+                        .bounceClick(),
 
                     colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary),
                    elevation = ButtonDefaults.elevation(0.dp)
@@ -256,9 +253,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         .size(width = 105.dp, height = 48.dp)
                         .offset(y = offsetY)
                         .alpha(opacity)
-
-                        .bounceClick()
-                        ,
+                        .bounceClick(),
                     colors = ButtonDefaults.buttonColors(backgroundColor =MaterialTheme.colors.secondary),
                     elevation = ButtonDefaults.elevation(0.dp)
 
