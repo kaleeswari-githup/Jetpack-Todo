@@ -3,6 +3,7 @@ package com.example.dothings
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
@@ -20,7 +21,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.theme.AppJetpackComposeTheme
-
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 
 class MainActivity : ComponentActivity() {
@@ -32,8 +33,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+
             AppJetpackComposeTheme {
                // SetStatusBarColor(color = MaterialTheme.colorScheme.background)
+                val systemUiController = rememberSystemUiController()
+                Log.d("StatusBarColor", "Color: ${MaterialTheme.colorScheme.background}")
+
+                // Set the status bar color
 
                 MyMainApp()
             }

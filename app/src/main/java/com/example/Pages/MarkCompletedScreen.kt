@@ -1,6 +1,7 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.MediaPlayer
@@ -65,11 +66,17 @@ import java.util.*
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MarkCompletedScreen(
-    navController:NavController,onDismiss: () -> Unit,
-    selectedMarkedItemId: MutableState<String>,
+    navController:NavController,
+    //onDismiss: () -> Unit,
+
     isChecked:MutableState<Boolean>,
-    sharedPreferences:SharedPreferences,
     ){
+    val context = LocalContext.current
+    val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
+    fun getIsChecked(): Boolean {
+        return sharedPreferences.getBoolean("isChecked", false)
+    }
+    val selectedMarkedItemId = remember { mutableStateOf("") }
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -80,7 +87,7 @@ fun MarkCompletedScreen(
     val scaffoldState = rememberScaffoldState()
     val coroutineScope = rememberCoroutineScope()
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
-    val context = LocalContext.current
+
     val snackbarHostState = remember { SnackbarHostState() }
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -176,22 +183,9 @@ fun MarkCompletedScreen(
     }
     )
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnClickOutside = true,
-            dismissOnBackPress = true,
-            usePlatformDefaultWidth = false
-        )
-    ){
 
-        ThemedBackground()
-        Scaffold(
-            scaffoldState = scaffoldState,
-            modifier = Modifier.fillMaxSize(),
-            backgroundColor = Color.Transparent,
+       // ThemedBackground()
 
-            ){
             var visible by remember { mutableStateOf(false) }
 
             // Use LaunchedEffect to animate the 'visible' variable
@@ -205,11 +199,12 @@ fun MarkCompletedScreen(
                 .blur(radius = blurEffectBackground)
 
                 .fillMaxSize()
+                .background(color = MaterialTheme.colors.background)
                 .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
+                    interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() },
 
                 ) {
-
+ThemedGridImage()
                 LazyColumn(modifier = Modifier.fillMaxSize(),
                     ) {
                     item{
@@ -348,7 +343,7 @@ fun MarkCompletedScreen(
                                    ) {
                                        if (completedTasksCount > 0) {
                                        LazyRowCompletedTask(
-                                           onDismiss, onDeleteClick, onUnMarkCompletedClick, selectedMarkedItemId, isChecked
+                                            onDeleteClick, onUnMarkCompletedClick, selectedMarkedItemId, isChecked
                                        )
                                    }
                                        else {
@@ -394,15 +389,16 @@ fun MarkCompletedScreen(
                             .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                             .background(
                                 color = MaterialTheme.colors.primary,
-                                shape = RoundedCornerShape(32.dp)
+                                shape = RoundedCornerShape(24.dp)
                             )
                             .clickable(indication = null,
                                 interactionSource = remember { MutableInteractionSource() }) {
                                 isChecked.value = !isChecked.value
                                 saveIsChecked(isChecked.value)
-                                if(isChecked.value){
+                                if (isChecked.value) {
                                     coroutineScope.launch(Dispatchers.IO) {
-                                        val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
+                                        val mMediaPlayer =
+                                            MediaPlayer.create(context, R.raw.toggle_sound)
                                         mMediaPlayer.start()
                                         delay(mMediaPlayer.duration.toLong())
                                         mMediaPlayer.release()
@@ -503,22 +499,31 @@ fun MarkCompletedScreen(
                           .padding(start = 24.dp, end = 24.dp, top = 8.dp)
                           .background(
                               color = MaterialTheme.colors.primary,
-                              shape = RoundedCornerShape(32.dp)
+                              shape = RoundedCornerShape(24.dp)
                           )
                           .clickable(indication = null,
+
                               interactionSource = remember { MutableInteractionSource() }) {
+                              val user = FirebaseAuth.getInstance().currentUser
+                              val currentuserId = user?.uid
+                              if (currentuserId != null) {
+                                  cancelAllNotifications(context, currentuserId)
+                              }
                               val auth = FirebaseAuth.getInstance()
                               // Sign out from Firebase
                               auth.signOut()
-                              val googleSignInClient = GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN)
+                              val googleSignInClient = GoogleSignIn.getClient(
+                                  context,
+                                  GoogleSignInOptions.DEFAULT_SIGN_IN
+                              )
                               // Sign out from Google
                               googleSignInClient
                                   .signOut()
                                   .addOnCompleteListener {
                                       // Optional: Perform any additional actions after sign out
-                                     val intent = Intent(context,SigninActivity::class.java)
+                                      val intent = Intent(context, SigninActivity::class.java)
                                       context.startActivity(intent)
-                                     // onDismiss.invoke()
+                                      // onDismiss.invoke()
                                   }
                           },
                           contentAlignment = Alignment.Center
@@ -552,16 +557,16 @@ fun MarkCompletedScreen(
                 }
 
                 CrossFloatingActionButton {
-                    onDismiss.invoke()
+                    navController.popBackStack()
                 }
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.align(Alignment.BottomCenter),
                     snackbar = { CustomSnackbar(it)}
                 )
-            }
 
-        }
+
+
 
     }
 
@@ -615,7 +620,7 @@ fun ThemedLogoutIcon() {
 @OptIn(ExperimentalFoundationApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun LazyRowCompletedTask(onDismiss: () -> Unit,
+fun LazyRowCompletedTask(
                          onDeletedClick: (String) -> Unit,
                          onUnMarkcompletedClick: (String) -> Unit,
                          selectedMarkedItemId: MutableState<String>,
@@ -673,7 +678,6 @@ fun LazyRowCompletedTask(onDismiss: () -> Unit,
                 message = cardData.message!!,
                 time = cardData.time!!,
                 date = formattedDate ,
-            onDismiss = onDismiss,
             onDeletedClick,
             onUnMarkcompletedClick = onUnMarkcompletedClick,
                 selectedMarkedItemId,
@@ -692,7 +696,6 @@ fun MarkCompletedCircleDesign(
                               message:String?,
                               time: String,
                               date:String,
-                              onDismiss: () -> Unit,
                               onDeletedClick:(String) -> Unit,
                               onUnMarkcompletedClick:(String) -> Unit,
                               selectedMarkedItemId: MutableState<String>,

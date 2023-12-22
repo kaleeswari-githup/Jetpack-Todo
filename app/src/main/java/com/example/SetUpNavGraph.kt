@@ -1,5 +1,6 @@
 package com.example.dothings
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.Spring
@@ -12,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -24,6 +26,7 @@ import com.example.Pages.*
 import java.util.*
 const val DEEP_LINK_UPDATE_TASK = "updateTask/{date}/{time}/{message}/{id}"
 val uri = "https://www.example.com"
+@SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SetupNavGraph(navController: NavHostController){
@@ -54,7 +57,7 @@ fun SetupNavGraph(navController: NavHostController){
             val scale by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
                 animationSpec = keyframes {
-                    durationMillis = 500
+                    durationMillis = 0
 
 
                 }
@@ -63,20 +66,69 @@ fun SetupNavGraph(navController: NavHostController){
 
             HomeScreen( navController,scale,offsetY)
         }
+
+        composable("Screen.AddDask.route/{isCheckedState}",
+            arguments = listOf(
+                navArgument("isCheckedState") {
+                    type = NavType.BoolType
+                }
+            )){backStackEntry ->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
+            }
+            AddDaskScreen(
+                navController = navController,
+                selectedDate = remember {
+                    mutableStateOf(null)
+                },
+                selectedTime = remember {
+                    mutableStateOf(null)
+                },
+                textValue = "",
+                isChecked = isCheckedState
+
+            )
+        }
+        composable("Screen.MarkComplete.route/{isMarkCheckedState}",
+            arguments = listOf(
+                navArgument("isMarkCheckedState") {
+                    type = NavType.BoolType
+                }
+            )
+        ){backStackEntry ->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isMarkCheckedState") ?: false)
+            }
+            MarkCompletedScreen(
+                navController = navController,
+                isChecked = isCheckedState,
+            )
+        }
         composable(Screen.Update.route,
             arguments = listOf(
                 navArgument(UPDATE_ID_VALUE){
                     type = NavType.StringType
                 },
+                navArgument("isCheckedState") {
+                    type = NavType.BoolType
+                },
+
 
         ),
-                deepLinks = listOf(navDeepLink { uriPattern = "$uri/update_screen/{$UPDATE_ID_VALUE}" })
+                deepLinks = listOf(navDeepLink { uriPattern = "$uri/update_screen/{$UPDATE_ID_VALUE}/{isCheckedState}" })
 
         ){backStackEntry->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
+            }
+
+            val onDeleteClick = backStackEntry.arguments?.getString(("onDeleteClick"))
                 UpdateTaskScreen(
                     navController = navController,
                     id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
-                    openKeyboard = false
+                    openKeyboard = false,
+                    isChecked = isCheckedState,
+
 
                 )
             }

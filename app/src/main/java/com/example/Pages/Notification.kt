@@ -29,30 +29,36 @@ import com.example.dothings.uri
 
 import com.google.firebase.auth.FirebaseAuth
 
-const val notificationID = 1
+//const val notificationID = 1
 const val channelID = "channel1"
 const val titleExtra = "titleExtra"
 const val messageExtra = "messageExtra"
-const val itemId = "id"
+
+val id = System.currentTimeMillis().toString() + (0..1000).random()
+//const val itemId = "itemId"
+  val notificationIdsMap = mutableMapOf<String, Int>()
 
 class NotificationReceiver : BroadcastReceiver() {
 
     val user = FirebaseAuth.getInstance().currentUser
     val email = user?.email
+
     override fun onReceive(context: Context, intent: Intent) {
-        val id = System.currentTimeMillis().toString() + (0..1000).random()
         val itemId = intent.getStringExtra("itemId") ?: ""
+        val isCheckedStateValue = intent.getBooleanExtra("isCheckedState", false)
 
+
+        val notificationId = itemId.hashCode()
+        notificationIdsMap[itemId] = notificationId
+        val notificationTag = "Notification_$itemId"
+       Log.d("ItemId","$itemId")
        // val notificationID = itemId.hashCode()
-
-       Log.d("Notificationid","$id")
-
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
 
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("https://www.example.com/update_screen/$itemId"),
+            Uri.parse("https://www.example.com/update_screen/$itemId/$isCheckedStateValue"),
             context,
             MainActivity::class.java
         )
@@ -98,8 +104,8 @@ class NotificationReceiver : BroadcastReceiver() {
                 .build()
         }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.cancel(notificationID)
-        manager.notify(id.hashCode(), notificationBuilder.build())
+        manager.notify(notificationId, notificationBuilder.build())
+
     }
 
 }

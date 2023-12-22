@@ -38,8 +38,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.NavController
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
 import com.example.dothings.ThemedBackground
@@ -60,18 +59,20 @@ import java.util.*
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AddDaskScreen(
+    navController: NavController,
     selectedDate: MutableState<LocalDate?>,
     selectedTime: MutableState<LocalTime?>,
     textValue:String,
-    onDismiss: () -> Unit,
-    isPickerOpen: MutableState<Boolean>,
+   // onDismiss: () -> Unit,
+   // isPickerOpen: MutableState<Boolean>,
     isChecked: MutableState<Boolean>,
-    modifier: Modifier
+
 
 ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
     }
+    var isPickerOpen = remember { mutableStateOf(false) }
 
     val mutableSelectedTime = remember { mutableStateOf(selectedTime) }
     val mutableSelectedDate = remember { mutableStateOf(selectedDate) }
@@ -108,16 +109,17 @@ fun AddDaskScreen(
         }
         val data = DataClass(id,messageText ?: "",userSelectedTime ?: "",userSelectedDate ?: "", notificationTime =notificationTime ?: 0L )
         databaseRef.child(id).setValue(data)
-        onDismiss.invoke()
+       // onDismiss.invoke()
+        navController.popBackStack()
     }
 
     val blurEffectBackground by animateDpAsState(targetValue = when{
-        isPickerOpen.value -> 25.dp
+        isPickerOpen.value -> 10.dp
         else -> 0.dp
     }
     )
 
-        Dialog(
+       /* Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
                 dismissOnClickOutside = true,
@@ -125,55 +127,156 @@ fun AddDaskScreen(
                 usePlatformDefaultWidth = false,
                 )
 
-        ){
+        ){*/
 
-            var visible by remember {
-                mutableStateOf(false)
+    var visible by remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+
+    }
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 42.dp,
+        animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
+    )
+    val opacity by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = keyframes {
+            durationMillis = 300 // Total duration of the animation
+            0.3f at 100 // Opacity becomes 0.3f after 200ms
+            0.6f at 200 // Opacity becomes 0.6f after 500ms
+            1f at 300
+
+
+        }
+    )
+Box(modifier = Modifier
+    .fillMaxSize()
+    .blur(blurEffectBackground)
+    .background(color = MaterialTheme.colors.background)
+    .clickable(indication = null,
+        interactionSource = remember { MutableInteractionSource() }) {
+        navController.popBackStack()
+    }){
+    ThemedGridImage()
+    Column(modifier = Modifier,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ){
+        AddDaskCircleDesign( mutableSelectedDate.value,mutableSelectedTime.value,task = task, onTaskChange = {newTask ->
+            if (newTask.length <= maxValue){
+                task.value = newTask
             }
+        },onDoneClick = onDoneClick,
+            isPickerOpen = isPickerOpen,
+              isChecked = isChecked,
+        )
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .offset(y = offsetY)
+            .alpha(opacity)
+            .padding(top = 32.dp)
+        ){
+            Row(
+                modifier = Modifier
+                // .background(color = Color.Cyan)
+                  .fillMaxWidth(),
 
-            val offsetY by animateDpAsState(
-                targetValue = if (visible) 0.dp else 400.dp,
-                animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
-            )
+                 horizontalArrangement = Arrangement.Center,
+                 verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 105.dp, height = 48.dp)
+                        //.offset(y = offsetY)
+                        // .alpha(opacity)
+                        .bounceClick()
+
+                        .background(
+                            shape = RoundedCornerShape(53.dp),
+                            color = MaterialTheme.colors.primary
+                        )
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            navController.popBackStack()
+                        }
+                    ,
+                    contentAlignment = Alignment.Center
+                ) {
+                    ButtonTextWhiteTheme(text = "CANCEL")
+                }
+
+                Spacer(modifier = Modifier.padding(40.dp))
+                Button(onClick = {
+                    onDoneClick.invoke()
+                },
+                    shape = RoundedCornerShape(53.dp),
+                    modifier = Modifier
+                        .size(width = 105.dp, height = 48.dp)
+                        .bounceClick()
+                        //.offset(y = offsetY)
+                    // .alpha(opacity)
+                    ,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary),
+                    elevation = ButtonDefaults.elevation(0.dp)
 
 
-                Box(modifier = Modifier
 
-                    .blur(radius = blurEffectBackground)
+                ) {
+                    ThemedTickImage()
+                    Spacer(modifier = Modifier.padding(start = 8.dp))
+                    ButtonTextDarkTheme(text = "SAVE")
+
+                }
+        }
+
+
+        }
+    }
+    CrossFloatingActionButton {
+        navController.popBackStack()
+    }
+}
+               /* Box(modifier = Modifier
+
+                   // .blur(radius = blurEffectBackground)
                     .fillMaxSize()
                     // .offset(y = offsetY)
                     .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
-                    .background(color = Color.Transparent)
+                        interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() }
+                    .background(color = MaterialTheme.colors.background)
                 ) {
-                    ThemedBackground()
+                    //ThemedBackground()
                     //(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.8f)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                        Column(modifier = Modifier,
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally) {
 
-                    Column(modifier = Modifier,
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally) {
-
-                        AddDaskCircleDesign( mutableSelectedDate.value,mutableSelectedTime.value,task = task, onTaskChange = {newTask ->
-                            if (newTask.length <= maxValue){
-                                task.value = newTask
-                            }
-                        },onDoneClick = onDoneClick,
-                            isPickerOpen = isPickerOpen,
-                            isChecked = isChecked,
-                            textValue = textValue)
-                        TwoButtons(
-                            onDoneClick = onDoneClick,
-                            onDismiss = onDismiss)
+                            AddDaskCircleDesign( mutableSelectedDate.value,mutableSelectedTime.value,task = task, onTaskChange = {newTask ->
+                                if (newTask.length <= maxValue){
+                                    task.value = newTask
+                                }
+                            },onDoneClick = onDoneClick,
+                                isPickerOpen = isPickerOpen,
+                                //  isChecked = isChecked,
+                            )
+                            TwoButtons(
+                                onDoneClick = onDoneClick,
+                                onDismiss = navController.popBackStack())
+                        }
                     }
+
                     CrossFloatingActionButton {
-                        onDismiss.invoke()
+                        navController.popBackStack()
                     }
-                }
 
 
 
 
-    }
+
+    }*/
 
 
 }
@@ -191,8 +294,9 @@ fun AddDaskCircleDesign(
     onTaskChange: (String) -> Unit,
     onDoneClick: () -> Unit,
     isPickerOpen: MutableState<Boolean>,
-    textValue: String,
-    isChecked: MutableState<Boolean>){
+
+    isChecked: MutableState<Boolean>
+){
     val focusRequester = remember { FocusRequester() }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
@@ -233,7 +337,7 @@ fun AddDaskCircleDesign(
             modifier = Modifier
 
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 54.dp)
+                .padding(start = 24.dp, end = 24.dp, top = 52.dp)
                 .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
@@ -264,6 +368,7 @@ fun AddDaskCircleDesign(
                         onValueChange = onTaskChange ,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .wrapContentHeight()
                             .padding(start = 32.dp, end = 32.dp)
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
@@ -309,9 +414,6 @@ fun AddDaskCircleDesign(
                             letterSpacing = 1.sp
 
                         ),
-                        maxLines = 2,
-
-
                         )
                 }
 
@@ -402,8 +504,9 @@ fun AddDaskCircleDesign(
                             userSelectedTime = if (selectedDate.value == null) null else selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a")),
                             invokeOnDoneClick = false,
                             UnMarkedDateandTime = false,
-                            //isChecked = isChecked,
-                            message = task!!.toString()
+                            isChecked = isChecked,
+                            message = task,
+
                         )
                     }
 
@@ -449,7 +552,7 @@ fun TextStyle(text:String){
 @Composable
 fun TwoButtons(
     onDoneClick: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: Boolean,
 ) {
 
     var visible by remember {
@@ -474,54 +577,7 @@ fun TwoButtons(
         }
 
     )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 105.dp, height = 48.dp)
-                .offset(y = offsetY)
-                .alpha(opacity)
-                .bounceClick()
 
-                .background(shape = RoundedCornerShape(53.dp), color = MaterialTheme.colors.primary)
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    onDismiss.invoke()
-                }
-                ,
-            contentAlignment = Alignment.Center
-        ) {
-            ButtonTextWhiteTheme(text = "CANCEL")
-        }
-
-        Spacer(modifier = Modifier.padding(40.dp))
-        Button(onClick = {
-            onDoneClick.invoke()
-        },
-            shape = RoundedCornerShape(53.dp),
-            modifier = Modifier
-                .size(width = 105.dp, height = 48.dp)
-                .bounceClick()
-                .offset(y = offsetY)
-                .alpha(opacity),
-            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary),
-            elevation = ButtonDefaults.elevation(0.dp)
-
-
-
-        ) {
-            ThemedTickImage()
-            Spacer(modifier = Modifier.padding(start = 8.dp))
-            ButtonTextDarkTheme(text = "SAVE")
-
-            }
-
-        }
 
 
 }

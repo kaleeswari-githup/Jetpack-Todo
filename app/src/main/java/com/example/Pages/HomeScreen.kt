@@ -3,16 +3,13 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.AlarmManager
 import android.app.Dialog
-import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -54,17 +51,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.core.app.ActivityCompat
 import androidx.core.app.ComponentActivity
-import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.airbnb.lottie.compose.*
 import com.example.dothings.*
 import com.example.dothings.R
@@ -76,22 +64,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.text.ParseException
-import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import java.util.*
-import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition",
     "UnrememberedMutableState"
 )
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
+fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
 
     val scaffoldState = rememberScaffoldState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -100,6 +83,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var context = LocalContext.current
+
     val isDarkTheme = isSystemInDarkTheme()
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     fun getIsChecked(): Boolean {
@@ -121,7 +105,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
 
             if (data != null) {
                 databaseRef.child(clickedTaskId).removeValue()
-                cancelNotifications(context, clickedTaskId)
+                cancelNotification(context, clickedTaskId)
                 val snackbarResult = snackbarHostState.showSnackbar(
                     message = "TASK DELETED",
                     actionLabel = "UNDO",
@@ -149,25 +133,26 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                 if (data != null) {
                     taskRef.removeValue()
                     completedTasksRef.setValue(data)
-                    cancelNotifications(context, data.id)
+                    cancelNotification(context, data.id)
+                    cancelNotificationManger(context,data.id)
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
-                            val result = snackbarHostState.showSnackbar(
-                                message = "TASK COMPLETED",
-                                actionLabel = "UNDO",
-                                duration = SnackbarDuration.Short
-                            )
-                            when (result) {
-                                SnackbarResult.ActionPerformed -> {
-                                    //Do Something
-                                    taskNewRef.setValue(data)
-                                    completedTasksRef.removeValue()
+                        val result = snackbarHostState.showSnackbar(
+                            message = "TASK COMPLETED",
+                            actionLabel = "UNDO",
+                            duration = SnackbarDuration.Short
+                        )
+                        when (result) {
+                            SnackbarResult.ActionPerformed -> {
+                                //Do Something
+                                taskNewRef.setValue(data)
+                                completedTasksRef.removeValue()
 
-                                }
-                                SnackbarResult.Dismissed -> {
-                                    //Do Something
-                                    completedTasksRef.setValue(data)
-                                }
+                            }
+                            SnackbarResult.Dismissed -> {
+                                //Do Something
+                                completedTasksRef.setValue(data)
+                            }
 
                         }
                     }
@@ -187,16 +172,16 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
     }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
-    var isPickerOpen = remember { mutableStateOf(false) }
+   var isPickerOpen = remember { mutableStateOf(false) }
     var isAddDaskOpen = remember { mutableStateOf(false) }
     val isChecked = getIsChecked()
 
     val completedTasksCountState = remember { mutableStateOf(0) }
-    val blurEffectBackground by animateDpAsState(
+   val blurEffectBackground by animateDpAsState(
         targetValue = when {
-            selectedItemId.value.isNotEmpty() -> 60.dp
-            isAddDaskScreenOpen.value -> 60.dp
-            isMarkCompletedOpen.value -> 60.dp
+           // selectedItemId.value.isNotEmpty() -> 60.dp
+           // isAddDaskScreenOpen.value -> 60.dp
+            isMarkCompletedOpen.value -> 25.dp
 
             else -> 0.dp
         }
@@ -281,7 +266,13 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     selectedMarkedItemId,
                     isChecked = isCheckedState,
                     sharedPreferences)
-                FloatingActionButton(isAddDaskScreenOpen,isPickerOpen,isCheckedState)
+                FloatingActionButton(
+                   // isAddDaskScreenOpen,
+                   // isPickerOpen,
+                   // isCheckedState,
+                    navController = navController,
+                    isChecked = isCheckedState
+                )
             }
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -289,7 +280,7 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                 snackbar = { CustomSnackbar(it)}
             )
         }
-        if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty()||isUpdatePickerOpen.value ){
+      /*  if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty()||isUpdatePickerOpen.value ){
             Box(modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -300,9 +291,10 @@ fun HomeScreen(navController: NavHostController,scale:Float, offset: Dp){
                     }
                 ))
 
-        }
+        }*/
     }
 }
+
 @Composable
 fun CustomSnackbar(snackbarData: SnackbarData) {
     Surface(
@@ -410,7 +402,7 @@ fun LazyGridLayout(navController: NavController,
             val message = data.message
 
             Log.d("MyApp", "Setting notification for item $itemId, title: ${data.message}")
-            scheduleNotification(context = context,selectedDateTime,itemId,message!!)
+            scheduleNotification(context = context,selectedDateTime,itemId,message!!, isCheckedState = isChecked.value)
 
 
         }
@@ -552,7 +544,8 @@ fun LazyGridLayout(navController: NavController,
 @Composable
 fun RoundedCircleCardDesign(
     navController: NavController,
-    id:String,
+
+    id:String?,
     image:Int,
     message:String,
     time: String,
@@ -623,29 +616,30 @@ fun RoundedCircleCardDesign(
         ""
     }
     Box(
-            modifier = Modifier
-                .size(184.dp)
-                .offset(y = offset)
-                .alpha(scale)
-                .aspectRatio(1f)
-                .bounceClick()
-                .clip(CircleShape)
-                .background(MaterialTheme.colors.primary, shape = CircleShape)
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    navController.navigate(
-                        route = Screen.Update.passUpdateValues(
-                            id = id,
-                        )
+        modifier = Modifier
+            .size(184.dp)
+            // .offset(y = offset)
+            .alpha(scale)
+            .aspectRatio(1f)
+            .bounceClick()
+            .clip(CircleShape)
+            .background(MaterialTheme.colors.primary, shape = CircleShape)
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
+                navController.navigate(
+                    route = Screen.Update.passUpdateValues(
+                        id = id.toString(),
+                        isChecked = isChecked.value,
+
                     )
-                    // navController.navigate(route = Screen.Test.passId("$message"))
+                )
+                // navController.navigate(route = Screen.Test.passId("$message"))
 
 
-                    // isAddDaskOpen.value = true
-                }
-            ,
-            contentAlignment = Alignment.Center,
-        ) {
+                // isAddDaskOpen.value = true
+            },
+        contentAlignment = Alignment.Center,
+    ) {
 
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -667,8 +661,8 @@ fun RoundedCircleCardDesign(
                                 }
                                 Vibration(context = mContext)
                             }
-
-                            onMarkCompletedClick(id)
+                            Log.d("homeid","$id")
+                            onMarkCompletedClick(id.toString())
                         })
                 Text(
                     text = ("$message"),
@@ -745,9 +739,13 @@ fun formatDate(date: LocalDate): String {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun FloatingActionButton(
-    isAddDaskScreenOpen:MutableState<Boolean>,
-    isPickerOpen: MutableState<Boolean>,
-    isChecked:MutableState<Boolean>){
+    navController: NavController,
+   // isAddDaskScreenOpen:MutableState<Boolean>,
+  //  isPickerOpen: MutableState<Boolean>,
+    isChecked:MutableState<Boolean>
+){
+    var isAddTaskScreenOpen by remember { mutableStateOf(false) }
+    var isButtonProcessing by remember { mutableStateOf(false) }
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
     var visible by remember { mutableStateOf(false) }
@@ -790,8 +788,18 @@ fun FloatingActionButton(
                 .align(Alignment.BottomCenter)
                 .bounceClick()
                     ,
-           onClick = {isAddDaskScreenOpen.value = true
-                     Vibration(context)
+           onClick = {
+               //isAddDaskScreenOpen.value = true
+               if (!isButtonProcessing) { // Check if the button is not currently processing
+                   isButtonProcessing = true // Set the processing flag
+                   coroutineScope.launch {
+                       navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
+                       Vibration(context)
+
+                       // Add a delay or other processing as needed
+                   }
+                   // isButtonProcessing = false // Do not reset the processing flag here
+               }
            },
             shape = CircleShape,
            // contentColor = Color.White,
@@ -807,16 +815,15 @@ fun FloatingActionButton(
         }
         val context = LocalContext.current
         val dialog = Dialog(context)
- if(isAddDaskScreenOpen.value){
+ /*if(isAddDaskScreenOpen.value){
      AddDaskScreen( selectedDate = mutableStateOf(null),
          selectedTime = mutableStateOf(null),
          textValue = "",
          onDismiss = {isAddDaskScreenOpen.value = false},
          isPickerOpen = isPickerOpen,
-         modifier = Modifier,
          isChecked = isChecked
      )
- }
+ }*/
     }
 
 }
@@ -850,7 +857,7 @@ fun Modifier.bounceClick() = composed {
 
 @SuppressLint("ScheduleExactAlarm")
 @Composable
-fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: String, message: String) {
+fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: String, message: String,isCheckedState: Boolean) {
     val now = Calendar.getInstance().timeInMillis
     val notificationTag = "Notification_$itemId"
 
@@ -858,8 +865,11 @@ fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: Strin
         val intent = Intent(context, NotificationReceiver::class.java)
         intent.putExtra("itemId", itemId)
         intent.putExtra("messageExtra", message)
+        intent.putExtra("isCheckedState",isCheckedState)
+
         Log.d("messageExtra","$message")
         val requestCode = notificationTag.hashCode()
+
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -879,7 +889,42 @@ fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: Strin
         )
     }
 }
-fun cancelNotifications(context: Context, itemId: String) {
+
+fun cancelNotificationManger(context: Context, itemId: String ){
+    val notificationId = notificationIdsMap[itemId]
+
+    if (notificationId != null) {
+        // Cancel the notification using the retrieved ID
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(notificationId)
+    }
+}
+/*fun cancelNotification(context: Context, itemId: String) {
+    // Retrieve the request code from the map
+    val requestCode = notificationIdsMap[itemId] ?: return
+
+    // Create an intent with the same properties as the one used for scheduling
+    val intent = Intent(context, NotificationReceiver::class.java)
+    intent.putExtra("itemId", itemId)
+    intent.putExtra("messageExtra", "dummy") // You might need a value here, even if it's a dummy one
+    intent.putExtra("isCheckedState", false) // You might need a value here, even if it's a dummy one
+
+    val pendingIntent = PendingIntent.getBroadcast(
+        context,
+        requestCode,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
+
+    // Cancel the pending intent
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    alarmManager.cancel(pendingIntent)
+
+    // Remove the entry from the map
+    notificationIdsMap.remove(itemId)
+}*/
+
+fun cancelNotification(context: Context, itemId: String) {
     val notificationTag = "Notification_$itemId"
     val intent = Intent(context, NotificationReceiver::class.java)
     val requestCode = notificationTag.hashCode()
@@ -1015,23 +1060,24 @@ fun TopSectionHomeScreen(navController: NavController,
         val shape = RoundedCornerShape(16.dp)
         Text(
             text = "DOTHING",
-            modifier = Modifier
-               // .offset(y = offsetY)
-               // .alpha(opacity)
-            ,
+            modifier = Modifier,
+            // .offset(y = offsetY)
+            // .alpha(opacity)
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.W100,
             fontSize = 24.sp,
             color = MaterialTheme.colors.secondary,
 
-        )
+            )
         Box(modifier = Modifier
             .size(48.dp)
             // .offset(y = offsetYSecond)
             // .alpha(opacitySecond)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                isMarkCompletedOpen.value = true
+                //  navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
+                navController.navigate(route = "Screen.MarkComplete.route/${isChecked.value}")
+                // isMarkCompletedOpen.value = true
                 Vibration(context)
             }
             .clip(shape)
@@ -1059,13 +1105,13 @@ fun TopSectionHomeScreen(navController: NavController,
            }
         }
         if (isMarkCompletedOpen.value){
-            MarkCompletedScreen(
+         /*   MarkCompletedScreen(
                 navController = navController,
                 onDismiss = { isMarkCompletedOpen.value = false },
                 selectedMarkedItemId,
                 isChecked,
                 sharedPreferences = sharedPreferences
-            )
+            )*/
         }
     }
 }
@@ -1097,6 +1143,29 @@ fun Vibration(context:Context){
         vibrator.cancel()
         vibrator.vibrate(vibrationEffect2)
     }
+}
+fun cancelAllNotifications(context: Context, uid: String) {
+    val database = FirebaseDatabase.getInstance()
+    val taskRef = database.reference.child("Task").child(uid)
+
+    // Read the data from the Firebase Realtime Database
+    taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            // Iterate through each child item
+            for (taskSnapshot in snapshot.children) {
+                val itemId = taskSnapshot.key
+
+                // Cancel notification for the current child item
+                cancelNotification(context, itemId.toString())
+                cancelNotificationManger(context,itemId.toString())
+            }
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            // Handle the error, if any
+            Log.e("Firebase", "Error reading data from Firebase", error.toException())
+        }
+    })
 }
 
 /*

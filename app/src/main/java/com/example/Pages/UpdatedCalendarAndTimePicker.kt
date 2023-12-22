@@ -47,8 +47,8 @@ fun UpdatedCalendarAndTimePickerScreen(
     id:String,
     invokeOnDoneClick: Boolean = true,
     UnMarkedDateandTime:Boolean = true,
-    //isChecked: MutableState<Boolean>,
-    message: String
+    isChecked: MutableState<Boolean>,
+    message: MutableState<String>
 ) {
 
     var selectedDate = remember { mutableStateOf(LocalDate.now()) }
@@ -98,7 +98,7 @@ fun UpdatedCalendarAndTimePickerScreen(
         }
 
         val updatedData = HashMap<String, Any>()
-        updatedData["message"] = message
+        updatedData["message"] = message.value
         updatedData["id"] = id
         updatedData["time"] = timeFormat
         updatedData["date"] = formattedDate
@@ -185,7 +185,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         selectedDate.value = date
                     },
                     selectedTime = selectedTime,
-                   // isChecked = isChecked
+                    isChecked = isChecked
                 )
 
             }

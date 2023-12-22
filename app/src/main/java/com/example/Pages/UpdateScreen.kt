@@ -19,13 +19,13 @@ import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -41,8 +41,6 @@ import androidx.compose.ui.text.style.TextAlign
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.example.dothings.*
 import com.example.dothings.R
@@ -70,7 +68,10 @@ fun UpdateTaskScreen(
     navController: NavController,
     id: String?,
     openKeyboard: Boolean,
+    isChecked:MutableState<Boolean>,
+
      ) {
+
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
     val maxValue = 32
     val database = FirebaseDatabase.getInstance()
@@ -78,7 +79,7 @@ fun UpdateTaskScreen(
     val uid = user?.uid
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     var data by remember { mutableStateOf<DataClass?>(null) }
-    var dataClassMessage by remember { mutableStateOf("") }
+    var dataClassMessage = remember { mutableStateOf("") }
     var dataClassDate= remember { mutableStateOf("") }
     var dataClassTime = remember{ mutableStateOf("") }
     Log.d("UpdateMessage","$dataClassMessage")
@@ -111,7 +112,7 @@ fun UpdateTaskScreen(
 
 
                     // Assuming 'message' is a property of DataClass
-                    dataClassMessage = selectedData.message ?: ""
+                    dataClassMessage.value = selectedData.message ?: ""
                  //   dataClassDate.value = selectedData.date?:""
                     dataClassTime.value = selectedData.time?:""
 
@@ -172,13 +173,22 @@ fun UpdateTaskScreen(
             } else {
                 null
             }
-            val updatedData = HashMap<String, Any>()
-            updatedData["id"] = id.toString()
-            updatedData["message"] =dataClassMessage
-            updatedData["time"] = formattedTime?.format(timeFormat) ?: ""
-            updatedData["date"] = formattedDate
-            updatedData["notificationTime"] = notificationTime ?: 0L
-            databaseRef.child(id.toString()).updateChildren(updatedData)
+            val updatedData = DataClass(
+                id = id.toString(),
+                message = dataClassMessage.value,
+                time = formattedTime?.format(timeFormat) ?: "",
+                date = formattedDate,
+                notificationTime = notificationTime ?: 0L
+            )
+
+            val dataMap = mapOf(
+                "id" to updatedData.id,
+                "message" to updatedData.message,
+                "time" to updatedData.time,
+                "date" to updatedData.date,
+                "notificationTime" to updatedData.notificationTime
+            )
+            databaseRef.child(id.toString()).updateChildren(dataMap)
             navController.navigate(Screen.Home.route)
         }
 
@@ -203,7 +213,8 @@ fun UpdateTaskScreen(
 
                 if (data != null) {
                     databaseRef.child(clickedTaskId).removeValue()
-                    cancelNotifications(context, clickedTaskId)
+                    cancelNotificationManger(context,clickedTaskId)
+                    cancelNotification(context, clickedTaskId)
                     val snackbarResult = snackbarHostState.showSnackbar(
                         message = "TASK DELETED",
                         actionLabel = "UNDO",
@@ -231,7 +242,8 @@ fun UpdateTaskScreen(
                     if (data != null) {
                         taskRef.removeValue()
                         completedTasksRef.setValue(data)
-                        cancelNotifications(context, data.id)
+                        cancelNotification(context, data.id)
+                        cancelNotificationManger(context,data.id)
                         coroutineScope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
@@ -272,14 +284,25 @@ fun UpdateTaskScreen(
             )
         ){*/
            // ThemedBackground()
+    val blurEffectBackground by animateDpAsState(targetValue = when{
+        isUpdatePickerOpen.value -> 10.dp
+        else -> 0.dp
+    }
+    )
     BackHandler {
         onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
     }
             Box(modifier = Modifier
-
+                .blur(blurEffectBackground)
                 .fillMaxSize()
                 .background(color = MaterialTheme.colors.background)
+                .clickable(indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) {
+                    onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+
+                }
             ) {
+                ThemedGridImage()
 
                 // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
@@ -290,7 +313,7 @@ fun UpdateTaskScreen(
                             onTaskChange = { newTask ->
 
                                 if (newTask.length <= maxValue){
-                                    dataClassMessage = newTask
+                                    dataClassMessage.value = newTask
                                 }
                             },
                             id = id.toString(),
@@ -298,7 +321,8 @@ fun UpdateTaskScreen(
                             isUpdatePickerOpen = isUpdatePickerOpen,
                             dataClassMessage = dataClassMessage,
                             selectedDate =dataClassDate,
-                            selectedTime = dataClassTime
+                            selectedTime = dataClassTime,
+                           isChecked = isChecked
 
 
                         )
@@ -334,16 +358,19 @@ fun UpdateTaskScreen(
 @Composable
 fun UpdateCircleDesign(
   //  navController: NavController,
-    dataClassMessage: String,
+    dataClassMessage: MutableState<String>,
     selectedDate: MutableState<String>,
     selectedTime: MutableState<String>,
     id:String,
     onTaskChange:(String) -> Unit,
     isUpdatePickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
-   // isChecked: MutableState<Boolean>,
+    isChecked: MutableState<Boolean>,
 
 ){
+val dataClassMessageMutable by remember{
+    mutableStateOf(dataClassMessage)
+}
 
     val isMessageFieldFocused = remember { mutableStateOf(false) }
 
@@ -359,7 +386,7 @@ fun UpdateCircleDesign(
     val onDoneClick: () -> Unit = {
             val updatedData = HashMap<String, Any>()
             updatedData["id"] = id
-            updatedData["message"] = dataClassMessage
+            updatedData["message"] = dataClassMessageMutable.value
 
             databaseRef.child(id).updateChildren(updatedData)
                 .addOnCompleteListener { task ->
@@ -371,19 +398,41 @@ fun UpdateCircleDesign(
                     }
                 }
         }
+    var visible by remember {
+        mutableStateOf(false)
+    }
 
+    LaunchedEffect(Unit) {
+        visible = true // Set the visibility to true to trigger the animation
+
+    }
+    val scale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.7f,
+            stiffness = Spring.StiffnessVeryLow
+        )
+    )
+    val offsetY by animateDpAsState(
+        targetValue = if (visible) 0.dp else 400.dp,
+        animationSpec = spring(
+            dampingRatio = 0.45f,
+            stiffness = Spring.StiffnessMediumLow
+        )
+    )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 54.dp)
                 .size(344.dp)
-                // .offset(y = offsetY)
-                // .scale(scale)
-                // .alpha(opacity)
+                .offset(y = offsetY)
+                .scale(scale)
+                 //.alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(color = MaterialTheme.colors.primary, shape = CircleShape)
-                .clickable() { },
+                .clickable(indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { },
             contentAlignment = Alignment.Center
         ){
             val customTextSelectionColors = TextSelectionColors(
@@ -396,7 +445,7 @@ fun UpdateCircleDesign(
                // val messageState = remember { mutableStateOf(message.value) }
                 CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors){
                     TextField(
-                        value = dataClassMessage,
+                        value = dataClassMessage.value,
                         onValueChange = onTaskChange ,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -453,7 +502,7 @@ fun UpdateCircleDesign(
                 }
 
                 if (isMessageFieldFocused.value){
-                    TextStyle(text = "${dataClassMessage.length} / 32")
+                    TextStyle(text = "${dataClassMessage.value.length} / 32")
                 }
 
     Box(
@@ -467,7 +516,8 @@ fun UpdateCircleDesign(
             .bounceClick()
             //   .background(color = SmallBox, shape = CircleShape)
 
-            .clickable() {
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
                 isUpdatePickerOpen.value = true
             }
 
@@ -559,7 +609,7 @@ fun UpdateCircleDesign(
                 id = id,
                 invokeOnDoneClick = true,
                 UnMarkedDateandTime = false,
-                // isChecked = isChecked,
+                 isChecked = isChecked,
                 message = dataClassMessage
             )
 
@@ -620,6 +670,7 @@ fun UpdatedButtons(id: String,
         }
 
     )
+    Log.d("updateId","$id")
     Box(modifier = Modifier
         .wrapContentWidth()
         .height(48.dp)
@@ -637,7 +688,8 @@ contentAlignment = Alignment.Center
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                onDeleteClick(id)
+
+               onDeleteClick(id)
               //  onDismiss.invoke()
                 navController.popBackStack()
             },

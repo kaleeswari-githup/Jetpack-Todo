@@ -42,7 +42,7 @@ fun UpdatedCalendar(
     selectedTime: MutableState<LocalTime?>,
     selectedDate: MutableState<LocalDate>,
     onDateSelected: (LocalDate) -> Unit,
-    //isChecked: MutableState<Boolean>
+    isChecked: MutableState<Boolean>
 ) {
     var isDoneButtonClicked by remember { mutableStateOf(false) }
     var isClearTextVisible by remember { mutableStateOf(true) }
@@ -117,7 +117,7 @@ fun UpdatedCalendar(
                     onTimeSelected = { time ->
                         selectedTime.value = time
                     },
-                   // isChecked = isChecked
+                    isChecked = isChecked
                 )
 
 

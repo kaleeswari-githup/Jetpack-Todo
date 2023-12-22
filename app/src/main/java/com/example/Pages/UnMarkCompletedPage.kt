@@ -358,6 +358,7 @@ fun UnMarkCompletedCircleDesign(
                     .padding(
                         top = 20.dp
                     )
+                    .bounceClick()
                     // .background(color = Color.White, shape = CircleShape)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
@@ -442,8 +443,8 @@ fun UnMarkCompletedCircleDesign(
                         id = id,
                         invokeOnDoneClick = false,
                         UnMarkedDateandTime = true,
-                        //isChecked = isChecked,
-                        message = message.toString()
+                        isChecked = isChecked,
+                        message = message
 
                     )
 
