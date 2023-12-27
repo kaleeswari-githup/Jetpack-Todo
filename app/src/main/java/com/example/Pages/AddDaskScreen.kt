@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
-import com.example.dothings.ThemedBackground
 import com.example.dothings.interDisplayFamily
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
@@ -54,7 +53,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-@OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("RememberReturnType", "SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -63,12 +61,8 @@ fun AddDaskScreen(
     selectedDate: MutableState<LocalDate?>,
     selectedTime: MutableState<LocalTime?>,
     textValue:String,
-   // onDismiss: () -> Unit,
-   // isPickerOpen: MutableState<Boolean>,
     isChecked: MutableState<Boolean>,
-
-
-) {
+    ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
     }
@@ -109,7 +103,6 @@ fun AddDaskScreen(
         }
         val data = DataClass(id,messageText ?: "",userSelectedTime ?: "",userSelectedDate ?: "", notificationTime =notificationTime ?: 0L )
         databaseRef.child(id).setValue(data)
-       // onDismiss.invoke()
         navController.popBackStack()
     }
 
@@ -118,23 +111,11 @@ fun AddDaskScreen(
         else -> 0.dp
     }
     )
-
-       /* Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(
-                dismissOnClickOutside = true,
-                dismissOnBackPress = true,
-                usePlatformDefaultWidth = false,
-                )
-
-        ){*/
-
     var visible by remember {
         mutableStateOf(false)
     }
     LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
-
+        visible = true
     }
     val offsetY by animateDpAsState(
         targetValue = if (visible) 0.dp else 42.dp,
@@ -143,12 +124,10 @@ fun AddDaskScreen(
     val opacity by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = keyframes {
-            durationMillis = 300 // Total duration of the animation
-            0.3f at 100 // Opacity becomes 0.3f after 200ms
-            0.6f at 200 // Opacity becomes 0.6f after 500ms
+            durationMillis = 300
+            0.3f at 100
+            0.6f at 200
             1f at 300
-
-
         }
     )
 Box(modifier = Modifier
@@ -180,19 +159,14 @@ Box(modifier = Modifier
         ){
             Row(
                 modifier = Modifier
-                // .background(color = Color.Cyan)
                   .fillMaxWidth(),
-
-                 horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center,
                  verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
                         .size(width = 105.dp, height = 48.dp)
-                        //.offset(y = offsetY)
-                        // .alpha(opacity)
                         .bounceClick()
-
                         .background(
                             shape = RoundedCornerShape(53.dp),
                             color = MaterialTheme.colors.primary
@@ -200,8 +174,7 @@ Box(modifier = Modifier
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             navController.popBackStack()
-                        }
-                    ,
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     ButtonTextWhiteTheme(text = "CANCEL")
@@ -214,15 +187,9 @@ Box(modifier = Modifier
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
                         .size(width = 105.dp, height = 48.dp)
-                        .bounceClick()
-                        //.offset(y = offsetY)
-                    // .alpha(opacity)
-                    ,
+                        .bounceClick(),
                     colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary),
                     elevation = ButtonDefaults.elevation(0.dp)
-
-
-
                 ) {
                     ThemedTickImage()
                     Spacer(modifier = Modifier.padding(start = 8.dp))
@@ -238,47 +205,6 @@ Box(modifier = Modifier
         navController.popBackStack()
     }
 }
-               /* Box(modifier = Modifier
-
-                   // .blur(radius = blurEffectBackground)
-                    .fillMaxSize()
-                    // .offset(y = offsetY)
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() }
-                    .background(color = MaterialTheme.colors.background)
-                ) {
-                    //ThemedBackground()
-                    //(LocalView.current.parent as DialogWindowProvider)?.window?.setDimAmount(0.8f)
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
-                        Column(modifier = Modifier,
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally) {
-
-                            AddDaskCircleDesign( mutableSelectedDate.value,mutableSelectedTime.value,task = task, onTaskChange = {newTask ->
-                                if (newTask.length <= maxValue){
-                                    task.value = newTask
-                                }
-                            },onDoneClick = onDoneClick,
-                                isPickerOpen = isPickerOpen,
-                                //  isChecked = isChecked,
-                            )
-                            TwoButtons(
-                                onDoneClick = onDoneClick,
-                                onDismiss = navController.popBackStack())
-                        }
-                    }
-
-                    CrossFloatingActionButton {
-                        navController.popBackStack()
-                    }
-
-
-
-
-
-    }*/
-
-
 }
 
 
@@ -294,18 +220,15 @@ fun AddDaskCircleDesign(
     onTaskChange: (String) -> Unit,
     onDoneClick: () -> Unit,
     isPickerOpen: MutableState<Boolean>,
-
     isChecked: MutableState<Boolean>
 ){
     val focusRequester = remember { FocusRequester() }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
-    val context = LocalContext.current
     var visible by remember {
         mutableStateOf(false)
     }
-
     LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
+        visible = true
 
     }
     val scale by animateFloatAsState(
@@ -322,18 +245,7 @@ fun AddDaskCircleDesign(
             stiffness = Spring.StiffnessMediumLow
         )
     )
-    val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 300 // Total duration of the animation
-            0.3f at 100 // Opacity becomes 0.3f after 200ms
-            0.6f at 200 // Opacity becomes 0.6f after 500ms
-            1f at 300
-
-
-        }
-    )
-        Box(
+    Box(
             modifier = Modifier
 
                 .fillMaxWidth()
@@ -341,12 +253,8 @@ fun AddDaskCircleDesign(
                 .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
-                //  .alpha(opacity)
-
                 .aspectRatio(1f)
-
                 .clip(CircleShape)
-
                 .background(MaterialTheme.colors.primary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
@@ -424,7 +332,6 @@ fun AddDaskCircleDesign(
                         .wrapContentSize(Alignment.Center)
                         .padding(top = 20.dp)
                         .bounceClick()
-                        //.background(color = SmallBox, shape = CircleShape)
                         .clickable(indication = null,
                             interactionSource = remember { MutableInteractionSource() }) {
                             isPickerOpen.value = true
@@ -434,10 +341,7 @@ fun AddDaskCircleDesign(
                             color = MaterialTheme.colors.secondary, // Change to your desired border color
                             shape = CircleShape
                         )
-                        // .padding(top = 4.dp,start = 8.dp,end = 8.dp, bottom =  4.dp)
                         .padding(8.dp)
-
-
                 ) {
                     if (selectedDate.value == null && selectedTime.value == null){
                        ThemedCalendarImage()
@@ -509,14 +413,9 @@ fun AddDaskCircleDesign(
 
                         )
                     }
-
                 }
-
-
-
-        }
+            }
     }
-
     LaunchedEffect(Unit) {
         delay(100)
         focusRequester.requestFocus()
@@ -547,41 +446,6 @@ fun TextStyle(text:String){
     color = MaterialTheme.colors.secondary.copy(alpha = 0.25f)
    )
 }
-
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun TwoButtons(
-    onDoneClick: () -> Unit,
-    onDismiss: Boolean,
-) {
-
-    var visible by remember {
-        mutableStateOf(false)
-    }
-    LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
-    }
-    val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else 48.dp,
-        animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 300)
-    )
-    val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 300 // Total duration of the animation
-            0.0f at 0 // Opacity becomes 0.3f after 200ms
-             // Opacity becomes 0.6f after 500ms
-            1f at 300
-
-        delayMillis = 300// Opacity becomes 1f after 1000ms (end of the animation)
-        }
-
-    )
-
-
-
-}
-
 @Composable
 fun ThemedTickImage() {
     val isDarkTheme = isSystemInDarkTheme()

@@ -1,6 +1,7 @@
 package com.example.Pages
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -67,27 +68,18 @@ import java.util.*
 @Composable
 fun MarkCompletedScreen(
     navController:NavController,
-    //onDismiss: () -> Unit,
-
     isChecked:MutableState<Boolean>,
     ){
     val context = LocalContext.current
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
-    fun getIsChecked(): Boolean {
-        return sharedPreferences.getBoolean("isChecked", false)
-    }
     val selectedMarkedItemId = remember { mutableStateOf("") }
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-
-
     val completedTasksCountState = remember { mutableStateOf(0) }
     val scaffoldState = rememberScaffoldState()
     val coroutineScope = rememberCoroutineScope()
-    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
-
     val snackbarHostState = remember { SnackbarHostState() }
     val valueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -95,7 +87,6 @@ fun MarkCompletedScreen(
         }
 
         override fun onCancelled(error: DatabaseError) {
-            // Handle onCancelled event if needed
         }
     }
     DisposableEffect(Unit) {
@@ -153,8 +144,6 @@ fun MarkCompletedScreen(
                         )
                         when (snackbarResult) {
                             SnackbarResult.Dismissed -> {
-                                // Snackbar dismissed, no action needed
-                              //  completedTasksRef.removeValue()
                                 taskRef.setValue(data)
                             }
                             SnackbarResult.ActionPerformed -> {
@@ -182,28 +171,17 @@ fun MarkCompletedScreen(
         else -> 0.dp
     }
     )
+    var visible by remember { mutableStateOf(false) }
 
-
-       // ThemedBackground()
-
-            var visible by remember { mutableStateOf(false) }
-
-            // Use LaunchedEffect to animate the 'visible' variable
-            LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
                 visible = true // Set the visibility to true to trigger the animation
             }
-
-            // Use animateDpAsState to animate the scale for the Box
-
-            Box(modifier = Modifier
+    Box(modifier = Modifier
                 .blur(radius = blurEffectBackground)
-
                 .fillMaxSize()
                 .background(color = MaterialTheme.colors.background)
                 .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() },
-
-                ) {
+                    interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() },) {
 ThemedGridImage()
                 LazyColumn(modifier = Modifier.fillMaxSize(),
                     ) {
@@ -462,11 +440,7 @@ ThemedGridImage()
                                                             MaterialTheme.colors.primary,
                                                             CircleShape
                                                         )
-
-                                                )
-
-
-                                        }
+                                                ) }
                                     }
                                 }
 
@@ -523,6 +497,7 @@ ThemedGridImage()
                                       // Optional: Perform any additional actions after sign out
                                       val intent = Intent(context, SigninActivity::class.java)
                                       context.startActivity(intent)
+                                      (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                                       // onDismiss.invoke()
                                   }
                           },
@@ -558,18 +533,14 @@ ThemedGridImage()
 
                 CrossFloatingActionButton {
                     navController.popBackStack()
+
                 }
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.align(Alignment.BottomCenter),
                     snackbar = { CustomSnackbar(it)}
                 )
-
-
-
-
     }
-
 }
 @Composable
 fun ThemedRightIcon() {
@@ -632,7 +603,6 @@ fun LazyRowCompletedTask(
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
-    val imageResource = R.drawable.light_black_square
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -663,7 +633,7 @@ fun LazyRowCompletedTask(
                 val currentYear = LocalDate.now().year
 
                 val desiredDateFormat = if (originalDate.year == currentYear) {
-                    DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)
+                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                 } else {
                     DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                 }
@@ -682,7 +652,7 @@ fun LazyRowCompletedTask(
             onUnMarkcompletedClick = onUnMarkcompletedClick,
                 selectedMarkedItemId,
                 modifier = Modifier.animateItemPlacement(),
-                isChecked
+                isChecked = isChecked
             )
 
         }
@@ -702,9 +672,6 @@ fun MarkCompletedCircleDesign(
                               modifier: Modifier=Modifier,
                               isChecked: MutableState<Boolean>
                               ){
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
 
     Box(
         modifier = modifier
@@ -715,14 +682,10 @@ fun MarkCompletedCircleDesign(
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 selectedMarkedItemId.value = id
-            }
-
-            ,
-
+            },
         contentAlignment = Alignment.Center
     ){
         val dateString = if (date.isNotEmpty()) {
-           // val parsedDate = LocalDate.parse(date,formatter)
             if (time.isNotEmpty()){
                 "$date, $time"
             }else{
@@ -732,6 +695,7 @@ fun MarkCompletedCircleDesign(
         } else {
             ""
         }
+
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -742,8 +706,6 @@ fun MarkCompletedCircleDesign(
                     onUnMarkcompletedClick(id)
 
                 })
-
-
             Text(
                 text = buildAnnotatedString {
                     append("$message")

@@ -48,6 +48,7 @@ import com.example.dothings.R.DataClass
 import com.example.ui.theme.FABRed
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
@@ -60,7 +61,7 @@ import java.util.*
 
 
 
-@SuppressLint("UnrememberedMutableState")
+@SuppressLint("UnrememberedMutableState", "UnusedMaterialScaffoldPaddingParameter")
 @OptIn(ExperimentalComposeUiApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -69,9 +70,9 @@ fun UpdateTaskScreen(
     id: String?,
     openKeyboard: Boolean,
     isChecked:MutableState<Boolean>,
-
-     ) {
-
+    snackbarHostState:SnackbarHostState,
+    coroutineScope:CoroutineScope
+) {
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
     val maxValue = 32
     val database = FirebaseDatabase.getInstance()
@@ -82,9 +83,6 @@ fun UpdateTaskScreen(
     var dataClassMessage = remember { mutableStateOf("") }
     var dataClassDate= remember { mutableStateOf("") }
     var dataClassTime = remember{ mutableStateOf("") }
-    Log.d("UpdateMessage","$dataClassMessage")
-    Log.d("UpdateDate","$dataClassDate")
-    Log.d("UpdateTime","$dataClassTime")
 
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
@@ -109,26 +107,18 @@ fun UpdateTaskScreen(
                             // Handle the case where the date is empty
                             dataClassDate.value = ""
                         }
-
-
-                    // Assuming 'message' is a property of DataClass
                     dataClassMessage.value = selectedData.message ?: ""
-                 //   dataClassDate.value = selectedData.date?:""
                     dataClassTime.value = selectedData.time?:""
-
-
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Handle error if needed
             }
         }
 
         databaseRef.addListenerForSingleValueEvent(listener)
 
         onDispose {
-            // Remove the listener when the composable is no longer in the view hierarchy
             databaseRef.removeEventListener(listener)
         }
     }
@@ -153,7 +143,6 @@ fun UpdateTaskScreen(
             val timeFormats = listOf(
                 DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH),
                 DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH).withLocale(Locale.US),
-                // Add more variations as needed
             )
 
             var formattedTime: LocalTime? = null
@@ -163,7 +152,6 @@ fun UpdateTaskScreen(
                     formattedTime = LocalTime.parse(updatedTime.toUpperCase(), format)
                     break
                 } catch (e: DateTimeParseException) {
-                    // Handle exception or try the next format
                 }
             }
 
@@ -195,15 +183,7 @@ fun UpdateTaskScreen(
     BackHandler {
         onDoneClick(dataClassDate.value, dataClassTime.value)
     }
-
-
-        val onBackPressed: () -> Unit = {
-            onDoneClick(dataClassDate.value, dataClassTime.value)
-        }
-
-        val snackbarHostState = remember { SnackbarHostState() }
-        val coroutineScope = rememberCoroutineScope()
-        val onDeleteClick:(String) -> Unit = {clickedTaskId ->
+    val onDeleteClick:(String) -> Unit = {clickedTaskId ->
             val databaseRef = database.reference.child("Task").child(uid.toString())
             val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
 
@@ -273,17 +253,6 @@ fun UpdateTaskScreen(
                 }
             })
         }
-
-
-     /*   Dialog(onDismissRequest = onBackPressed ,
-            properties = DialogProperties(
-                dismissOnClickOutside = true,
-                dismissOnBackPress = true,
-                usePlatformDefaultWidth = false,
-
-            )
-        ){*/
-           // ThemedBackground()
     val blurEffectBackground by animateDpAsState(targetValue = when{
         isUpdatePickerOpen.value -> 10.dp
         else -> 0.dp
@@ -292,72 +261,53 @@ fun UpdateTaskScreen(
     BackHandler {
         onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
     }
-            Box(modifier = Modifier
-                .blur(blurEffectBackground)
-                .fillMaxSize()
-                .background(color = MaterialTheme.colors.background)
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
-
-                }
-            ) {
-                ThemedGridImage()
-
-                // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
-                    Column(modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        horizontalAlignment = Alignment.CenterHorizontally) {
-                        UpdateCircleDesign(
-                            onTaskChange = { newTask ->
-
-                                if (newTask.length <= maxValue){
-                                    dataClassMessage.value = newTask
-                                }
-                            },
-                            id = id.toString(),
-                            openKeyboard = openKeyboard,
-                            isUpdatePickerOpen = isUpdatePickerOpen,
-                            dataClassMessage = dataClassMessage,
-                            selectedDate =dataClassDate,
-                            selectedTime = dataClassTime,
-                           isChecked = isChecked
-
-
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .padding(bottom = 40.dp)
-                        ) {
-                            UpdatedButtons( id = id.toString(), navController = navController, onMarkCompletedClick =onMarkCompletedClick,onDeleteClick)
-                        }
+    Box(modifier = Modifier
+            .blur(blurEffectBackground)
+            .fillMaxSize()
+            .background(color = MaterialTheme.colors.background)
+            .clickable(indication = null,
+                interactionSource = remember { MutableInteractionSource() }) {
+                onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+            }
+        ) {
+            ThemedGridImage()
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                Column(modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    UpdateCircleDesign(
+                        onTaskChange = { newTask ->
+                            if (newTask.length <= maxValue){
+                                dataClassMessage.value = newTask
+                            }
+                        },
+                        id = id.toString(),
+                        openKeyboard = openKeyboard,
+                        isUpdatePickerOpen = isUpdatePickerOpen,
+                        dataClassMessage = dataClassMessage,
+                        selectedDate =dataClassDate,
+                        selectedTime = dataClassTime,
+                        isChecked = isChecked
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(bottom = 40.dp)
+                    ) {
+                        UpdatedButtons( id = id.toString(), navController = navController, onMarkCompletedClick =onMarkCompletedClick,onDeleteClick)
                     }
                 }
-                CrossFloatingActionButton(onClick = {
-                    onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
-                })
-
-
-        }
-
-
-
+            }
+            CrossFloatingActionButton(onClick = {
+                onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+            })
+    }
 
 }
-
-
-  //  Log.d("dateValue","$selectedStringDate")
-
-
-
 @SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun UpdateCircleDesign(
-  //  navController: NavController,
     dataClassMessage: MutableState<String>,
     selectedDate: MutableState<String>,
     selectedTime: MutableState<String>,
@@ -371,12 +321,9 @@ fun UpdateCircleDesign(
 val dataClassMessageMutable by remember{
     mutableStateOf(dataClassMessage)
 }
-
     val isMessageFieldFocused = remember { mutableStateOf(false) }
-
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-
     val focusManager = LocalFocusManager.current
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -391,7 +338,6 @@ val dataClassMessageMutable by remember{
             databaseRef.child(id).updateChildren(updatedData)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        // Toast.makeText(context, "Updated successfully", Toast.LENGTH_SHORT).show()
 
                     } else {
                         Toast.makeText(context, task.exception.toString(), Toast.LENGTH_SHORT).show()
@@ -427,7 +373,6 @@ val dataClassMessageMutable by remember{
                 .size(344.dp)
                 .offset(y = offsetY)
                 .scale(scale)
-                 //.alpha(opacity)
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(color = MaterialTheme.colors.primary, shape = CircleShape)
@@ -442,7 +387,6 @@ val dataClassMessageMutable by remember{
             Column(modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center) {
-               // val messageState = remember { mutableStateOf(message.value) }
                 CompositionLocalProvider(LocalTextSelectionColors provides customTextSelectionColors){
                     TextField(
                         value = dataClassMessage.value,
@@ -509,42 +453,25 @@ val dataClassMessageMutable by remember{
         modifier = Modifier
             .wrapContentSize(Alignment.Center)
             .padding(
-                top = 20.dp,
-                start = 32.dp,
-                end = 32.dp
+                top = 20.dp
             )
             .bounceClick()
-            //   .background(color = SmallBox, shape = CircleShape)
-
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
                 isUpdatePickerOpen.value = true
             }
-
-            .border(
+                    .border(
                 width = 0.4.dp,
                 color = MaterialTheme.colors.secondary, // Change to your desired border color
                 shape = CircleShape
             )
-
-
-            .padding(8.dp)
-
-
+                    .padding(8.dp)
     ) {
-
-        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM")
-        val formattedDate = selectedDate.value.format(formatter) ?: ""
-        val dateString:String = formattedDate
-
-        Log.d("FormattedDate","$formattedDate")
-      //  val dateString:String = formattedDate
         val timeFormat = selectedTime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
         val timeString:String = timeFormat
         if (selectedDate.value.isNullOrEmpty() && selectedTime.value.isNullOrEmpty()){
             ThemedCalendarImage()
         }else if(selectedDate.value.isNotEmpty() && selectedTime.value.isNullOrEmpty()) {
-          //  var dateString = formatDate(selectedDate = selectedDate).toString()
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 ThemedCalendarImage()
@@ -571,10 +498,10 @@ val dataClassMessageMutable by remember{
                 )
             }
         }
+        Log.d("updatescreendate","${selectedDate}")
         if (isUpdatePickerOpen.value) {
             val pattern = "EEE, d MMM yyyy"
             val locale = Locale.ENGLISH
-
             val formatter = DateTimeFormatter.ofPattern(pattern, locale)
                 .withZone(ZoneId.of("America/New_York"))
             val selectedDateString = selectedDate.value
@@ -587,24 +514,19 @@ val dataClassMessageMutable by remember{
                     LocalDate.now()
                 }
             }
-            Log.d("CheckselectedDate","$localDate")
             UpdatedCalendarAndTimePickerScreen(
                 userSelectedDate = localDate,
-
                 userSelectedTime = selectedTime.value,
                 onDismiss = { isUpdatePickerOpen.value = false
                     keyboardController?.show()},
                 onDateTimeSelected = { date, time ->
                     val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                     val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-
                     val defaultDateString = date
                     val parsedDate = LocalDate.parse(defaultDateString, defaultDateFormat)
                     val formattedDate = parsedDate.format(desiredDateFormat)
-
                     selectedDate.value = formattedDate
                     selectedTime.value = time
-                   // Log.d("Checkdateformat","$date")
                 },
                 id = id,
                 invokeOnDoneClick = true,
@@ -612,19 +534,10 @@ val dataClassMessageMutable by remember{
                  isChecked = isChecked,
                 message = dataClassMessage
             )
-
         }
-
     }
-
-}
-
-
+            }
         }
-
-
-
-
     LaunchedEffect(openKeyboard) {
         if (openKeyboard) {
             focusRequester.requestFocus()
@@ -634,9 +547,6 @@ val dataClassMessageMutable by remember{
         }
     }
 }
-
-
-
 @SuppressLint("UnrememberedMutableState")
 @Composable
 fun UpdatedButtons(id: String,
@@ -644,10 +554,6 @@ fun UpdatedButtons(id: String,
                    onMarkCompletedClick: (String) -> Unit,
                    onDeleteClick: (String) -> Unit){
     val coroutineScope = rememberCoroutineScope()
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
-
     var visible by remember {
         mutableStateOf(false)
     }
@@ -670,14 +576,12 @@ fun UpdatedButtons(id: String,
         }
 
     )
-    Log.d("updateId","$id")
     Box(modifier = Modifier
         .wrapContentWidth()
         .height(48.dp)
         .offset(y = offsetY)
         .alpha(opacity)
-        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp))
-        ,
+        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
 contentAlignment = Alignment.Center
     ) {
         Row(modifier = Modifier
@@ -688,9 +592,7 @@ contentAlignment = Alignment.Center
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-
-               onDeleteClick(id)
-              //  onDismiss.invoke()
+                onDeleteClick(id)
                 navController.popBackStack()
             },
                 verticalAlignment = Alignment.CenterVertically
@@ -704,10 +606,9 @@ contentAlignment = Alignment.Center
                     .width(1.dp)
                     .fillMaxHeight()
                     .background(color = MaterialTheme.colors.background)
-
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
-            , modifier = Modifier
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
                     .padding(12.dp)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
@@ -724,20 +625,6 @@ contentAlignment = Alignment.Center
 
     }
 }
-
-/*class NotificationActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // Extract the data from the intent
-        val taskId = intent.getStringExtra("taskId")
-
-        setContent {
-            // Display the UpdateTaskScreen Composable
-            UpdateTaskScreenContent(taskId)
-        }
-    }
-}*/
 @Composable
 fun ThemedTrashImage() {
     val isDarkTheme = isSystemInDarkTheme()

@@ -78,62 +78,11 @@ fun UnMarkCompletedTaskScreen(
     onDeleteClick: (String) -> Unit,
     onUnMarkCompletedClick:(String) -> Unit,
     isChecked: MutableState<Boolean>,
-
-
-) {
+    ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
     }
     val maxValue = 32
-    val user = FirebaseAuth.getInstance().currentUser
-    val database = FirebaseDatabase.getInstance()
-
-    val uid = user?.uid
-    val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-    val onUnMarkDoneClick:(String,String) -> Unit = { updatedDate,updatedTime ->
-        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH) // Assuming the date format in the database is in ISO format
-        val desiredDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy") // Desired format: "EEE, d MMM"
-
-        val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
-
-// Parse the date string with the original format
-
-        val originalDate: LocalDate? = if (dateStringFromDatabase.isNotEmpty()) {
-            LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-        } else {
-            LocalDate.MIN // Assign LocalDate.MIN when dateStringFromDatabase is empty
-        }
-
-// Format the date with the desired format if originalDate is not LocalDate.MIN
-        val formattedDate = if (originalDate != LocalDate.MIN) {
-            originalDate?.format(desiredDateFormat) ?: ""
-        } else {
-            "" // Assign empty string if originalDate is LocalDate.MIN
-        }
-        val currentDateTime = LocalDateTime.now()
-        val timeFormat = updatedTime.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
-        val notificationTime: Long? = if (!formattedDate.isNullOrBlank() && !timeFormat.isNullOrBlank()) {
-            val combinedDateTime = "$formattedDate $timeFormat"
-            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
-            val date: Date? = try {
-                dateTimeFormat.parse(combinedDateTime)
-            } catch (e: ParseException) {
-                null
-            }
-            date?.time
-        } else {
-            null
-        }
-        val updatedData = HashMap<String, Any>()
-        updatedData["id"] = id
-        updatedData["message"] = task.value ?: ""
-        updatedData["time"] = timeFormat
-        updatedData["date"] = formattedDate
-        updatedData["notificationTime"] = notificationTime?.toLong() ?: 0L
-        completedTasksRef.child(id).updateChildren(updatedData)
-        onDismiss.invoke()
-    }
-
     var isPickerOpen = remember { mutableStateOf(false) }
     val blurEffectBackground by animateDpAsState(targetValue = when{
         isPickerOpen.value -> 10.dp
@@ -146,12 +95,10 @@ fun UnMarkCompletedTaskScreen(
             usePlatformDefaultWidth = false
         )
     ) {
-
-            Box(modifier = Modifier
+        Box(modifier = Modifier
                .blur(radius = blurEffectBackground)
             ) {
                 ThemedBackground()
-                // Image(painter = painterResource(id = R.drawable.grid_lines), contentDescription = null)
                 Box(modifier = Modifier
                     .fillMaxSize()
                     .clickable(indication = null,
@@ -160,8 +107,6 @@ fun UnMarkCompletedTaskScreen(
                     Column(modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.SpaceBetween,
                         horizontalAlignment = Alignment.CenterHorizontally) {
-
-
                         UnMarkCompletedCircleDesign(
                             initialSelectedate = selectedDate ,
                             initialSelectedtime = selectedTime  ,
@@ -175,7 +120,6 @@ fun UnMarkCompletedTaskScreen(
                             openKeyboard = openKeyboard,
                             isPickerOpen = isPickerOpen,
                             isChecked = isChecked,
-                            textValue = textValue
                         )
 
                         Box(
@@ -189,20 +133,12 @@ fun UnMarkCompletedTaskScreen(
                     }
                 }
 
-                CrossFloatingActionButton(onClick = {
+            CrossFloatingActionButton(onClick = {
                     onDismiss.invoke()
                 })
             }
         }
     }
-
-
-
-
-
-
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -215,24 +151,19 @@ fun UnMarkCompletedCircleDesign(
     isPickerOpen: MutableState<Boolean>,
     openKeyboard:Boolean,
     isChecked: MutableState<Boolean>,
-    textValue: String
+
     ){
-    /* val selectedDate = remember { mutableStateOf(initialSelectedate.value) }
-     val selectedTime = remember { mutableStateOf(initialSelectedtime.value) }*/
     val isMessageFieldFocused = remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-
+Log.d("initialSelecteddate","$initialSelectedate")
     val focusManager = LocalFocusManager.current
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
-    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
     val context = LocalContext.current
     val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-
     val onDoneClick: () -> Unit = {
-
         val updatedData = HashMap<String, Any>()
         updatedData["id"] = id
         updatedData["message"] = message.value
@@ -249,10 +180,8 @@ fun UnMarkCompletedCircleDesign(
     var visible by remember {
         mutableStateOf(false)
     }
-
     LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
-
+        visible = true
     }
     val scale by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -343,7 +272,6 @@ fun UnMarkCompletedCircleDesign(
                         fontFamily = interDisplayFamily,
                         color = MaterialTheme.colors.secondary,
                         textDecoration = TextDecoration.LineThrough,
-                        //  letterSpacing = -1.sp
                     ),
 
                     )
@@ -359,7 +287,6 @@ fun UnMarkCompletedCircleDesign(
                         top = 20.dp
                     )
                     .bounceClick()
-                    // .background(color = Color.White, shape = CircleShape)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         isPickerOpen.value = true
@@ -414,16 +341,17 @@ fun UnMarkCompletedCircleDesign(
 
                     val formatter = DateTimeFormatter.ofPattern(pattern, locale)
                         .withZone(ZoneId.of("America/New_York"))
-
-                    val localDate = if (initialSelectedate.value.isEmpty()) {
+                    val selectedDate = initialSelectedate.value
+                    val localDate = if (selectedDate.isEmpty()) {
                         LocalDate.now()
                     } else {
                         try {
-                            LocalDate.parse(initialSelectedate.value, formatter)
+                            LocalDate.parse(selectedDate, formatter)
                         } catch (e: DateTimeParseException) {
                             LocalDate.now()
                         }
                     }
+                    Log.d("initialSelectedDate","$localDate")
                     UpdatedCalendarAndTimePickerScreen(
                         userSelectedDate = localDate,
                         userSelectedTime = initialSelectedtime.value,
@@ -467,11 +395,6 @@ fun UnMarkCompletedButtons(id: String,
                            onDeleteClick : (String) -> Unit,
                            onUnMarkCompletedClick:(String) -> Unit)
 {
-    val coroutineScope = rememberCoroutineScope()
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
-
     var visible by remember {
         mutableStateOf(false)
     }
@@ -485,12 +408,10 @@ fun UnMarkCompletedButtons(id: String,
     val opacity by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = keyframes {
-            durationMillis = 300 // Total duration of the animation
-            0.0f at 0 // Opacity becomes 0.3f after 200ms
-            // Opacity becomes 0.6f after 500ms
+            durationMillis = 300
+            0.0f at 0
             1f at 300
-
-            delayMillis = 200// Opacity becomes 1f after 1000ms (end of the animation)
+            delayMillis = 200
         }
 
     )
@@ -521,13 +442,12 @@ fun UnMarkCompletedButtons(id: String,
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .width(1.dp)
-
                     .fillMaxHeight()
                     .background(color = MaterialTheme.colors.background)
 
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)
-                , modifier = Modifier
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
                     .padding(start = 12.dp)
                     .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {

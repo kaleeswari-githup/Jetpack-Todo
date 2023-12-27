@@ -14,9 +14,4 @@
 
     </style>
 
-    <style name="DialogTheme" parent="Theme.MaterialComponents.Light.Dialog">
-        <item name="android:statusBarColor">@color/SurfaceGray</item>
-        <item name="android:navigationBarColor">@color/SurfaceGray</item>
-    </style>
-
 </resources>

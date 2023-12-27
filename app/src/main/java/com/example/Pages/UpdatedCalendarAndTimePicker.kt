@@ -67,36 +67,29 @@ fun UpdatedCalendarAndTimePickerScreen(
         return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
     val onDoneClick: (String, String) -> Unit = { updatedDate, updatedTime ->
-        val originalDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
         val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)
 
-        val dateStringFromDatabase = updatedDate // Retrieve the date string from the database
+        val dateStringFromDatabase = updatedDate
 
-        // Parse the date string with the original format
         val originalDate: LocalDate? = if (dateStringFromDatabase.isNotEmpty()) {
             LocalDate.parse(dateStringFromDatabase, dateFormatter)
         } else {
-            LocalDate.MIN // Assign LocalDate.MIN when dateStringFromDatabase is empty
+            LocalDate.MIN
         }
-
-        // Format the date with the desired format if originalDate is not LocalDate.MIN
         val formattedDate = originalDate?.format(dateFormatter) ?: ""
         val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
-        // Parse updatedTime only if it's not empty
         val timeFormat = if (updatedTime.isNotEmpty()) {
             val updatedTimeString = LocalTime.parse(updatedTime, timeFormatter)
             updatedTimeString.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
         } else {
             ""
         }
-
         val notificationTime = if (originalDate != null && updatedTime.isNotEmpty()) {
             val updatedTimeString = LocalTime.parse(updatedTime, timeFormatter)
             calculateNotificationTime(originalDate, updatedTimeString)
         } else {
-            0L // Handle the case where either originalDate or updatedTime is missing
+            0L
         }
-
         val updatedData = HashMap<String, Any>()
         updatedData["message"] = message.value
         updatedData["id"] = id
@@ -154,10 +147,8 @@ fun UpdatedCalendarAndTimePickerScreen(
             val scale by animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
                 animationSpec = tween(
-
                     easing = EaseOutCirc
                 )
-
 
             )
             val offsetY by animateDpAsState(
@@ -181,9 +172,6 @@ fun UpdatedCalendarAndTimePickerScreen(
                     selectedDate = selectedDate,
                     userSelectedtime = userSelectedTime?.toString() ?: "",
                     startDate = userSelectedDate ?: LocalDate.now(),
-                    onDateSelected = { date ->
-                        selectedDate.value = date
-                    },
                     selectedTime = selectedTime,
                     isChecked = isChecked
                 )

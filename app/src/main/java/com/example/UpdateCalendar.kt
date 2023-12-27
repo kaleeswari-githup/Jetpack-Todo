@@ -41,7 +41,6 @@ fun UpdatedCalendar(
     startDate:LocalDate,
     selectedTime: MutableState<LocalTime?>,
     selectedDate: MutableState<LocalDate>,
-    onDateSelected: (LocalDate) -> Unit,
     isChecked: MutableState<Boolean>
 ) {
     var isDoneButtonClicked by remember { mutableStateOf(false) }
@@ -49,8 +48,6 @@ fun UpdatedCalendar(
     var isTimePickervisible by remember{ mutableStateOf(false) }
     var isDatePickervisible by remember{ mutableStateOf(false) }
     var newUserSelectedtime by remember { mutableStateOf(userSelectedtime) }
-
-
     Box(modifier = Modifier
         .fillMaxWidth(),
         contentAlignment = Alignment.Center
@@ -68,8 +65,6 @@ fun UpdatedCalendar(
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { }
         ) {
-            // Month navigation buttons
-          //  UpdatedShrinkCalendar(startDate = startDate, selectedDate = selectedDate)
             if (!isDatePickervisible && !isTimePickervisible){
                 UpdatedShrinkCalendar(startDate = selectedDate.value, selectedDate = selectedDate)
             }else{
@@ -80,21 +75,17 @@ fun UpdatedCalendar(
                     selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM")).toString().toUpperCase()
                 }
                 Row(modifier = Modifier
-
                     .fillMaxWidth()
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         isDatePickervisible = true
                         isTimePickervisible = false
                     }
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)
-                    ,
+                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
                     ) {
                     ButtonTextWhiteTheme(text = setDateText)
                 }
-
             }
-
             Box(
                 modifier = Modifier
                     .padding(bottom = 24.dp,)
@@ -102,7 +93,6 @@ fun UpdatedCalendar(
                     .fillMaxWidth()
                     .background(color = MaterialTheme.colors.background)
             )
-            Log.d("SecondInitialtime","$userSelectedtime")
             if (isTimePickervisible){
                 UpdatedScrollableTimePicker(
                     initialTime = parseTime(userSelectedtime) ,
@@ -112,18 +102,14 @@ fun UpdatedCalendar(
                         isTimePickervisible = false
                         isClearTextVisible = false
                        newUserSelectedtime = ""
-
-                    },
+                                   },
                     onTimeSelected = { time ->
                         selectedTime.value = time
                     },
                     isChecked = isChecked
                 )
-
-
             }
             else {
-
                 val setTimeText = if ( selectedTime.value != null) {
                     selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase()
                 } else if (!isTimePickervisible && isDatePickervisible && selectedTime.value != null) {
@@ -131,7 +117,6 @@ fun UpdatedCalendar(
                 } else {
                     "SET TIME"
                 }
-                Log.d("selectedtime.value","$selectedTime.value")
                 Row(modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp)
@@ -178,21 +163,12 @@ fun UpdatedCalendar(
                     selectedTime.value = localTime
                 }
             }
-
-
-
             LaunchedEffect(Unit) {
                 selectedDate.value = startDate
             }
-
-
         }
     }
-
-
 }
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 fun parseTime(timeString: String?): LocalTime? {
     return try {
@@ -206,8 +182,6 @@ fun parseTime(timeString: String?): LocalTime? {
         null
     }
 }
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun UpdatedShrinkCalendar(
@@ -217,15 +191,12 @@ fun UpdatedShrinkCalendar(
     val startMonth = YearMonth.from(startDate)
     var currentMonth by remember(startMonth) { mutableStateOf(startMonth) }
     var monthOffset by remember { mutableStateOf(0) }
-
     LaunchedEffect(monthOffset) {
         currentMonth = startMonth.plusMonths(monthOffset.toLong())
     }
     val days: List<LocalDate> = remember(currentMonth) {
         calculateDaysInMonth(currentMonth)
     }
-    Log.d("userselecteddate","$selectedDate")
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,8 +260,6 @@ fun UpdatedShrinkCalendar(
 
     // Calendar days
     val weeks = days.chunked(7)
-
-
     weeks.forEach { week ->
         Row(
             modifier = Modifier

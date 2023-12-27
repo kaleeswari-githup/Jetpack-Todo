@@ -29,13 +29,10 @@ import com.example.dothings.uri
 
 import com.google.firebase.auth.FirebaseAuth
 
-//const val notificationID = 1
 const val channelID = "channel1"
-const val titleExtra = "titleExtra"
 const val messageExtra = "messageExtra"
 
 val id = System.currentTimeMillis().toString() + (0..1000).random()
-//const val itemId = "itemId"
   val notificationIdsMap = mutableMapOf<String, Int>()
 
 class NotificationReceiver : BroadcastReceiver() {
@@ -47,12 +44,8 @@ class NotificationReceiver : BroadcastReceiver() {
         val itemId = intent.getStringExtra("itemId") ?: ""
         val isCheckedStateValue = intent.getBooleanExtra("isCheckedState", false)
 
-
         val notificationId = itemId.hashCode()
         notificationIdsMap[itemId] = notificationId
-        val notificationTag = "Notification_$itemId"
-       Log.d("ItemId","$itemId")
-       // val notificationID = itemId.hashCode()
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
 
@@ -71,8 +64,6 @@ class NotificationReceiver : BroadcastReceiver() {
             deepLinkIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelID,
@@ -87,7 +78,6 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setContentText("$email")
                 .setContentTitle(intent.getStringExtra(messageExtra))
                 .setContentIntent(pendingDeepLinkIntent)
-               // .setColor(ContextCompat.getColor(context, R.color.savebtnbg))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setDefaults(Notification.DEFAULT_SOUND or Notification.DEFAULT_VIBRATE)
@@ -97,7 +87,6 @@ class NotificationReceiver : BroadcastReceiver() {
                 .setContentText("$email")
                 .setContentTitle(intent.getStringExtra(messageExtra))
                 .setContentIntent(pendingDeepLinkIntent)
-               // .setColor(ContextCompat.getColor(context, R.color.savebtnbg))
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setDefaults(Notification.DEFAULT_SOUND or Notification.DEFAULT_VIBRATE)
@@ -109,64 +98,3 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 
 }
-/*
-val channelID = "channel1"
-val notificationID = 1
-class NotificationWorker(
-    private val context: Context,
-    workerParams: WorkerParameters
-) : CoroutineWorker(context, workerParams) {
-
-    @SuppressLint("MissingPermission")
-    override suspend fun doWork(): Result {
-        val id = System.currentTimeMillis().toString() + (0..1000).random()
-        val email = FirebaseAuth.getInstance().currentUser?.email
-        val titleExtra = "titleExtra"
-        val messageExtra = "messageExtra"
-
-        val notificationBuilder = NotificationCompat.Builder(context, channelID)
-
-        val mainIntent = Intent(context, MainActivity::class.java)
-        val pendingMainIntent = PendingIntent.getActivity(
-            context,
-            0,
-            mainIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelID,
-                "1",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val manager: NotificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-
-            notificationBuilder.setSmallIcon(R.drawable.tick_for_notification_icon)
-                .setContentText("$email")
-                .setContentTitle(inputData.getString(messageExtra))
-                .setContentIntent(pendingMainIntent)
-                //  .setSound(RingtoneManager.getDefaultUri(RingtoneManager.getDefaultType(soundUri)))
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .build()
-        } else {
-            notificationBuilder.setSmallIcon(R.drawable.tick_for_notification_icon)
-                .setContentText("$email")
-                .setContentTitle(inputData.getString(messageExtra))
-                .setContentIntent(pendingMainIntent)
-                //  .setSound(RingtoneManager.getDefaultUri(RingtoneManager.getDefaultType(soundUri)))
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .build()
-        }
-
-        val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.cancel(notificationID)
-        notificationManager.notify(id.hashCode(), notificationBuilder.build())
-
-        return Result.success()
-    }
-}*/

@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -53,14 +54,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ComponentActivity
 import androidx.navigation.NavController
-import com.airbnb.lottie.compose.*
 import com.example.dothings.*
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
 import com.example.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -74,27 +77,22 @@ import java.util.*
 )
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
-
+fun HomeScreen(navController: NavController,snackbarHostState:SnackbarHostState,coroutineScope:CoroutineScope){
     val scaffoldState = rememberScaffoldState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var context = LocalContext.current
-
     val isDarkTheme = isSystemInDarkTheme()
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     fun getIsChecked(): Boolean {
         return sharedPreferences.getBoolean("isChecked", false)
     }
     BackHandler {
-        // Handle back button press here
-        // You can close the app or navigate back, depending on your use case
-        // For example, to close the app:
         (context as? ComponentActivity)?.finish()
     }
+
+
     val onDeleteClick:(String) -> Unit = {clickedTaskId ->
         val databaseRef = database.reference.child("Task").child(uid.toString())
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
@@ -123,10 +121,16 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
         }
 
     }
+    DisposableEffect(Unit) {
+        onDispose {
+            coroutineScope.coroutineContext.cancelChildren()
+        }
+    }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val taskNewRef = database.reference.child("Task").child(uid.toString()).push()
         var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
+
         taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val data = snapshot.getValue(DataClass::class.java)
@@ -134,7 +138,7 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                     taskRef.removeValue()
                     completedTasksRef.setValue(data)
                     cancelNotification(context, data.id)
-                    cancelNotificationManger(context,data.id)
+                    cancelNotificationManger(context, data.id)
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                         val result = snackbarHostState.showSnackbar(
@@ -144,21 +148,17 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                         )
                         when (result) {
                             SnackbarResult.ActionPerformed -> {
-                                //Do Something
                                 taskNewRef.setValue(data)
                                 completedTasksRef.removeValue()
-
                             }
                             SnackbarResult.Dismissed -> {
-                                //Do Something
                                 completedTasksRef.setValue(data)
                             }
-
                         }
                     }
-
                 }
             }
+
             override fun onCancelled(error: DatabaseError) {
                 Log.e("FirebaseError", "Database operation cancelled: $error")
             }
@@ -167,9 +167,6 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
 
     val selectedItemId = remember { mutableStateOf("") }
     val selectedMarkedItemId = remember { mutableStateOf("") }
-    var isAddDaskScreenOpen = remember {
-        mutableStateOf(false)
-    }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
    var isPickerOpen = remember { mutableStateOf(false) }
@@ -179,14 +176,10 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
     val completedTasksCountState = remember { mutableStateOf(0) }
    val blurEffectBackground by animateDpAsState(
         targetValue = when {
-           // selectedItemId.value.isNotEmpty() -> 60.dp
-           // isAddDaskScreenOpen.value -> 60.dp
             isMarkCompletedOpen.value -> 25.dp
-
             else -> 0.dp
         }
-
-    )
+   )
 
     val isCheckedState = mutableStateOf(isChecked)
     Scaffold(
@@ -198,9 +191,7 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
             .fillMaxSize()
             .background(color = MaterialTheme.colors.background)
             .blur(radius = blurEffectBackground)
-
-
-            ){
+        ){
             ThemedGridImage()
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -209,15 +200,9 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                 LazyGridLayout(
                     navController = navController,
                     onMarkCompletedClick = onMarkCompletedClick,
-                    onDeleteClick,
                     selectedItemId,
-                    isPickerOpen,
-                    isAddDaskOpen,
-                    scale = scale,
-                    offset = offset,
                     isChecked = isCheckedState,
-                    isUpdatePickerOpen
-                )
+                    )
             }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -256,7 +241,6 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                 )
                drawRect(brush = gradientBrush)
                 drawRect(brush = opacityBrush)
-              //  drawRect(brush = gradientBrush)
             }
 
             Column {
@@ -267,9 +251,6 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                     isChecked = isCheckedState,
                     sharedPreferences)
                 FloatingActionButton(
-                   // isAddDaskScreenOpen,
-                   // isPickerOpen,
-                   // isCheckedState,
                     navController = navController,
                     isChecked = isCheckedState
                 )
@@ -280,18 +261,6 @@ fun HomeScreen(navController: NavController,scale:Float, offset: Dp){
                 snackbar = { CustomSnackbar(it)}
             )
         }
-      /*  if (isPickerOpen.value || selectedMarkedItemId.value.isNotEmpty()||isUpdatePickerOpen.value ){
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    color = if (isDarkTheme) {
-                        Color.Black
-                    } else {
-                        SurfaceGray
-                    }
-                ))
-
-        }*/
     }
 }
 
@@ -335,20 +304,13 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
 @Composable
 fun LazyGridLayout(navController: NavController,
     onMarkCompletedClick: (String) -> Unit,
-                   onDeleteClick: (String) -> Unit,
                    selectedItemId: MutableState<String>,
-                   isPickerOpen:MutableState<Boolean>,
-                   isAddDaskOpen:MutableState<Boolean>,
-                   scale:Float,
-                   offset: Dp,
                    isChecked: MutableState<Boolean>,
-                   isUpdatePickerOpen:MutableState<Boolean>
                    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
-    val imageResource = R.drawable.light_square // Resource ID of the image
     var isNotificationSet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -357,25 +319,19 @@ fun LazyGridLayout(navController: NavController,
     }
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
+        delay(100)
         visible = true
     }
     val offsetYSecond by animateDpAsState(
-        targetValue = if (visible) 0.dp else 42.dp,
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 300,
-            easing = EaseOutCirc
-        )
+        targetValue = if (visible) 0.dp else 0.dp,
+
     )
     val opacitySecond by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = keyframes {
-            durationMillis = 500
-
-            delayMillis = 300// Total duration of the animation
+            delayMillis = 30// Total duration of the animation
         }
     )
-    val notificationSet = mutableMapOf<String, Boolean>()
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -400,15 +356,82 @@ fun LazyGridLayout(navController: NavController,
             var selectedDateTime = data.notificationTime
             val itemId = data.id
             val message = data.message
-
-            Log.d("MyApp", "Setting notification for item $itemId, title: ${data.message}")
             scheduleNotification(context = context,selectedDateTime,itemId,message!!, isCheckedState = isChecked.value)
-
-
         }
     }
     val gridColumns = 2
-    if (cardDataList.isEmpty()){
+    if (cardDataList.isNotEmpty()){
+        if (cardDataList.size > 1) {
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Fixed(gridColumns),
+                verticalItemSpacing = 16.dp,
+                contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
+                ) {
+                itemsIndexed(cardDataList.reversed()) { index, cardData ->
+                    val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                    val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                    val dateStringFromDatabase = cardData.date
+                    val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                        val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
+                        originalDate.format(desiredDateFormat)
+                    } else {
+                        ""
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                top = if (index == 1) 100.dp else 0.dp,
+                                bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+
+                        RoundedCircleCardDesign(
+                            message = cardData.message!!,
+                            time = cardData.time!!,
+                            date = formattedDate,
+                            id = cardData.id,
+                            onMarkCompletedClick = onMarkCompletedClick,
+                            selectedItemId = selectedItemId,
+                            isChecked = isChecked,
+                            navController = navController,
+                            )
+                    }
+                }
+            }
+        }else if (cardDataList.size == 1) {
+            LazyColumn(){
+                itemsIndexed(cardDataList){ index,cardData ->
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .size(300.dp)
+                        .padding(bottom = 50.dp)
+                        , contentAlignment = Alignment.Center) {
+                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                        val dateStringFromDatabase = cardData.date
+                        val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                            val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
+                            originalDate.format(desiredDateFormat)
+                        } else {
+                            ""
+                        }
+                        RoundedCircleCardDesign(
+                            message = cardDataList[0].message!!,
+                            time = cardDataList[0].time!!,
+                            date = formattedDate,
+                            id = cardDataList[0].id,
+                            onMarkCompletedClick = onMarkCompletedClick,
+                            selectedItemId = selectedItemId,
+                            isChecked = isChecked,
+                            navController = navController,
+                            )
+                    }
+                }
+            }
+        }
+    }else{
         Box(modifier = Modifier
             .fillMaxSize()
             .padding(
@@ -429,114 +452,9 @@ fun LazyGridLayout(navController: NavController,
                 lineHeight = 20.sp
             )
         }
-
-    }else{
-        if (cardDataList.size > 1) {
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(gridColumns),
-                verticalItemSpacing = 16.dp,
-                contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
-
-                ) {
-                itemsIndexed(cardDataList.reversed()) { index, cardData ->
-                    val animationDelay = index
-                    val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                    val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                    val dateStringFromDatabase = cardData.date
-                    val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
-                        val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-                        originalDate.format(desiredDateFormat)
-                    } else {
-                        ""
-                    }
-
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-
-                            .padding(
-                                top = if (index == 1) 100.dp else 0.dp,
-                                bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-
-                        RoundedCircleCardDesign(
-                            image = imageResource,
-                            message = cardData.message!!,
-                            time = cardData.time!!,
-                            date = formattedDate,
-                            id = cardData.id,
-                            animationDelay = animationDelay,
-                            onMarkCompletedClick = onMarkCompletedClick,
-                            onDeleteClick = onDeleteClick,
-                            selectedItemId = selectedItemId,
-                            isPickerOpen = isPickerOpen,
-                            isAddDaskOpen = isAddDaskOpen,
-
-                            scale = scale,
-                            offset = offset,
-                            index = index,
-                            isChecked = isChecked,
-                            isUpdatePickerOpen = isUpdatePickerOpen,
-                            navController = navController
-                        )
-
-                    }
-
-
-                }
-            }
-        }else if (cardDataList.size == 1) {
-            LazyColumn(){
-                itemsIndexed(cardDataList){ index,cardData ->
-
-                    Box(modifier = Modifier
-                        .fillMaxSize()
-                        .size(300.dp)
-                        .padding(bottom = 50.dp)
-                        , contentAlignment = Alignment.Center) {
-                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                        val dateStringFromDatabase = cardData.date
-                        val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
-                            val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-                            originalDate.format(desiredDateFormat)
-                        } else {
-                            ""
-                        }
-                        RoundedCircleCardDesign(
-                            image = imageResource,
-                            message = cardDataList[0].message!!,
-                            time = cardDataList[0].time!!,
-                            date = formattedDate,
-                            id = cardDataList[0].id,
-                            animationDelay = 0,
-                            onMarkCompletedClick = onMarkCompletedClick,
-                            onDeleteClick = onDeleteClick,
-                            selectedItemId = selectedItemId,
-                            isPickerOpen = isPickerOpen,
-                            isAddDaskOpen = isAddDaskOpen,
-
-                            scale = scale,
-                            offset = offset,
-                            index = index,
-                            isChecked = isChecked,
-                            isUpdatePickerOpen = isUpdatePickerOpen,
-                            navController = navController
-                        )
-                    }
-                }
-            }
-        }
     }
 
 }
-
-
-
-@OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("UnrememberedMutableState", "CoroutineCreationDuringComposition",
     "SuspiciousIndentation", "ServiceCast", "WrongConstant"
 )
@@ -544,65 +462,17 @@ fun LazyGridLayout(navController: NavController,
 @Composable
 fun RoundedCircleCardDesign(
     navController: NavController,
-
     id:String?,
-    image:Int,
     message:String,
     time: String,
     date:String,
-    animationDelay: Int,
     onMarkCompletedClick: (String) -> Unit,
-    onDeleteClick:(String)->Unit,
     selectedItemId: MutableState<String>,
-    isPickerOpen:MutableState<Boolean>,
-    isAddDaskOpen:MutableState<Boolean>,
-    scale:Float,
-    offset: Dp,
-    index:Int,
     isChecked:MutableState<Boolean>,
-    isUpdatePickerOpen:MutableState<Boolean>
     )
 {
-    val scaffoldState = rememberScaffoldState()
-    val infiniteTransition = rememberInfiniteTransition()
-
-    val painter:Painter = painterResource(image)
-    val animateX = animationDelay % 2 == 0
-    val animateY = animationDelay % 2 != 0
     val coroutineScope = rememberCoroutineScope()
     val mContext = LocalContext.current
-    val dx by infiniteTransition.animateFloat(
-        initialValue = if (animateX) -0.4f else 0f,
-        targetValue = if (animateX) 0.5f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing, delayMillis = animationDelay * 200),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-   /* val dialogIntent = Intent(mContext, MainActivity::class.java).apply {
-        action = "OPEN_UPDATE_TASK_DIALOG"
-        putExtra("taskId", id) // You can pass any necessary data
-    }*/
-
-// Create a PendingIntent for the intent
-  /*  val pendingIntent = PendingIntent.getActivity(
-        mContext,
-        0,
-        dialogIntent,
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )*/
-    val dy by infiniteTransition.animateFloat(
-        initialValue = if (animateY) -0.4f else 0f,
-        targetValue = if (animateY) 0.5f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing, delayMillis = animationDelay * 200),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-    val travelDistance = with(LocalDensity.current) { 4.dp.toPx() }
-   // val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.exploade_animation))
-
-
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
     val dateString = if (date.isNotEmpty()) {
         val parsedDate = LocalDate.parse(date,formatter)
@@ -618,8 +488,6 @@ fun RoundedCircleCardDesign(
     Box(
         modifier = Modifier
             .size(184.dp)
-            // .offset(y = offset)
-            .alpha(scale)
             .aspectRatio(1f)
             .bounceClick()
             .clip(CircleShape)
@@ -630,18 +498,11 @@ fun RoundedCircleCardDesign(
                     route = Screen.Update.passUpdateValues(
                         id = id.toString(),
                         isChecked = isChecked.value,
-
-                    )
-                )
-                // navController.navigate(route = Screen.Test.passId("$message"))
-
-
-                // isAddDaskOpen.value = true
-            },
+                        )
+                ) },
         contentAlignment = Alignment.Center,
     ) {
-
-            Column(
+        Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -661,7 +522,6 @@ fun RoundedCircleCardDesign(
                                 }
                                 Vibration(context = mContext)
                             }
-                            Log.d("homeid","$id")
                             onMarkCompletedClick(id.toString())
                         })
                 Text(
@@ -673,7 +533,6 @@ fun RoundedCircleCardDesign(
                     color = MaterialTheme.colors.secondary,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                     modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
-
                 )
                 Text(
                     text =dateString,
@@ -686,20 +545,6 @@ fun RoundedCircleCardDesign(
                     modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp)
                 )
             }
-            if(selectedItemId.value == id){
-
-              // navController.navigate("update_screen/$date/$time/$message/$id")
-
-               /* UpdateTaskScreen(
-                    navController = navController,
-                    selectedDate = mutableStateOf( date) ,
-                    selectedTime = mutableStateOf(time) ,
-                    textValue = message,
-                    id = id,
-                    openKeyboard = false,
-                    )*/
-            }
-
     }
 
 }
@@ -711,7 +556,7 @@ fun formatDate(date: LocalDate): String {
     val yearsAgo = period.years
     val monthsAgo = period.months
     val daysAgo = period.days
-    val startOfRange = currentDate.plusDays(2) // Day after tomorrow
+    val startOfRange = currentDate.plusDays(2)
     val endOfRange = LocalDate.MAX
     return when {
         period.isZero -> "Today"
@@ -740,11 +585,8 @@ fun formatDate(date: LocalDate): String {
 @Composable
 fun FloatingActionButton(
     navController: NavController,
-   // isAddDaskScreenOpen:MutableState<Boolean>,
-  //  isPickerOpen: MutableState<Boolean>,
     isChecked:MutableState<Boolean>
 ){
-    var isAddTaskScreenOpen by remember { mutableStateOf(false) }
     var isButtonProcessing by remember { mutableStateOf(false) }
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
@@ -755,22 +597,6 @@ fun FloatingActionButton(
         visible = true
 
     }
-    val offsetYSecond by animateDpAsState(
-        targetValue = if (visible) 0.dp else 42.dp,
-        animationSpec = tween(
-            durationMillis = 400,
-            delayMillis = 300,
-            easing = EaseOutCirc
-        )
-    )
-    val opacitySecond by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 500
-
-            delayMillis = 300// Total duration of the animation
-        }
-    )
     val coroutineScope = rememberCoroutineScope()
     val mContext = LocalContext.current
     Box(modifier = Modifier
@@ -782,30 +608,22 @@ fun FloatingActionButton(
         androidx.compose.material.FloatingActionButton(
             modifier = Modifier
                 .size(96.dp)
-                // .offset(y = offsetYSecond)
-                //.alpha(opacitySecond)
-                //  .zIndex(opacitySecond)
                 .align(Alignment.BottomCenter)
                 .bounceClick()
                     ,
            onClick = {
-               //isAddDaskScreenOpen.value = true
-               if (!isButtonProcessing) { // Check if the button is not currently processing
-                   isButtonProcessing = true // Set the processing flag
+               if (!isButtonProcessing) {
+                   isButtonProcessing = true
                    coroutineScope.launch {
                        navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
                        Vibration(context)
-
-                       // Add a delay or other processing as needed
                    }
-                   // isButtonProcessing = false // Do not reset the processing flag here
+
                }
            },
             shape = CircleShape,
-           // contentColor = Color.White,
             elevation = FloatingActionButtonDefaults.elevation(0.dp),
             backgroundColor = FABRed,
-
             contentColor = Color.White.compositeOver(shadowColor)
         ) {
             Image(painterResource(
@@ -813,19 +631,7 @@ fun FloatingActionButton(
                 contentDescription = "",
             modifier = Modifier)
         }
-        val context = LocalContext.current
-        val dialog = Dialog(context)
- /*if(isAddDaskScreenOpen.value){
-     AddDaskScreen( selectedDate = mutableStateOf(null),
-         selectedTime = mutableStateOf(null),
-         textValue = "",
-         onDismiss = {isAddDaskScreenOpen.value = false},
-         isPickerOpen = isPickerOpen,
-         isChecked = isChecked
-     )
- }*/
     }
-
 }
 enum class ButtonState { Pressed, Idle }
 @Composable
@@ -880,7 +686,6 @@ fun scheduleNotification(context: Context, selectedDateTime: Long, itemId: Strin
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
         )
-        Log.d("Notification", "requestCode: $requestCode, notificationTag: $notificationTag")
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.setExact(
             AlarmManager.RTC_WAKEUP,
@@ -894,36 +699,10 @@ fun cancelNotificationManger(context: Context, itemId: String ){
     val notificationId = notificationIdsMap[itemId]
 
     if (notificationId != null) {
-        // Cancel the notification using the retrieved ID
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(notificationId)
     }
 }
-/*fun cancelNotification(context: Context, itemId: String) {
-    // Retrieve the request code from the map
-    val requestCode = notificationIdsMap[itemId] ?: return
-
-    // Create an intent with the same properties as the one used for scheduling
-    val intent = Intent(context, NotificationReceiver::class.java)
-    intent.putExtra("itemId", itemId)
-    intent.putExtra("messageExtra", "dummy") // You might need a value here, even if it's a dummy one
-    intent.putExtra("isCheckedState", false) // You might need a value here, even if it's a dummy one
-
-    val pendingIntent = PendingIntent.getBroadcast(
-        context,
-        requestCode,
-        intent,
-        PendingIntent.FLAG_UPDATE_CURRENT
-    )
-
-    // Cancel the pending intent
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    alarmManager.cancel(pendingIntent)
-
-    // Remove the entry from the map
-    notificationIdsMap.remove(itemId)
-}*/
-
 fun cancelNotification(context: Context, itemId: String) {
     val notificationTag = "Notification_$itemId"
     val intent = Intent(context, NotificationReceiver::class.java)
@@ -941,73 +720,7 @@ fun cancelNotification(context: Context, itemId: String) {
 
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     alarmManager.cancel(pendingIntent)
-    Log.d("Notification", "Cancelled notification with requestCode: $requestCode, notificationTag: $notificationTag")
 }
-/*@Composable
-fun scheduleNotification(selectedDateTime: Long, itemId: String,message: String) {
-    val now = Calendar.getInstance().timeInMillis
-    var context = LocalContext.current
-    val notificationTag = "Notification_$itemId"
-    if (selectedDateTime > now) {
-        val inputData = workDataOf(
-            "itemId" to itemId,
-            "messageExtra" to message// Replace with your desired message
-        )
-        val notificationWorkRequest = OneTimeWorkRequest.Builder(NotificationWorker::class.java)
-            .setInputData(inputData)
-            .setInitialDelay(selectedDateTime - now, TimeUnit.MILLISECONDS)
-            .addTag(notificationTag)
-            .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(notificationTag, ExistingWorkPolicy.REPLACE, notificationWorkRequest)
-    }
-    // Toast.makeText(context, "Alarm set", Toast.LENGTH_SHORT).show()
-}*/
-
-
-/*
-@SuppressLint("ScheduleExactAlarm")
-@Composable
-fun setNotification(toDo: DataClass) {
-    val id = toDo.id ?: return
-    val date = toDo.date
-    val time = toDo.time
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy hh:mm a", Locale.getDefault())
-    val calendar = Calendar.getInstance()
-    val context = LocalContext.current
-
-    try {
-        calendar.time = dateFormat.parse("$date $time")
-    } catch (e: ParseException) {
-        e.printStackTrace()
-    }
-
-    val currentTimeMillis = System.currentTimeMillis()
-    if (calendar.timeInMillis < currentTimeMillis) {
-        return
-    }
-
-
-        val intent = Intent(context, Notification::class.java)
-        intent.putExtra(titleExtra, "Todo Remainder")
-        intent.putExtra(messageExtra, toDo.message)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            id.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            pendingIntent
-        )
-
-
-}*/
-
-
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun TopSectionHomeScreen(navController: NavController,
@@ -1028,28 +741,7 @@ fun TopSectionHomeScreen(navController: NavController,
             easing = EaseOutCirc
         )
         )
-    val offsetYSecond by animateDpAsState(
-        targetValue = if (visible) 0.dp else -52.dp,
-        animationSpec = tween(
-            durationMillis = 500,
-            delayMillis = 300,
-            easing = EaseOutCirc
-        )
-    )
-    val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 500
-            delayMillis = 200
-        }
-    )
-    val opacitySecond by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            durationMillis = 500
-        delayMillis = 300// Total duration of the animation
-        }
-    )
+
     Row(modifier = Modifier
         .fillMaxWidth()
 
@@ -1061,8 +753,6 @@ fun TopSectionHomeScreen(navController: NavController,
         Text(
             text = "DOTHING",
             modifier = Modifier,
-            // .offset(y = offsetY)
-            // .alpha(opacity)
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.W100,
             fontSize = 24.sp,
@@ -1071,19 +761,14 @@ fun TopSectionHomeScreen(navController: NavController,
             )
         Box(modifier = Modifier
             .size(48.dp)
-            // .offset(y = offsetYSecond)
-            // .alpha(opacitySecond)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                //  navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
                 navController.navigate(route = "Screen.MarkComplete.route/${isChecked.value}")
-                // isMarkCompletedOpen.value = true
                 Vibration(context)
             }
             .clip(shape)
             .background(color = MaterialTheme.colors.primary),
             contentAlignment = Alignment.Center
-
         ) {
            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1103,15 +788,6 @@ fun TopSectionHomeScreen(navController: NavController,
                        .background(color = MaterialTheme.colors.background, shape = CircleShape))
                }
            }
-        }
-        if (isMarkCompletedOpen.value){
-         /*   MarkCompletedScreen(
-                navController = navController,
-                onDismiss = { isMarkCompletedOpen.value = false },
-                selectedMarkedItemId,
-                isChecked,
-                sharedPreferences = sharedPreferences
-            )*/
         }
     }
 }
@@ -1167,18 +843,3 @@ fun cancelAllNotifications(context: Context, uid: String) {
         }
     })
 }
-
-/*
-                   val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                   val requestCode = "Notification_$clickedTaskId".hashCode()
-                   notificationManager.cancel(requestCode)
-                   val notificationTag = "Notification_$clickedTaskId"
-                   Log.d("NotificationTag", notificationTag)
-                   val workManager = WorkManager.getInstance(context)
-                   workManager.cancelUniqueWork(notificationTag)
-val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-notificationManager.cancel(clickedTaskId.hashCode())
-val notificationTag = "Notification_$clickedTaskId"
-Log.d("NotificationTag", notificationTag)
-val workManager = WorkManager.getInstance(context)
-workManager.cancelUniqueWork(notificationTag)*/

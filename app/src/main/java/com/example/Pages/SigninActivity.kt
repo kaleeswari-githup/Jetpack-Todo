@@ -79,6 +79,7 @@ class SigninActivity : ComponentActivity() {
         if(user != null){
             val intent = Intent(this@SigninActivity,MainActivity::class.java)
             startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             finish()
         }
     }
@@ -115,7 +116,7 @@ fun SignInScreen(){
                         if (signInTask.isSuccessful) {
                             val intent = Intent(context, MainActivity::class.java)
                             context.startActivity(intent)
-                        } else {
+                            (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)                        } else {
                         }
                     }
                     .addOnFailureListener{exception ->

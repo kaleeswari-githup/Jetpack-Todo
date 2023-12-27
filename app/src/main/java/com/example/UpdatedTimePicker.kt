@@ -40,12 +40,9 @@ fun UpdatedScrollableTimePicker(
     onTimeSelected: (LocalTime) -> Unit,
     isChecked: MutableState<Boolean>
 ){
-val context = LocalContext.current
     Box(
         modifier = Modifier
             .padding(bottom = 24.dp)
-           // .fillMaxWidth()
-           // .wrapContentHeight()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(1f),
@@ -55,7 +52,7 @@ val context = LocalContext.current
             Box(
                 modifier = Modifier
                     .padding(start = 24.dp)
-                    .width(80.dp) // Set a fixed width to match the width of WheelTimePicker
+                    .wrapContentWidth() // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
@@ -63,7 +60,6 @@ val context = LocalContext.current
               if (isChecked.value){
                   LaunchedEffect(selectedTimeText) {
                       mediaPlayer.start()
-                      // Delay to play the sound effect, adjust the delay as needed
                       delay(mediaPlayer.duration.toLong())
                       mediaPlayer.pause()
                       Vibration(context = context)
@@ -107,10 +103,7 @@ val context = LocalContext.current
                         ) { snappedTime ->
                             selectedTime.value = snappedTime
                             onTimeSelected(snappedTime)
-
-
                         }
-                  //  }
 
             Text(
                 text = "CLEAR",
@@ -120,7 +113,6 @@ val context = LocalContext.current
                         selectedTime.value = null
                         onClearClick()
                         Vibration(context)
-
                     }
                     .padding(end = 24.dp),
                 color = FABRed,
@@ -130,11 +122,8 @@ val context = LocalContext.current
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
             )
                 }
-
-            }
-
-
-        }
+    }
+}
 
 
 
