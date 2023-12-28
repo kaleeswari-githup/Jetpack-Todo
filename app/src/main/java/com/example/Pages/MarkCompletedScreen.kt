@@ -685,17 +685,22 @@ fun MarkCompletedCircleDesign(
             },
         contentAlignment = Alignment.Center
     ){
+        val originalDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
+        val currentYear = LocalDate.now().year
+        val desiredDateFormat = if (originalDate.year == currentYear) {
+            DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)
+        } else {
+            DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+        }
         val dateString = if (date.isNotEmpty()) {
-            if (time.isNotEmpty()){
-                "$date, $time"
-            }else{
-                "$date"
+            if (time.isNotEmpty()) {
+                "${originalDate.format(desiredDateFormat)}, $time"
+            } else {
+                originalDate.format(desiredDateFormat)
             }
-
         } else {
             ""
         }
-
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
