@@ -1,8 +1,15 @@
 package com.example.Pages
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.audiofx.BassBoost
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import com.example.dothings.R
 import android.widget.Toast
@@ -49,7 +56,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.Pages.ui.theme.DoThingsTheme
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.example.NotificationPermissionActivity
+
 import com.example.dothings.MainActivity
 import com.example.ui.theme.AppJetpackComposeTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -67,20 +77,30 @@ class SigninActivity : ComponentActivity() {
             AppJetpackComposeTheme {
                 // A surface container using the 'background' color from the theme
                 SignInScreen()
+
             }
         }
 
     }
+
+
     override fun onStart() {
         super.onStart()
         val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
         val user = auth.currentUser
-        if(user != null){
-            val intent = Intent(this@SigninActivity,MainActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-            finish()
+        if (user != null) {
+            if (!areNotificationsEnabled(this)) {
+                val intent = Intent(this@SigninActivity, NotificationPermissionActivity::class.java)
+                startActivity(intent)
+               // overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                finish()
+            } else {
+                val intent = Intent(this@SigninActivity, MainActivity::class.java)
+                startActivity(intent)
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                finish()
+            }
         }
     }
     override fun onBackPressed() {
@@ -88,6 +108,13 @@ class SigninActivity : ComponentActivity() {
         finishAffinity()
     }
 }
+
+
+private fun areNotificationsEnabled(context: Context): Boolean {
+    val notificationManager = NotificationManagerCompat.from(context)
+    return notificationManager.areNotificationsEnabled()
+}
+
 
 @Composable
 fun SignInScreen(){
@@ -114,14 +141,18 @@ fun SignInScreen(){
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener { signInTask ->
                         if (signInTask.isSuccessful) {
-                            val intent = Intent(context, MainActivity::class.java)
-                            context.startActivity(intent)
-                            (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)                        } else {
-                        }
+                            if (!areNotificationsEnabled(context)){
+                                val intent = Intent(context, NotificationPermissionActivity::class.java)
+                                context.startActivity(intent)
+                               // (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                            }else{
+                                val intent = Intent(context, MainActivity::class.java)
+                                context.startActivity(intent)
+                                (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                            }
+                                                  }
                     }
-                    .addOnFailureListener{exception ->
-                        Log.e("SignInScreen", "Sign-in failed: ${exception.message}", exception)
-                    }
+
             } catch (e: ApiException) {
                 Toast.makeText(context,  e.localizedMessage, Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
@@ -208,7 +239,7 @@ fun SignInScreen(){
                     ){
                         Image(painter = painterResource(id = R.drawable.google_icon), contentDescription = "")
                         Spacer(modifier = Modifier.padding(start = 16.dp))
-                        ButtonTextWhiteTheme(text = ("Continue with Google").uppercase())
+                        ButtonTextWhiteTheme(text = ("Continue with Google").uppercase(),color = MaterialTheme.colors.secondary)
                     }
                 }
             }

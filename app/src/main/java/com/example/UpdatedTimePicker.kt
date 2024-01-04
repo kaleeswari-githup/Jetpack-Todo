@@ -40,6 +40,8 @@ fun UpdatedScrollableTimePicker(
     onTimeSelected: (LocalTime) -> Unit,
     isChecked: MutableState<Boolean>
 ){
+    var shouldUseCurrentTime by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .padding(bottom = 24.dp)
@@ -82,7 +84,7 @@ fun UpdatedScrollableTimePicker(
             }
             val context = LocalContext.current
                         WheelTimePicker(
-                            startTime = initialTime!! ,
+                            startTime = if (shouldUseCurrentTime) LocalTime.now() else initialTime!!,
                             timeFormat = TimeFormat.AM_PM,
                             size = DpSize(width = 170.dp, height = 200.dp),
                             rowCount = 5,
@@ -111,6 +113,7 @@ fun UpdatedScrollableTimePicker(
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         selectedTime.value = null
+                        shouldUseCurrentTime = true
                         onClearClick()
                         Vibration(context)
                     }

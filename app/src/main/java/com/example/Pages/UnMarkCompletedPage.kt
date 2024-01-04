@@ -166,7 +166,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
     val onDoneClick: () -> Unit = {
         val updatedData = HashMap<String, Any>()
         updatedData["id"] = id
-        updatedData["message"] = message.value
+        updatedData["message"] = message.value.trim()
         completedTasksRef.child(id).updateChildren(updatedData)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -436,7 +436,7 @@ fun UnMarkCompletedButtons(id: String,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ThemedTrashImage()
-                ButtonTextWhiteTheme(text = "DELETE")
+                ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary)
             }
             Box(
                 modifier = Modifier
@@ -456,7 +456,7 @@ fun UnMarkCompletedButtons(id: String,
                 },
                 verticalAlignment = Alignment.CenterVertically) {
                 ThemedSquareImage(modifier = Modifier)
-                ButtonTextWhiteTheme(text = "MARK UNCOMPLETED")
+                ButtonTextWhiteTheme(text = "MARK UNCOMPLETED",color = MaterialTheme.colors.secondary)
             }
         }
 

@@ -61,6 +61,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.*
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "SuspiciousIndentation")
@@ -255,7 +256,7 @@ ThemedGridImage()
 
                                 }
                                 Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                                    ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase())
+                                    ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase(),color = MaterialTheme.colors.secondary)
                                     Spacer(modifier = Modifier.padding(top = 4.dp))
                                     Text(
                                         text = if (user?.email?.length ?: 0 > 32) user?.email?.substring(0, 32) + "..." else user?.email.orEmpty(),
@@ -306,7 +307,7 @@ ThemedGridImage()
                                val completedTasksCount = completedTasksCountState.value
 
                                Spacer(modifier = Modifier.padding(top = 24.dp))
-                               ButtonTextWhiteTheme(text = ("Completed ($completedTasksCount)").uppercase())
+                               ButtonTextWhiteTheme(text = ("Completed ($completedTasksCount)").uppercase(),color = MaterialTheme.colors.secondary)
                                Spacer(modifier = Modifier.padding(top = 12.dp))
                                Box(
                                        modifier = Modifier
@@ -395,7 +396,7 @@ ThemedGridImage()
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ThemedSoundIcon()
                                         Spacer(modifier = Modifier.padding(start = 8.dp))
-                                        ButtonTextWhiteTheme(text = ("Sound").uppercase())
+                                        ButtonTextWhiteTheme(text = ("Sound").uppercase(),color = MaterialTheme.colors.secondary)
 
                                     }
 
@@ -512,7 +513,7 @@ ThemedGridImage()
                                   Row(verticalAlignment = Alignment.CenterVertically) {
                                       ThemedLogoutIcon()
                                       Spacer(modifier = Modifier.padding(start = 8.dp))
-                                      ButtonTextWhiteTheme(text = ("Log Out").uppercase())
+                                      ButtonTextWhiteTheme(text = ("Log Out").uppercase(),color = MaterialTheme.colors.secondary)
                                   }
 
                               }
@@ -685,14 +686,25 @@ fun MarkCompletedCircleDesign(
             },
         contentAlignment = Alignment.Center
     ){
-        val originalDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
-        val currentYear = LocalDate.now().year
-        val desiredDateFormat = if (originalDate.year == currentYear) {
-            DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)
+        val originalDate: LocalDate? = if (date.isNotEmpty()) {
+            try {
+                LocalDate.parse(date, DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH))
+            } catch (e: DateTimeParseException) {
+                // Handle the parsing error, log it, or set originalDate to a default value
+                null
+            }
         } else {
-            DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+            null
         }
-        val dateString = if (date.isNotEmpty()) {
+        val currentYear = LocalDate.now().year
+        val desiredDateFormat = originalDate?.let {
+            if (it.year == currentYear) {
+                DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)
+            } else {
+                DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+            }
+        }
+        val dateString = if (originalDate != null) {
             if (time.isNotEmpty()) {
                 "${originalDate.format(desiredDateFormat)}, $time"
             } else {
@@ -757,6 +769,7 @@ fun MarkCompletedCircleDesign(
         }
     }
 }
+
 @Composable
 fun ThemedFilledSquareImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()

@@ -163,7 +163,7 @@ fun UpdateTaskScreen(
             }
             val updatedData = DataClass(
                 id = id.toString(),
-                message = dataClassMessage.value,
+                message = dataClassMessage.value.trim(),
                 time = formattedTime?.format(timeFormat) ?: "",
                 date = formattedDate,
                 notificationTime = notificationTime ?: 0L
@@ -598,7 +598,7 @@ contentAlignment = Alignment.Center
                 verticalAlignment = Alignment.CenterVertically
             ) {
                ThemedTrashImage()
-               ButtonTextWhiteTheme(text = "DELETE")
+               ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary)
             }
             Box(
                 modifier = Modifier
@@ -619,7 +619,7 @@ contentAlignment = Alignment.Center
                     },
             verticalAlignment = Alignment.CenterVertically) {
                 ThemedSquareImage(modifier = Modifier)
-                ButtonTextWhiteTheme(text = "MARK COMPLETED")
+                ButtonTextWhiteTheme(text = "MARK COMPLETED",color = MaterialTheme.colors.secondary)
             }
         }
 
@@ -640,14 +640,15 @@ fun ThemedTrashImage() {
     )
 }
 @Composable
-fun ButtonTextWhiteTheme(text:String){
+fun ButtonTextWhiteTheme(text:String,color: Color){
     Text(
         text = text,
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = MaterialTheme.colors.secondary,
-        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
+        color = color,
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+
     )
 }
 @Composable

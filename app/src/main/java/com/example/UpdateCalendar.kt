@@ -48,6 +48,8 @@ fun UpdatedCalendar(
     var isTimePickervisible by remember{ mutableStateOf(false) }
     var isDatePickervisible by remember{ mutableStateOf(false) }
     var newUserSelectedtime by remember { mutableStateOf(userSelectedtime) }
+    var shouldUseCurrentTime by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier
         .fillMaxWidth(),
         contentAlignment = Alignment.Center
@@ -83,7 +85,7 @@ fun UpdatedCalendar(
                     }
                     .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
                     ) {
-                    ButtonTextWhiteTheme(text = setDateText)
+                    ButtonTextWhiteTheme(text = setDateText,color = MaterialTheme.colors.secondary)
                 }
             }
             Box(
@@ -95,7 +97,7 @@ fun UpdatedCalendar(
             )
             if (isTimePickervisible){
                 UpdatedScrollableTimePicker(
-                    initialTime = parseTime(userSelectedtime) ,
+                    initialTime = if (shouldUseCurrentTime) LocalTime.now() else parseTime(userSelectedtime),
                     selectedTime = selectedTime,
                     onClearClick = {
                         isDoneButtonClicked = true
@@ -145,6 +147,7 @@ fun UpdatedCalendar(
                              isDoneButtonClicked = true
                                     isClearTextVisible = false
                                     selectedTime.value = null
+                                    shouldUseCurrentTime = true
                                 },
                             color = FABRed,
                             fontFamily = interDisplayFamily,

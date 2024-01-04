@@ -2,6 +2,9 @@ package com.example.Pages
 
 
 import android.annotation.SuppressLint
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
@@ -38,7 +41,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.NavController
+import com.example.NotificationPermissionActivity
 import com.example.dothings.R
 import com.example.dothings.R.DataClass
 import com.example.dothings.interDisplayFamily
@@ -67,7 +73,7 @@ fun AddDaskScreen(
         mutableStateOf(textValue)
     }
     var isPickerOpen = remember { mutableStateOf(false) }
-
+      val context = LocalContext.current
     val mutableSelectedTime = remember { mutableStateOf(selectedTime) }
     val mutableSelectedDate = remember { mutableStateOf(selectedDate) }
     val database = FirebaseDatabase.getInstance()
@@ -77,6 +83,8 @@ fun AddDaskScreen(
 
     val maxValue = 32
     val onDoneClick:() -> Unit = {
+        val trimmedText = task.value.trim()
+        val areNotificationsEnabled = areNotificationsEnabled(context)
         val timeFormat = if (selectedTime != null && selectedTime.value != null) {
             selectedTime.value!!.format(DateTimeFormatter.ofPattern("hh:mm a")).toUpperCase()
         } else {
@@ -89,7 +97,7 @@ fun AddDaskScreen(
             null
         }
 
-        val messageText = if (task.value.isNullOrBlank()) null else task.value
+        val messageText = if (trimmedText.isNullOrBlank()) null else trimmedText
         val userSelectedDate = if (formattedDate.isNullOrBlank()) null else formattedDate
         val userSelectedTime = if (timeFormat.isNullOrBlank()) null else timeFormat
         val id:String = databaseRef.push().key.toString()
@@ -104,6 +112,8 @@ fun AddDaskScreen(
         val data = DataClass(id,messageText ?: "",userSelectedTime ?: "",userSelectedDate ?: "", notificationTime =notificationTime ?: 0L )
         databaseRef.child(id).setValue(data)
         navController.popBackStack()
+
+
     }
 
     val blurEffectBackground by animateDpAsState(targetValue = when{
@@ -177,7 +187,7 @@ Box(modifier = Modifier
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    ButtonTextWhiteTheme(text = "CANCEL")
+                    ButtonTextWhiteTheme(text = "CANCEL",color = MaterialTheme.colors.secondary)
                 }
 
                 Spacer(modifier = Modifier.padding(40.dp))
@@ -206,8 +216,24 @@ Box(modifier = Modifier
     }
 }
 }
+private fun areNotificationsEnabled(context:Context): Boolean {
+    val notificationManager = NotificationManagerCompat.from(context)
+    return notificationManager.areNotificationsEnabled()
+}
 
+/*private fun areNotificationsEnabled(context: Context): Boolean {
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+    // For Android 8.0 (Oreo) and above, check notification channels
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = notificationManager.getNotificationChannel(channelID)
+        return channel != null && channel.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    // For versions prior to Oreo, check if notifications are enabled
+    return NotificationManagerCompat.from(context).areNotificationsEnabled()
+}*/
 
 @SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
@@ -289,6 +315,7 @@ fun AddDaskCircleDesign(
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
                             capitalization = KeyboardCapitalization.Sentences),
+                        maxLines = Int.MAX_VALUE ,
                         keyboardActions = KeyboardActions(
                             onDone ={
                                 onDoneClick()
@@ -322,6 +349,7 @@ fun AddDaskCircleDesign(
                             letterSpacing = 1.sp
 
                         ),
+                        singleLine = false
                         )
                 }
 

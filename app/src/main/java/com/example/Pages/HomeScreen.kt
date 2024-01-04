@@ -86,7 +86,7 @@ fun HomeScreen(navController: NavController,snackbarHostState:SnackbarHostState,
     val isDarkTheme = isSystemInDarkTheme()
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     fun getIsChecked(): Boolean {
-        return sharedPreferences.getBoolean("isChecked", false)
+        return sharedPreferences.getBoolean("isChecked", true)
     }
     BackHandler {
         (context as? ComponentActivity)?.finish()
@@ -283,7 +283,7 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start= 24.dp,end = 24.dp)
         ) {
-            ButtonTextWhiteTheme(text = snackbarData.message)
+            ButtonTextWhiteTheme(text = snackbarData.message,color = MaterialTheme.colors.secondary)
             Spacer(Modifier.weight(1f))
             snackbarData.actionLabel?.let { actionLabel ->
                 TextButton(onClick = { snackbarData.performAction() }) {

@@ -219,7 +219,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                    elevation = ButtonDefaults.elevation(0.dp)
 
                 ) {
-                    ButtonTextWhiteTheme(text = "CANCEL")
+                    ButtonTextWhiteTheme(text = "CANCEL",color = MaterialTheme.colors.secondary)
                 }
                 Spacer(modifier = Modifier.padding(40.dp))
                 Button(

@@ -1,8 +1,12 @@
 <resources>
-    <string name="app_name">Do Things</string>
+    <string name="app_name">Dothing</string>
     <string name="singin_google">Continue with Google</string>
     <string name="channel_id">channel1</string>
     <string name="coming_todo">Coming next</string>
     <string name="title_activity_signin">SigninActivity</string>
+    <string name="title_activity_fullscreen">FullscreenActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="title_activity_notification_permission">NotificationPermissionActivity</string>
 
 </resources>
