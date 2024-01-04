@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.dothings'
+    namespace 'com.firstyogi.dothing'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.dothings"
+        applicationId "com.firstyogi.dothing"
         minSdk 24
         targetSdk 33
         versionCode 1

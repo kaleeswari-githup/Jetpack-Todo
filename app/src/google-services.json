@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:664988258330:android:10af5197710c87387c81a3",
         "android_client_info": {
-          "package_name": "com.example.dothings"
+          "package_name": "com.firstyogi.dothing"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "664988258330-0k7gtp22gc5lv9gqilu6o1flfu22ieul.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.dothings",
+            "package_name": "com.firstyogi.dothing",
             "certificate_hash": "e3dec1cb625232e555eeecc1add7c55d15f72bcb"
           }
         },
