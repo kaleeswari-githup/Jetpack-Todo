@@ -35,7 +35,7 @@ class NotificationReceiver : BroadcastReceiver() {
 
         val deepLinkIntent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("https://www.example.com/update_screen/$itemId/$isCheckedStateValue"),
+            Uri.parse("https://firstyogi.page.link/update_screen/$itemId/$isCheckedStateValue"),
             context,
             MainActivity::class.java
         )

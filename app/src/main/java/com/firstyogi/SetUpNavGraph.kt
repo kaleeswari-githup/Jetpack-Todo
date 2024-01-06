@@ -21,7 +21,7 @@ import androidx.navigation.navDeepLink
 import com.firstyogi.dothing.*
 import java.util.*
 const val DEEP_LINK_UPDATE_TASK = "updateTask/{date}/{time}/{message}/{id}"
-val uri = "https://www.example.com"
+val uri = "https://firstyogi.page.link"
 @OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
