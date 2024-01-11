@@ -1,9 +1,11 @@
 package com.firstyogi.dothing
 
 import android.app.Activity
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -87,6 +89,14 @@ class SigninActivity : ComponentActivity() {
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                 finish()
             }
+            val startTime = System.currentTimeMillis()
+            Log.d(TAG, "onStart called")
+
+            // Your sign-in code...
+
+            val endTime = System.currentTimeMillis()
+            val elapsedTime = endTime - startTime
+            Log.d("singintime", "Sign-in process took $elapsedTime milliseconds")
         }
     }
     override fun onBackPressed() {
@@ -136,6 +146,7 @@ fun SignInScreen(){
                                 context.startActivity(intent)
                                 (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                             }
+
                                                   }
                     }
 
@@ -152,7 +163,7 @@ fun SignInScreen(){
         var visible by remember {
             mutableStateOf(false)
         }
-        LaunchedEffect(visible) {
+        LaunchedEffect(true) {
             visible = true
         }
         var googleVisible by remember {

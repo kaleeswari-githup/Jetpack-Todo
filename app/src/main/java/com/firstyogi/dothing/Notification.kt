@@ -49,14 +49,7 @@ class NotificationReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-           /* val channel = NotificationChannel(
-                channelID,
-                "Tasks",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            val manager: NotificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)*/
+
 
             notificationBuilder.setSmallIcon(R.drawable.notification_tick)
                 .setContentText("$email")
