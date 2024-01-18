@@ -102,8 +102,8 @@ fun MarkCompletedScreen(
             if (data != null) {
                 completedTasksRef.child(clickedTaskId).removeValue()
                 val snackbarResult = snackbarHostState.showSnackbar(
-                    message = "Task deleted",
-                    actionLabel = "Undo",
+                    message = "TASK DELETED",
+                    actionLabel = "UNDO",
                     duration = SnackbarDuration.Short
                 )
                 when (snackbarResult) {

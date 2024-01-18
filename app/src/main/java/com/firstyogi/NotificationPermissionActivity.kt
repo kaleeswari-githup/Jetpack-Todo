@@ -50,11 +50,7 @@ class NotificationPermissionActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             AppJetpackComposeTheme {
-                // A surface container using the 'background' color from the theme
-               // NotificationPermissionScreen()
                 val context = LocalContext.current
-
-                // Check if the user has already made a choice in the past
                 val userChoice = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
                     .getBoolean(preferenceKey, false)
                         if (userChoice) {
@@ -211,19 +207,4 @@ fun ThemedNotificationImage(modifier: Modifier) {
         contentDescription = null,
         modifier = modifier
     )
-}
-@Composable
-fun NotificationPermissionScreen(){
-
-    Box(modifier = Modifier
-        .fillMaxSize()
-        .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ){
-        Button(onClick = {
-
-        }) {
-
-        }
-    }
 }
