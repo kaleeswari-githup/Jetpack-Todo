@@ -12,7 +12,7 @@ android {
         applicationId "com.firstyogi.dothing"
         minSdk 24
         targetSdk 33
-        versionCode 5
+        versionCode 12
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -77,7 +77,7 @@ dependencies {
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_ui_version"
     debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_ui_version"
     implementation("androidx.core:core-splashscreen:1.0.0")
-    implementation 'com.github.commandiron:WheelPickerCompose:1.1.10'
+    implementation 'com.github.commandiron:WheelPickerCompose:1.1.11'
     implementation("io.coil-kt:coil-compose:2.4.0")
 
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.5.2'
@@ -85,6 +85,11 @@ dependencies {
 
     implementation "androidx.compose.runtime:runtime:1.0.3" // Use the appropriate version
     implementation "androidx.compose.runtime:runtime-livedata:1.0.3"
+
+
+
+    //For view based UI's
+    implementation 'androidx.compose.material3:material3:Tag'
 
     //dynamic link
     // Import the BoM for the Firebase platform

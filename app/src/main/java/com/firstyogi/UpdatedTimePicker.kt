@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import com.commandiron.wheel_picker_compose.WheelTimePicker
 import com.commandiron.wheel_picker_compose.core.TimeFormat
 import com.commandiron.wheel_picker_compose.core.WheelPickerDefaults
+//import com.commandiron.wheel_picker_compose.WheelTimePicker
+//import com.commandiron.wheel_picker_compose.core.TimeFormat
+//import com.commandiron.wheel_picker_compose.core.WheelPickerDefaults
 import com.firstyogi.ui.theme.FABRed
 import kotlinx.coroutines.delay
 import java.time.LocalTime
@@ -51,7 +54,7 @@ fun UpdatedScrollableTimePicker(
             Box(
                 modifier = Modifier
                     .padding(start = 24.dp)
-                    .wrapContentWidth() // Set a fixed width to match the width of WheelTimePicker
+                     // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
@@ -80,11 +83,13 @@ fun UpdatedScrollableTimePicker(
                 )
             }
             val context = LocalContext.current
+
                         WheelTimePicker(
                             startTime = if (shouldUseCurrentTime) LocalTime.now() else initialTime!!,
                             timeFormat = TimeFormat.AM_PM,
                             size = DpSize(width = 170.dp, height = 200.dp),
                             rowCount = 5,
+
                             textStyle = TextStyle(
                                 fontFamily = interDisplayFamily,
                                 fontSize = 14.sp,

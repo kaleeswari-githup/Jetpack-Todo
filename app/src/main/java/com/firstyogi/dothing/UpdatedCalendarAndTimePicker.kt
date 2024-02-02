@@ -157,6 +157,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                 )
 
             )
+
             Box(
                 modifier = Modifier
                     .padding(start = 8.dp, end = 8.dp)

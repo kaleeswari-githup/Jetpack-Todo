@@ -65,7 +65,7 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition",
-    "UnrememberedMutableState"
+    "UnrememberedMutableState", "RestrictedApi"
 )
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

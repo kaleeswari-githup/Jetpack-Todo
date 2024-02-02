@@ -46,7 +46,7 @@ fun UpdatedCalendar(
     var newUserSelectedtime by remember { mutableStateOf(userSelectedtime) }
     var shouldUseCurrentTime by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier
+    BoxWithConstraints(modifier = Modifier
         .fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
