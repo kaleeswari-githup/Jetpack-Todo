@@ -90,7 +90,7 @@ fun UpdateTaskScreen(
                     data = selectedData
 
                         val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
 
                         // Check if the date is not empty before attempting to parse
                         if (!selectedData.date.isNullOrBlank()) {

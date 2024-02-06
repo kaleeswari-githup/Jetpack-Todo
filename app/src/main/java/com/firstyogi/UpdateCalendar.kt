@@ -70,7 +70,7 @@ fun UpdatedCalendar(
                     isDatePickervisible = false
                     ""
                 } else {
-                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM")).toString().toUpperCase()
+                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM",Locale.ENGLISH)).toString().toUpperCase()
                 }
                 Row(modifier = Modifier
                     .fillMaxWidth()

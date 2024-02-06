@@ -3,12 +3,14 @@
 package com.firstyogi.dothing
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -47,7 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.app.ComponentActivity
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.firstyogi.dothing.*
 import com.firstyogi.ui.theme.*
@@ -343,11 +347,36 @@ fun LazyGridLayout(navController: NavController,
         }
         databaseRef.addValueEventListener(valueEventListener)
     }
+    val MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM = 123
     if (isNotificationSet){
         cardDataList.forEach { data ->
             var selectedDateTime = data.notificationTime
             val itemId = data.id
             val message = data.message
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                // Use LocalContext.current to get the current context in Compose
+                val currentContext = LocalContext.current
+
+                if (ContextCompat.checkSelfPermission(
+                        currentContext,
+                        android.Manifest.permission.SCHEDULE_EXACT_ALARM
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    // Permission is not granted, request it
+                    ActivityCompat.requestPermissions(
+                        LocalContext.current as Activity,
+                        arrayOf(android.Manifest.permission.SCHEDULE_EXACT_ALARM),
+                        MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM
+                    )
+                } else {
+                    // Permission is already granted, proceed with the operation
+                    scheduleNotification(currentContext, selectedDateTime, itemId, message!!, isCheckedState = isChecked.value)
+                }
+            } else {
+                // For versions lower than Android 6.0, no runtime permission is needed
+                scheduleNotification(context, selectedDateTime, itemId, message!!, isCheckedState = isChecked.value)
+            }
+
             scheduleNotification(context = context,selectedDateTime,itemId,message!!, isCheckedState = isChecked.value)
         }
     }
