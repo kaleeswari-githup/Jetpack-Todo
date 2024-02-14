@@ -80,7 +80,7 @@ fun AddDaskScreen(
         val trimmedText = task.value.trim()
         val areNotificationsEnabled = areNotificationsEnabled(context)
         val timeFormat = if (selectedTime != null && selectedTime.value != null) {
-            selectedTime.value!!.format(DateTimeFormatter.ofPattern("hh:mm a")).toUpperCase()
+            selectedTime.value!!.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)).toUpperCase()
         } else {
             null
         }
@@ -97,7 +97,7 @@ fun AddDaskScreen(
         val id:String = databaseRef.push().key.toString()
         val notificationTime: Long? = if (userSelectedDate != null && userSelectedTime != null) {
             val combinedDateTime = "$userSelectedDate $userSelectedTime"
-            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
+            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.ENGLISH)
             val date: Date = dateTimeFormat.parse(combinedDateTime)
             date?.time
         } else {
@@ -383,10 +383,10 @@ fun AddDaskCircleDesign(
                             )
                         }
                     }else{
-                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+                        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
                         val dateString:String = formattedDate
-                        val timeFormat = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+                        val timeFormat = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
                         val timeString:String = timeFormat
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -416,7 +416,7 @@ fun AddDaskCircleDesign(
                             onDateTimeSelected = { date, time ->
                                 val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                                 val parsedDate = LocalDate.parse(date, dateFormatter)
-                                val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+                                val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)
                                 val parsedTime = if (time.isNotEmpty()) {
                                     LocalTime.parse(time, timeFormatter)
                                 } else {
@@ -427,7 +427,7 @@ fun AddDaskCircleDesign(
                             },
                             id = "",
                             userSelectedDate = if (selectedDate.value == null) null else selectedDate.value,
-                            userSelectedTime = if (selectedDate.value == null) null else selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a")),
+                            userSelectedTime = if (selectedDate.value == null) null else selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)),
                             invokeOnDoneClick = false,
                             UnMarkedDateandTime = false,
                             isChecked = isChecked,

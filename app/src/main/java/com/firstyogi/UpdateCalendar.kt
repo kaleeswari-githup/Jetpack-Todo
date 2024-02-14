@@ -109,9 +109,9 @@ fun UpdatedCalendar(
             }
             else {
                 val setTimeText = if ( selectedTime.value != null) {
-                    selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase()
+                    selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase()
                 } else if (!isTimePickervisible && isDatePickervisible && selectedTime.value != null) {
-                    parseTime(userSelectedtime)?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase()
+                    parseTime(userSelectedtime)?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase()
                 } else {
                     "SET TIME"
                 }
@@ -204,7 +204,7 @@ fun UpdatedShrinkCalendar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = (currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))).uppercase(),
+            text = (currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy",Locale.ENGLISH))).uppercase(),
             fontFamily = interDisplayFamily,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,

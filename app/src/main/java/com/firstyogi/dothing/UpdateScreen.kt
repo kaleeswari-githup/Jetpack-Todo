@@ -465,7 +465,7 @@ val dataClassMessageMutable by remember{
             )
                     .padding(8.dp)
     ) {
-        val timeFormat = selectedTime.value.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+        val timeFormat = selectedTime.value.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
         val timeString:String = timeFormat
         if (selectedDate.value.isNullOrEmpty() && selectedTime.value.isNullOrEmpty()){
             ThemedCalendarImage()

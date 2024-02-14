@@ -58,7 +58,7 @@ fun UpdatedScrollableTimePicker(
             ) {
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
-                val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase().orEmpty()
+                val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase().orEmpty()
               if (isChecked.value){
                   LaunchedEffect(selectedTimeText) {
                       mediaPlayer.start()

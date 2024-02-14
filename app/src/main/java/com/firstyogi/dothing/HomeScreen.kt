@@ -585,9 +585,9 @@ fun formatDate(date: LocalDate): String {
         date == currentDate.plusDays(1) -> "Tomorrow"
         date in startOfRange..endOfRange -> {
             val formatter = if (date.year == currentDate.year) {
-                DateTimeFormatter.ofPattern("EEE, d MMM")
+                DateTimeFormatter.ofPattern("EEE, d MMM",Locale.ENGLISH)
             } else {
-                DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+                DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
             }
             date.format(formatter)
         }// Check if the date is the next day
@@ -598,7 +598,7 @@ fun formatDate(date: LocalDate): String {
         yearsAgo == 0 && monthsAgo > 1 -> "$monthsAgo months ago"
         yearsAgo == 1 -> "1 year ago"
         yearsAgo > 1 -> "$yearsAgo years ago"
-        else -> date.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
+        else -> date.format(DateTimeFormatter.ofPattern("EEE, d MMM",Locale.ENGLISH))
     }
 }
 @SuppressLint("UnrememberedMutableState")

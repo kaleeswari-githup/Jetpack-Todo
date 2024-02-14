@@ -65,7 +65,7 @@ fun UpdatedCalendarAndTimePickerScreen(
         return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
     val onDoneClick: (String, String) -> Unit = { updatedDate, updatedTime ->
-        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)
+        val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
 
         val dateStringFromDatabase = updatedDate
 
@@ -75,10 +75,10 @@ fun UpdatedCalendarAndTimePickerScreen(
             LocalDate.MIN
         }
         val formattedDate = originalDate?.format(dateFormatter) ?: ""
-        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)
         val timeFormat = if (updatedTime.isNotEmpty()) {
             val updatedTimeString = LocalTime.parse(updatedTime, timeFormatter)
-            updatedTimeString.format(DateTimeFormatter.ofPattern("hh:mm a"))?.toUpperCase() ?: ""
+            updatedTimeString.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
         } else {
             ""
         }
@@ -227,7 +227,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                         val dateString: String = selectedDate.value.format(dateFormatter)
 
-                        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+                        val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)
                         val timeString: String = selectedTime.value?.format(timeFormatter) ?: ""
 
                         Log.d("UpdatedDateString","$dateString")
