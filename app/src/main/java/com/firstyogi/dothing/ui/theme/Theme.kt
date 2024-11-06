@@ -5,6 +5,7 @@ import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+
 import com.firstyogi.ui.theme.DarkTypography
 import com.firstyogi.ui.theme.LightTypography
 
@@ -21,6 +22,7 @@ private val DarkColorPalette = darkColors(
     secondary = Color.White,
     background = Color.Black
 )
+
 
 
 

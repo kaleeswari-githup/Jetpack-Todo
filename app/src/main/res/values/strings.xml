@@ -5,8 +5,12 @@
     <string name="coming_todo">Coming next</string>
     <string name="title_activity_signin">SigninActivity</string>
     <string name="title_activity_fullscreen">FullscreenActivity</string>
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="delete_all">DELETE ALL</string>
+    <string name="delete">DELETE</string>
     <string name="title_activity_notification_permission">NotificationPermissionActivity</string>
+    <string name="deleteall_heading">Delete all completed tasks</string>
+    <string name="deleteall_subtitle">Are you sure you want to delete all completed tasks?</string>
+    <string name="cancel">Cancel</string>
+
 
 </resources>

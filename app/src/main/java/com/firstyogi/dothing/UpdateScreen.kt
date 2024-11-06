@@ -9,6 +9,10 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -29,8 +33,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -38,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +60,7 @@ import com.google.firebase.database.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -56,21 +68,28 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
+import kotlin.math.absoluteValue
 
 
-
+@OptIn(ExperimentalSharedTransitionApi::class)
 @SuppressLint("UnrememberedMutableState", "UnusedMaterialScaffoldPaddingParameter")
-@OptIn(ExperimentalComposeUiApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun UpdateTaskScreen(
+
     navController: NavController,
     id: String?,
     openKeyboard: Boolean,
     isChecked:MutableState<Boolean>,
     snackbarHostState:SnackbarHostState,
-    coroutineScope:CoroutineScope
+    coroutineScope:CoroutineScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope
+
 ) {
+    val repeatableOption = remember {
+        mutableStateOf("")
+    }
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
     val maxValue = 32
     val database = FirebaseDatabase.getInstance()
@@ -81,6 +100,7 @@ fun UpdateTaskScreen(
     var dataClassMessage = remember { mutableStateOf("") }
     var dataClassDate= remember { mutableStateOf("") }
     var dataClassTime = remember{ mutableStateOf("") }
+   // var animationID = remember{ mutableStateOf("") }
 
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
@@ -93,20 +113,24 @@ fun UpdateTaskScreen(
                         val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
 
                         // Check if the date is not empty before attempting to parse
-                        if (!selectedData.date.isNullOrBlank()) {
-                            try {
-                                val parsedDate = LocalDate.parse(selectedData.date, originalDateFormat)
-                                dataClassDate.value = parsedDate.format(desiredDateFormat)
-                            } catch (e: DateTimeParseException) {
-                                // Handle parsing error if needed
-                                Log.e("DateParsingError", "Error parsing date: ${selectedData.date}", e)
-                            }
-                        } else {
-                            // Handle the case where the date is empty
-                            dataClassDate.value = ""
+                    if (!selectedData.date.isNullOrBlank()) {
+                        try {
+                            // Convert Long to LocalDate
+                            val parsedDate = LocalDate.parse(selectedData.date, originalDateFormat)
+                            dataClassDate.value = parsedDate.format(desiredDateFormat)
+                        } catch (e: DateTimeParseException) {
+                            // Handle parsing error if needed
+                            Log.e("DateParsingError", "Error parsing date: ${selectedData.date}", e)
                         }
+                    } else {
+                        // Handle the case where the date is empty
+                        dataClassDate.value = ""
+                    }
                     dataClassMessage.value = selectedData.message ?: ""
                     dataClassTime.value = selectedData.time?:""
+                    repeatableOption.value = selectedData.repeatedTaskTime?:""
+                   // animationID.value = selectedData.id
+                    Log.d("updatedataclassname","${selectedData.message}")
                 }
             }
 
@@ -159,12 +183,19 @@ fun UpdateTaskScreen(
             } else {
                 null
             }
+            val longDateValue: Long? = if (!formattedDate.isNullOrBlank()) {
+                val date = LocalDate.parse(formattedDate, desiredDateFormat)
+                date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            } else {
+                null
+            }
             val updatedData = DataClass(
                 id = id.toString(),
                 message = dataClassMessage.value.trim(),
                 time = formattedTime?.format(timeFormat) ?: "",
                 date = formattedDate,
-                notificationTime = notificationTime ?: 0L
+                notificationTime = notificationTime ?: 0L,
+               // dueDate = longDateValue ?:0L
             )
 
             val dataMap = mapOf(
@@ -172,14 +203,17 @@ fun UpdateTaskScreen(
                 "message" to updatedData.message,
                 "time" to updatedData.time,
                 "date" to updatedData.date,
-                "notificationTime" to updatedData.notificationTime
+                "notificationTime" to updatedData.notificationTime,
+               // "longDateValue" to updatedData.dueDate
             )
             databaseRef.child(id.toString()).updateChildren(dataMap)
-            navController.navigate(Screen.Home.route)
+           // navController.navigate(Screen.Home.route)
+            navController.popBackStack()
         }
 
     BackHandler {
         onDoneClick(dataClassDate.value, dataClassTime.value)
+
     }
     val onDeleteClick:(String) -> Unit = {clickedTaskId ->
             val databaseRef = database.reference.child("Task").child(uid.toString())
@@ -251,15 +285,21 @@ fun UpdateTaskScreen(
                 }
             })
         }
+    var isDeleteTaskScreenOpen = remember {
+        mutableStateOf(false)
+    }
     val blurEffectBackground by animateDpAsState(targetValue = when{
         isUpdatePickerOpen.value -> 10.dp
+        isDeleteTaskScreenOpen.value -> 10.dp
         else -> 0.dp
     }
     )
     BackHandler {
         onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
     }
-    Box(modifier = Modifier
+    Log.d("UpdatePageMessage","$dataClassMessage")
+
+        Box(modifier = Modifier
             .blur(blurEffectBackground)
             .fillMaxSize()
             .background(color = MaterialTheme.colors.background)
@@ -269,10 +309,12 @@ fun UpdateTaskScreen(
             }
         ) {
             ThemedGridImage()
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+            CanvasShadow()
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
                 Column(modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.CenterHorizontally) {
+
                     UpdateCircleDesign(
                         onTaskChange = { newTask ->
                             if (newTask.length <= maxValue){
@@ -285,25 +327,40 @@ fun UpdateTaskScreen(
                         dataClassMessage = dataClassMessage,
                         selectedDate =dataClassDate,
                         selectedTime = dataClassTime,
-                        isChecked = isChecked
-                    )
+                        isChecked = isChecked,
+                        repeatableOption = repeatableOption,
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        sharedTransitionScope = sharedTransitionScope,
+
+                        )
+
+
+
+
                     Box(
                         modifier = Modifier
                             .padding(bottom = 40.dp)
                     ) {
-                        UpdatedButtons( id = id.toString(), navController = navController, onMarkCompletedClick =onMarkCompletedClick,onDeleteClick)
+                        UpdatedButtons( id = id.toString(),
+                            navController = navController,
+                            onMarkCompletedClick =onMarkCompletedClick,
+                            onDeleteClick,
+                            isDeleteTaskScreenOpen = isDeleteTaskScreenOpen)
                     }
                 }
             }
             CrossFloatingActionButton(onClick = {
                 onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
             })
-    }
+        }
+
+
 
 }
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalSharedTransitionApi::class)
 @SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalAnimationApi::class)
+
 @Composable
 fun UpdateCircleDesign(
     dataClassMessage: MutableState<String>,
@@ -314,8 +371,13 @@ fun UpdateCircleDesign(
     isUpdatePickerOpen:MutableState<Boolean>,
     openKeyboard:Boolean,
     isChecked: MutableState<Boolean>,
+    repeatableOption: MutableState<String>,
+    animatedVisibilityScope:AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope,
+
 
 ){
+    var isClickable = remember { mutableStateOf(true) }
 val dataClassMessageMutable by remember{
     mutableStateOf(dataClassMessage)
 }
@@ -345,6 +407,7 @@ val dataClassMessageMutable by remember{
     var visible by remember {
         mutableStateOf(false)
     }
+    var isClicked = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         visible = true // Set the visibility to true to trigger the animation
@@ -364,16 +427,27 @@ val dataClassMessageMutable by remember{
             stiffness = Spring.StiffnessMediumLow
         )
     )
+    with(sharedTransitionScope){
         Box(
             modifier = Modifier
+
                 .fillMaxWidth()
+
                 .padding(start = 24.dp, end = 24.dp, top = 54.dp)
                 .size(344.dp)
-                .offset(y = offsetY)
-                .scale(scale)
+                .sharedBounds(
+                    rememberSharedContentState(key = "bounds-$id"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
+                    exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                    placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
+                )
+                // .offset(y = offsetY)
+                //.scale(scale)
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
             contentAlignment = Alignment.Center
@@ -392,6 +466,13 @@ val dataClassMessageMutable by remember{
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight()
+                            /* .sharedElement(
+                                state = rememberSharedContentState(key = "boundsMessage-$id"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _,_, ->
+                                    tween(300)
+                                }
+                            )*/
                             .padding(start = 32.dp, end = 32.dp)
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
@@ -403,10 +484,10 @@ val dataClassMessageMutable by remember{
                                 }
                             },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
-                                capitalization = KeyboardCapitalization.Sentences),
+                            capitalization = KeyboardCapitalization.Sentences),
                         keyboardActions = KeyboardActions(
                             onDone ={
-                                keyboardController?.hideSoftwareKeyboard()
+                                keyboardController?.hide()
                                 focusManager.clearFocus(true)
                                 onDoneClick.invoke()
                             }
@@ -447,95 +528,126 @@ val dataClassMessageMutable by remember{
                     TextStyle(text = "${dataClassMessage.value.length} / 32")
                 }
 
-    Box(
-        modifier = Modifier
-            .wrapContentSize(Alignment.Center)
-            .padding(
-                top = 20.dp
-            )
-            .bounceClick()
-            .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) {
-                isUpdatePickerOpen.value = true
-            }
-                    .border(
-                width = 0.4.dp,
-                color = MaterialTheme.colors.secondary, // Change to your desired border color
-                shape = CircleShape
-            )
-                    .padding(8.dp)
-    ) {
-        val timeFormat = selectedTime.value.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
-        val timeString:String = timeFormat
-        if (selectedDate.value.isNullOrEmpty() && selectedTime.value.isNullOrEmpty()){
-            ThemedCalendarImage()
-        }else if(selectedDate.value.isNotEmpty() && selectedTime.value.isNullOrEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                ThemedCalendarImage()
-                Text(
-                    text = selectedDate.value,
-                    fontFamily = interDisplayFamily,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colors.secondary,
-                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                )
-            }
-        }else{
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                ThemedCalendarImage()
-                Text(
-                    text = "${selectedDate.value}, $timeString",
-                    fontFamily = interDisplayFamily,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colors.secondary,
-                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                )
-            }
-        }
-        Log.d("updatescreendate","${selectedDate}")
-        if (isUpdatePickerOpen.value) {
-            val pattern = "EEE, d MMM yyyy"
-            val locale = Locale.ENGLISH
-            val formatter = DateTimeFormatter.ofPattern(pattern, locale)
-                .withZone(ZoneId.of("America/New_York"))
-            val selectedDateString = selectedDate.value
-            val localDate = if (selectedDateString.isEmpty()) {
-                LocalDate.now()
-            } else {
-                try {
-                    LocalDate.parse(selectedDateString, formatter)
-                } catch (e: DateTimeParseException) {
-                    LocalDate.now()
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize(Alignment.Center)
+                        .padding(
+                            top = 20.dp
+                        )
+
+                        .bounceClick()
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            isUpdatePickerOpen.value = true
+                        }
+                        /* .sharedElement(
+                            state = rememberSharedContentState(key = "boundsDateandTime-$id"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = { _,_, ->
+                                tween(300)
+                            }
+                        )*/
+                        .border(
+                            width = 0.4.dp,
+                            color = MaterialTheme.colors.secondary, // Change to your desired border color
+                            shape = CircleShape
+                        )
+                        .padding(8.dp)
+
+                ) {
+                    val timeFormat = selectedTime.value.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
+                    val timeString:String = timeFormat
+                    if (selectedDate.value.isNullOrEmpty() && selectedTime.value.isNullOrEmpty()){
+                        ThemedCalendarImage(modifier = Modifier)
+                    }else if(selectedDate.value.isNotEmpty() && selectedTime.value.isNullOrEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            ThemedCalendarImage(modifier = Modifier)
+                            Text(
+                                text = selectedDate.value,
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                            )
+                        }
+                    }else{
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            ThemedCalendarImage(modifier = Modifier)
+                            Text(
+                                text = "${selectedDate.value}, $timeString",
+                                fontFamily = interDisplayFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colors.secondary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                            )
+                        }
+                    }
+                    Log.d("updatescreendate","${selectedDate}")
+                    if (isUpdatePickerOpen.value) {
+                        val pattern = "EEE, d MMM yyyy"
+                        val locale = Locale.ENGLISH
+                        val formatter = DateTimeFormatter.ofPattern(pattern, locale)
+                            .withZone(ZoneId.of("America/New_York"))
+                        val selectedDateString = selectedDate.value
+                        val localDate = if (selectedDateString.isEmpty()) {
+                            LocalDate.now()
+                        } else {
+                            try {
+                                LocalDate.parse(selectedDateString, formatter)
+                            } catch (e: DateTimeParseException) {
+                                LocalDate.now()
+                            }
+                        }
+                        UpdatedCalendarAndTimePickerScreen(
+                            userSelectedDate = localDate,
+                            userSelectedTime = selectedTime.value,
+                            onDismiss = { isUpdatePickerOpen.value = false
+                                keyboardController?.show()},
+                            onDateTimeSelected = { date, time ->
+                                val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                                val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                                val defaultDateString = date
+                                val parsedDate = LocalDate.parse(defaultDateString, defaultDateFormat)
+                                val formattedDate = parsedDate.format(desiredDateFormat)
+                                selectedDate.value = formattedDate
+                                selectedTime.value = time
+                            },
+                            id = id,
+                            invokeOnDoneClick = true,
+                            isChecked = isChecked,
+                            message = dataClassMessage,
+                            repeatableOption = repeatableOption,
+                            isClicked = isClicked,
+
+                            )
+                    }
                 }
+
+                RepeatedTaskBoxImplement(
+                    repeatableOption = repeatableOption,
+                    isPickerOpen = isUpdatePickerOpen,
+                    isClicked = isClicked,
+                    id = id,
+                    addtaskCrossClick = false,
+                    unMarkCompletedCrossClick = false,
+                    updatetaskCrossClick = true,
+                    color = MaterialTheme.colors.secondary,
+                    modifier = Modifier,
+                    isClickable = isClickable
+                )
             }
-            UpdatedCalendarAndTimePickerScreen(
-                userSelectedDate = localDate,
-                userSelectedTime = selectedTime.value,
-                onDismiss = { isUpdatePickerOpen.value = false
-                    keyboardController?.show()},
-                onDateTimeSelected = { date, time ->
-                    val defaultDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                    val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                    val defaultDateString = date
-                    val parsedDate = LocalDate.parse(defaultDateString, defaultDateFormat)
-                    val formattedDate = parsedDate.format(desiredDateFormat)
-                    selectedDate.value = formattedDate
-                    selectedTime.value = time
-                },
-                id = id,
-                invokeOnDoneClick = true,
-                UnMarkedDateandTime = false,
-                 isChecked = isChecked,
-                message = dataClassMessage
-            )
         }
     }
-            }
-        }
+
+    LaunchedEffect(Unit) {
+
+        isClickable.value = true
+
+    }
     LaunchedEffect(openKeyboard) {
         if (openKeyboard) {
             focusRequester.requestFocus()
@@ -547,14 +659,18 @@ val dataClassMessageMutable by remember{
 }
 @SuppressLint("UnrememberedMutableState")
 @Composable
-fun UpdatedButtons(id: String,
-                navController: NavController,
-                   onMarkCompletedClick: (String) -> Unit,
-                   onDeleteClick: (String) -> Unit){
+fun UpdatedButtons(
+    id: String,
+    navController: NavController,
+    onMarkCompletedClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
+    isDeleteTaskScreenOpen:MutableState<Boolean>
+){
     val coroutineScope = rememberCoroutineScope()
     var visible by remember {
         mutableStateOf(false)
     }
+
     LaunchedEffect(Unit) {
         visible = true // Set the visibility to true to trigger the animation
     }
@@ -590,8 +706,9 @@ contentAlignment = Alignment.Center
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                onDeleteClick(id)
-                navController.popBackStack()
+                isDeleteTaskScreenOpen.value = true
+              /*  onDeleteClick(id)
+                navController.popBackStack()*/
             },
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -621,6 +738,9 @@ contentAlignment = Alignment.Center
             }
         }
 
+    }
+    if (isDeleteTaskScreenOpen.value){
+        DeleteTaskScreenPage (onDismiss = {isDeleteTaskScreenOpen.value = false},onDeleteClick,navController,id = id)
     }
 }
 @Composable
@@ -682,12 +802,12 @@ fun CrossFloatingActionButton(onClick:() -> Unit){
             backgroundColor = MaterialTheme.colors.primary
 
             ) {
-            ThemedCrossImage()
+            ThemedCrossImage(modifier = Modifier)
         }
     }
 }
 @Composable
-fun ThemedCrossImage() {
+fun ThemedCrossImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
         R.drawable.dark_cross_icon
@@ -698,5 +818,50 @@ fun ThemedCrossImage() {
     Image(
         painter = painterResource(id = imageRes),
         contentDescription = null,
+        modifier = modifier
     )
+}
+
+@Composable
+fun PinchToDismissBox(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    content: @Composable () -> Unit
+) {
+    var scale by remember { mutableStateOf(1f) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    val dismissThreshold = 0.7f
+
+    val animatedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = spring(stiffness = Spring.StiffnessLow)
+    )
+
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { size = it.size }
+            .graphicsLayer(
+                scaleX = animatedScale,
+                scaleY = animatedScale
+            )
+            .pointerInput(Unit) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    scale *= zoom
+                    if (scale < dismissThreshold) {
+                        coroutineScope.launch {
+                            animate(scale, 0f) { value, _ ->
+                                scale = value
+                                if (value <= 0.1f) {
+                                    navController.popBackStack()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    ) {
+        content()
+    }
 }

@@ -1,6 +1,8 @@
 package com.firstyogi.dothing
 
+import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
@@ -18,11 +20,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.firstyogi.ui.theme.FABRed
+import org.w3c.dom.Text
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -30,68 +34,87 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
 
+@SuppressLint("UnrememberedMutableState", "UnusedBoxWithConstraintsScope")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun UpdatedCalendar(
     userSelectedtime: String,
-    startDate:LocalDate,
+    startDate: LocalDate,
     selectedTime: MutableState<LocalTime?>,
     selectedDate: MutableState<LocalDate>,
-    isChecked: MutableState<Boolean>
+    isChecked: MutableState<Boolean>,
+    repeatableOption: MutableState<String>,
+    isClicked: MutableState<Boolean>,
+    selectedRepeatoption:MutableState<String>
 ) {
+
+    Log.d("repeatedtask","$repeatableOption")
     var isDoneButtonClicked by remember { mutableStateOf(false) }
     var isClearTextVisible by remember { mutableStateOf(true) }
-    var isTimePickervisible by remember{ mutableStateOf(false) }
-    var isDatePickervisible by remember{ mutableStateOf(false) }
+    var isTimePickervisible by remember { mutableStateOf(false) }
+    var isDatePickervisible by remember { mutableStateOf(false) }
     var newUserSelectedtime by remember { mutableStateOf(userSelectedtime) }
     var shouldUseCurrentTime by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(modifier = Modifier
-        .fillMaxWidth(),
+    DisposableEffect(Unit) {
+        onDispose {
+            isClicked.value = false
+        }
+    }
+    LaunchedEffect(startDate) {
+        if (selectedDate.value == startDate) {
+            selectedDate.value = startDate
+        }
+    }
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .background(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colors.primary)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .background(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colors.primary)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
                 )
-            )
-            .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) { }
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { }
         ) {
-            if (!isDatePickervisible && !isTimePickervisible){
+            if (!isDatePickervisible && !isTimePickervisible && !isClicked.value) {
                 UpdatedShrinkCalendar(startDate = selectedDate.value, selectedDate = selectedDate)
-            }else{
-                val setDateText = if (!isTimePickervisible) {
+            } else {
+                val setDateText = if (!isTimePickervisible && !isClicked.value) {
                     isDatePickervisible = false
                     ""
-                } else {
-                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM",Locale.ENGLISH)).toString().toUpperCase()
                 }
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) {
-                        isDatePickervisible = true
-                        isTimePickervisible = false
-                    }
-                    .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
-                    ) {
-                    ButtonTextWhiteTheme(text = setDateText,color = MaterialTheme.colors.secondary)
+                else{
+
+                    selectedDate.value.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.ENGLISH)).toString().toUpperCase()
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            isDatePickervisible = true
+                            isTimePickervisible = false
+                            isClicked.value = false // Reset isClicked when clicking on the date picker
+                        }
+                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
+                ) {
+                    ButtonTextWhiteTheme(text = setDateText, color = MaterialTheme.colors.secondary)
                 }
             }
             Box(
                 modifier = Modifier
-                    .padding(bottom = 24.dp,)
+                    .padding(bottom = 24.dp)
                     .height(1.dp)
                     .fillMaxWidth()
                     .background(color = MaterialTheme.colors.background)
             )
-            if (isTimePickervisible){
+            if (isTimePickervisible) {
                 UpdatedScrollableTimePicker(
                     initialTime = if (shouldUseCurrentTime) LocalTime.now() else parseTime(userSelectedtime),
                     selectedTime = selectedTime,
@@ -99,52 +122,59 @@ fun UpdatedCalendar(
                         isDoneButtonClicked = true
                         isTimePickervisible = false
                         isClearTextVisible = false
-                       newUserSelectedtime = ""
-                                   },
+                        newUserSelectedtime = ""
+                    },
                     onTimeSelected = { time ->
                         selectedTime.value = time
                     },
                     isChecked = isChecked
                 )
-            }
-            else {
-                val setTimeText = if ( selectedTime.value != null) {
-                    selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase()
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 24.dp)
+                        .height(1.dp)
+                        .fillMaxWidth()
+                        .background(color = MaterialTheme.colors.background)
+                )
+                isClicked.value = false
+
+            } else {
+                val setTimeText = if (selectedTime.value != null) {
+                    selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH))?.toUpperCase()
                 } else if (!isTimePickervisible && isDatePickervisible && selectedTime.value != null) {
-                    parseTime(userSelectedtime)?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase()
+                    parseTime(userSelectedtime)?.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH))?.toUpperCase()
                 } else {
                     "SET TIME"
                 }
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp)
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) {
-                        isTimePickervisible = true
-                    },
-                    horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp)
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            isTimePickervisible = true
+                        },
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
                         text = setTimeText!!,
-                        modifier = Modifier
-                            .padding( bottom = 24.dp),
+                        modifier = Modifier.padding(bottom = 24.dp),
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing =1.sp),
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
                         color = MaterialTheme.colors.secondary
                     )
 
                     if ((newUserSelectedtime != null && newUserSelectedtime.isNotEmpty() && isClearTextVisible) || selectedTime.value != null) {
                         Text(
                             text = "CLEAR",
-                            modifier = Modifier
-                                .clickable(indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }) {
-                             isDoneButtonClicked = true
-                                    isClearTextVisible = false
-                                    selectedTime.value = null
-                                    shouldUseCurrentTime = true
-                                },
+                            modifier = Modifier.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                                isDoneButtonClicked = true
+                                isClearTextVisible = false
+                                selectedTime.value = null
+                                shouldUseCurrentTime = true
+                            },
                             color = FABRed,
                             fontFamily = interDisplayFamily,
                             fontWeight = FontWeight.Medium,
@@ -153,20 +183,117 @@ fun UpdatedCalendar(
                         )
                     }
                 }
-
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 24.dp)
+                        .height(1.dp)
+                        .fillMaxWidth()
+                        .background(color = MaterialTheme.colors.background)
+                )
             }
-            LaunchedEffect(Unit){
-                if (selectedTime.value == null && newUserSelectedtime.isNotEmpty()){
+
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                        isClicked.value = true
+                        isTimePickervisible = false
+                        isDatePickervisible = false
+                    },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!isClicked.value) {
+                    Text(
+                        text = selectedRepeatoption.value,
+                        fontFamily = interDisplayFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = if (isClicked.value) FABRed else MaterialTheme.colors.secondary,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                    )
+                }
+                if (isClicked .value ) {
+                    isTimePickervisible = false
+                    RepeatedTaskScreen(initiallySelectedOption = repeatableOption.value)
+                    {selectedRepeatOption ->
+                        selectedRepeatoption.value = selectedRepeatOption
+                    }
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                if (selectedTime.value == null && newUserSelectedtime.isNotEmpty()) {
                     val formatter = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)
-                    val localTime =  LocalTime.parse(newUserSelectedtime.toUpperCase(), formatter)
+                    val localTime = LocalTime.parse(newUserSelectedtime.toUpperCase(), formatter)
                     selectedTime.value = localTime
                 }
             }
-            LaunchedEffect(Unit) {
+          /*  LaunchedEffect(Unit) {
                 selectedDate.value = startDate
-            }
+            }*/
         }
     }
+}
+
+
+@Composable
+fun RepeatedTaskScreen(initiallySelectedOption: String,
+                       onRepeatOptionSelected: (String) -> Unit){
+    val textOptions = listOf("NO REPEAT", "DAILY", "WEEKLY", "MONTHLY", "YEARLY")
+    val clickedIndex = remember {
+        mutableStateOf(textOptions.indexOf(initiallySelectedOption))
+    }
+
+    Column (
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ){
+        textOptions.forEachIndexed { index, text ->
+
+            RepeatedTaskText(
+                text = text,
+                isClicked = index == clickedIndex.value,
+                onClick = {
+                    clickedIndex.value = index
+                    onRepeatOptionSelected(text)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun RepeatedTaskText(text : String, isClicked: Boolean, onClick: () -> Unit){
+    val context = LocalContext.current
+    Box(modifier = Modifier
+        .fillMaxWidth()
+        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+            onClick()
+            Vibration(context)
+        }){
+        Row(modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(text = text,
+                fontFamily = interDisplayFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = if (isClicked) FABRed else MaterialTheme.colors.secondary,
+                style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+            )
+            if (isClicked){
+                Box(modifier = Modifier
+                    .size(4.dp)
+                    .background(shape = CircleShape, color = FABRed))
+            }
+        }
+
+    }
+
 }
 @RequiresApi(Build.VERSION_CODES.O)
 fun parseTime(timeString: String?): LocalTime? {
@@ -196,6 +323,7 @@ fun UpdatedShrinkCalendar(
     val days: List<LocalDate> = remember(currentMonth) {
         calculateDaysInMonth(currentMonth)
     }
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -221,7 +349,7 @@ fun UpdatedShrinkCalendar(
             Icon(
                 Icons.Filled.KeyboardArrowLeft,
                 contentDescription = "Previous Month",
-               tint = MaterialTheme.colors.secondary)
+                tint = MaterialTheme.colors.secondary)
         }
 
         IconButton(
@@ -291,6 +419,7 @@ fun UpdatedShrinkCalendar(
                             interactionSource = remember { MutableInteractionSource() }) {
                             if (isClickable) {
                                 selectedDate.value = day
+                                Vibration(context)
                             }
                         }
                     ,

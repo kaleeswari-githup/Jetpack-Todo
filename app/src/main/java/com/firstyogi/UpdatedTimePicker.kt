@@ -33,13 +33,14 @@ import java.util.*
 @SuppressLint("SuspiciousIndentation", "RememberReturnType")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
+
 fun UpdatedScrollableTimePicker(
     selectedTime: MutableState<LocalTime?>,
     onClearClick: () -> Unit,
     initialTime: LocalTime?,
     onTimeSelected: (LocalTime) -> Unit,
     isChecked: MutableState<Boolean>
-){
+) {
     var shouldUseCurrentTime by remember { mutableStateOf(false) }
 
     Box(
@@ -54,25 +55,22 @@ fun UpdatedScrollableTimePicker(
             Box(
                 modifier = Modifier
                     .padding(start = 24.dp)
-                     // Set a fixed width to match the width of WheelTimePicker
             ) {
                 val context = LocalContext.current
                 val mediaPlayer = remember { MediaPlayer.create(context, R.raw.slide_button_new) }
-                val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase().orEmpty()
-              if (isChecked.value){
-                  LaunchedEffect(selectedTimeText) {
-                      mediaPlayer.start()
-                      delay(mediaPlayer.duration.toLong())
-                      mediaPlayer.pause()
-                      Vibration(context = context)
-
-                  }
-              }else{
-                  LaunchedEffect(selectedTimeText ){
-                      Vibration(context = context)
-
-                  }
-              }
+                val selectedTimeText = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH))?.toUpperCase().orEmpty()
+                if (isChecked.value) {
+                    LaunchedEffect(selectedTimeText) {
+                        mediaPlayer.start()
+                        delay(mediaPlayer.duration.toLong())
+                        mediaPlayer.pause()
+                        Vibration(context = context)
+                    }
+                } else {
+                    LaunchedEffect(selectedTimeText) {
+                        Vibration(context = context)
+                    }
+                }
                 Text(
                     text = selectedTimeText,
                     fontFamily = interDisplayFamily,
@@ -82,32 +80,31 @@ fun UpdatedScrollableTimePicker(
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
                 )
             }
+
             val context = LocalContext.current
 
-                        WheelTimePicker(
-                            startTime = if (shouldUseCurrentTime) LocalTime.now() else initialTime!!,
-                            timeFormat = TimeFormat.AM_PM,
-                            size = DpSize(width = 170.dp, height = 200.dp),
-                            rowCount = 5,
-
-                            textStyle = TextStyle(
-                                fontFamily = interDisplayFamily,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 1.sp
-
-                            ),
-                            textColor = MaterialTheme.colors.secondary ,
-                            selectorProperties = WheelPickerDefaults.selectorProperties(
-                                enabled = true,
-                                color = MaterialTheme.colors.primary,
-                                border = BorderStroke(width = 0.dp, color = MaterialTheme.colors.primary)
-                            )
-
-                        ) { snappedTime ->
-                            selectedTime.value = snappedTime
-                            onTimeSelected(snappedTime)
-                        }
+            WheelTimePicker(
+                startTime = selectedTime.value ?: if (shouldUseCurrentTime) LocalTime.now() else initialTime!!,
+                timeFormat = TimeFormat.AM_PM,
+                size = DpSize(width = 170.dp, height = 200.dp),
+                rowCount = 5,
+                textStyle = TextStyle(
+                    fontFamily = interDisplayFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp
+                ),
+                textColor = MaterialTheme.colors.secondary,
+                selectorProperties = WheelPickerDefaults.selectorProperties(
+                    enabled = true,
+                    color = MaterialTheme.colors.primary,
+                    border = BorderStroke(width = 0.dp, color = MaterialTheme.colors.primary)
+                )
+            ) { snappedTime ->
+                selectedTime.value = snappedTime
+                onTimeSelected(snappedTime)
+                shouldUseCurrentTime = false // Ensure we don't revert to current time unnecessarily
+            }
 
             Text(
                 text = "CLEAR",
@@ -126,7 +123,7 @@ fun UpdatedScrollableTimePicker(
                 fontSize = 12.sp,
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
             )
-                }
+        }
     }
 }
 

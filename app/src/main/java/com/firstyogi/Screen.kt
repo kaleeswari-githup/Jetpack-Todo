@@ -18,6 +18,12 @@ sealed class Screen(val route:String){
         ):String=
              "update_screen/${id}/${isChecked}"
     }
+    object UnMarkCompleted:Screen("unmark_completed_screen/{$UPDATE_ID_VALUE}/{isCheckedState}"){
+        fun passUnMarkCompletedValue(
+            id: String,
+            isChecked: Boolean
+        ):String = "unmark_completed_screen/${id}/${isChecked}"
+    }
 
 
 
