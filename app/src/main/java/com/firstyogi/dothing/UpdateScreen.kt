@@ -1,8 +1,10 @@
 package com.firstyogi.dothing
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.os.Build
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
@@ -11,6 +13,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.*
+import androidx.compose.material3.DrawerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -43,15 +47,19 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.firstyogi.dothing.*
 import com.firstyogi.ui.theme.FABRed
@@ -69,6 +77,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -101,6 +110,14 @@ fun UpdateTaskScreen(
     var dataClassDate= remember { mutableStateOf("") }
     var dataClassTime = remember{ mutableStateOf("") }
    // var animationID = remember{ mutableStateOf("") }
+    val contextx = LocalContext.current as Activity
+
+    var updateScreenvisible = remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        updateScreenvisible.value = true // Set the visibility to true to trigger the animation
+    }
 
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
@@ -209,6 +226,7 @@ fun UpdateTaskScreen(
             databaseRef.child(id.toString()).updateChildren(dataMap)
            // navController.navigate(Screen.Home.route)
             navController.popBackStack()
+            updateScreenvisible.value = false
         }
 
     BackHandler {
@@ -294,65 +312,143 @@ fun UpdateTaskScreen(
         else -> 0.dp
     }
     )
+   /* val homeScreenContent: @Composable () -> Unit = {
+        HomeScreen(
+            animatedVisibilityScope = animatedVisibilityScope,
+            navController = navController,
+            snackbarHostState = snackbarHostState,
+            coroutineScope = coroutineScope,
+            sharedTransitionScope = sharedTransitionScope,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Slightly scale down and add transparency to the background screen
+                    scaleX = 1f - (offsetY / (2 * threshold)).coerceIn(0f, 0.1f)
+                    scaleY = 1f - (offsetY / (2 * threshold)).coerceIn(0f, 0.1f)
+                    alpha = 1f - (offsetY / threshold).coerceIn(0f, 0.5f)
+                }
+        )
+    }*/
     BackHandler {
         onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
     }
     Log.d("UpdatePageMessage","$dataClassMessage")
+   // var offsetY by remember { mutableStateOf(0f) }
+  //  val offsetYAnim = remember { Animatable(0f) }
+  //  val scaleAnim = remember { Animatable(1f) }
+    val threshold = 5f
+    val offsetY by remember { mutableStateOf(0f) }
+    val offsetYAnim = remember { Animatable(0f) }
+    val scaleAnim = remember { Animatable(1f) }
+    val maxDragDistance = 600f // Max distance the screen can be dragged
+    val navigationThreshold = 400f
+    val maxOpacity = 0.5
 
-        Box(modifier = Modifier
-            .blur(blurEffectBackground)
-            .fillMaxSize()
-            .background(color = MaterialTheme.colors.background)
-            .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) {
-                onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
-            }
-        ) {
-            ThemedGridImage()
-            CanvasShadow()
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
-                Column(modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally) {
+// Animate back to the original position if the drag does not reach the threshold
+    LaunchedEffect(offsetY) {
+        if (offsetY <= threshold) {
+            offsetYAnim.snapTo(offsetY)
+        }
+    }
+    LaunchedEffect(offsetYAnim.value) {
+        if (offsetYAnim.value <= threshold) {
+            // If not past the threshold, animate back to the original position and scale
+            scaleAnim.animateTo(1f, animationSpec = tween(durationMillis = 0, easing = EaseInOutElastic)) // Reset scale smoothly
+            offsetYAnim.animateTo(0f, animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )) // Reset position smoothly
+        }
+    }
+    val alpha by animateFloatAsState(
+        targetValue = (1f - (offsetYAnim.value / threshold).coerceIn(0f, 1f)),
+        animationSpec = tween(durationMillis = 500) // Optional: adjust for smoothness
+    )
+    val isNavigating = remember { mutableStateOf(false) }
 
-                    UpdateCircleDesign(
-                        onTaskChange = { newTask ->
-                            if (newTask.length <= maxValue){
-                                dataClassMessage.value = newTask
-                            }
-                        },
-                        id = id.toString(),
-                        openKeyboard = openKeyboard,
-                        isUpdatePickerOpen = isUpdatePickerOpen,
-                        dataClassMessage = dataClassMessage,
-                        selectedDate =dataClassDate,
-                        selectedTime = dataClassTime,
-                        isChecked = isChecked,
-                        repeatableOption = repeatableOption,
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        sharedTransitionScope = sharedTransitionScope,
+        Surface() {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(blurEffectBackground)
+                    .background(color = MaterialTheme.colors.background)
+                 .clickable(indication = null,
+            interactionSource = remember { MutableInteractionSource() }) {
+            onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+            updateScreenvisible.value = false
+        }
+            ) {
+                ThemedGridImage(modifier = Modifier)
+                // CanvasShadow(modifier = Modifier.fillMaxSize())
+                Box(
+                    modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        UpdateCircleDesign(
+                            onTaskChange = { newTask ->
+                                if (newTask.length <= maxValue) {
+                                    dataClassMessage.value = newTask
+                                }
+                            },
+                            id = id.toString(),
+                            openKeyboard = openKeyboard,
+                            isUpdatePickerOpen = isUpdatePickerOpen,
+                            dataClassMessage = dataClassMessage,
+                            selectedDate = dataClassDate,
+                            selectedTime = dataClassTime,
+                            isChecked = isChecked,
+                            repeatableOption = repeatableOption,
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            sharedTransitionScope = sharedTransitionScope,
+
 
                         )
 
 
 
 
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 40.dp)
-                    ) {
-                        UpdatedButtons( id = id.toString(),
-                            navController = navController,
-                            onMarkCompletedClick =onMarkCompletedClick,
-                            onDeleteClick,
-                            isDeleteTaskScreenOpen = isDeleteTaskScreenOpen)
+                        Box(
+                            modifier = Modifier
+                                .padding(bottom = 40.dp)
+                                .alpha(alpha)
+                        ) {
+                            UpdatedButtons(
+                                id = id.toString(),
+                                navController = navController,
+                                onMarkCompletedClick = onMarkCompletedClick,
+                                onDeleteClick = onDeleteClick,
+                                isDeleteTaskScreenOpen = isDeleteTaskScreenOpen,
+                                repeatOption = repeatableOption.value,
+                                visible = updateScreenvisible
+                            )
+
+                        }
                     }
                 }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 56.dp)
+                        .alpha(alpha)
+                    ,
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    CrossFloatingActionButton(
+                        onClick = {
+                            onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+                        },
+                        visible = updateScreenvisible
+                    )
+                }
+
             }
-            CrossFloatingActionButton(onClick = {
-                onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
-            })
         }
+
 
 
 
@@ -413,6 +509,7 @@ val dataClassMessageMutable by remember{
         visible = true // Set the visibility to true to trigger the animation
 
     }
+
     val scale by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = spring(
@@ -433,13 +530,35 @@ val dataClassMessageMutable by remember{
 
                 .fillMaxWidth()
 
-                .padding(start = 24.dp, end = 24.dp, top = 54.dp)
-                .size(344.dp)
+                .padding(start = 24.dp, end = 24.dp, top = 88.dp)
+                // .size(344.dp)
                 .sharedBounds(
                     rememberSharedContentState(key = "bounds-$id"),
+
                     animatedVisibilityScope = animatedVisibilityScope,
-                    enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                    exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                   //   enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
+                    //   exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                    boundsTransform = { initialRect, targetRect ->
+                        spring(
+                            dampingRatio = 0.8f,
+                            stiffness = 380f
+                        )
+
+                    },
+
+                    /* enter = scaleIn(
+                        spring(
+                            dampingRatio = 0.8f,
+                            stiffness = 380f
+
+                        )
+                    ),
+                    exit = fadeOut(
+                        tween(
+                            durationMillis = 50,
+                            easing = Ease,
+                        )
+                    ),*/
                     placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
                 )
                 // .offset(y = offsetY)
@@ -465,6 +584,7 @@ val dataClassMessageMutable by remember{
                         onValueChange = onTaskChange ,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(90.dp)
                             .wrapContentHeight()
                             /* .sharedElement(
                                 state = rememberSharedContentState(key = "boundsMessage-$id"),
@@ -483,6 +603,8 @@ val dataClassMessageMutable by remember{
                                     isMessageFieldFocused.value = false
                                 }
                             },
+                        maxLines = 3,
+
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                             capitalization = KeyboardCapitalization.Sentences),
                         keyboardActions = KeyboardActions(
@@ -530,9 +652,9 @@ val dataClassMessageMutable by remember{
 
                 Box(
                     modifier = Modifier
-                        .wrapContentSize(Alignment.Center)
+                        // .wrapContentSize(Alignment.Center)
                         .padding(
-                            top = 20.dp
+                            top = 20.dp, start = 8.dp, end = 8.dp
                         )
 
                         .bounceClick()
@@ -564,7 +686,7 @@ val dataClassMessageMutable by remember{
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier)
                             Text(
-                                text = selectedDate.value,
+                                text = selectedDate.value.toUpperCase(),
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
@@ -577,7 +699,7 @@ val dataClassMessageMutable by remember{
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier)
                             Text(
-                                text = "${selectedDate.value}, $timeString",
+                                text = "${selectedDate.value.toUpperCase()}, ${timeString}",
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
@@ -664,22 +786,20 @@ fun UpdatedButtons(
     navController: NavController,
     onMarkCompletedClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
-    isDeleteTaskScreenOpen:MutableState<Boolean>
+    isDeleteTaskScreenOpen:MutableState<Boolean>,
+    repeatOption: String?,
+    visible:MutableState<Boolean>
 ){
     val coroutineScope = rememberCoroutineScope()
-    var visible by remember {
-        mutableStateOf(false)
-    }
 
-    LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
-    }
+
+
     val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else 24.dp,
+        targetValue = if (visible.value) 0.dp else 24.dp,
         animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 200)
     )
     val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
+        targetValue = if (visible.value) 1f else 0f,
         animationSpec = keyframes {
             durationMillis = 300 // Total duration of the animation
             0.0f at 0 // Opacity becomes 0.3f after 200ms
@@ -690,58 +810,108 @@ fun UpdatedButtons(
         }
 
     )
-    Box(modifier = Modifier
-        .wrapContentWidth()
-        .height(48.dp)
-        .offset(y = offsetY)
-        .alpha(opacity)
-        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
-contentAlignment = Alignment.Center
-    ) {
-        Row(modifier = Modifier
-            .wrapContentWidth()
-            .padding(start = 24.dp, end = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) {
-                isDeleteTaskScreenOpen.value = true
-              /*  onDeleteClick(id)
-                navController.popBackStack()*/
-            },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-               ThemedTrashImage()
-               ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary)
-            }
-            Box(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .background(color = MaterialTheme.colors.background)
+    AnimatedVisibility(
+        visible = visible.value,
+
+        enter = slideInVertically(
+            initialOffsetY = { 96 }, // Starts off-screen at the top
+            animationSpec = spring(
+                dampingRatio = 0.6f,
+                stiffness = Spring.StiffnessVeryLow
+
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .padding(12.dp)
-                    .clickable(indication = null,
+        ),
+
+        exit = slideOutVertically(
+            targetOffsetY = { 96 }, // Exits off-screen at the bottom
+            animationSpec = tween(
+                durationMillis = 500,
+                easing = EaseOutCirc,
+            )
+        ) + fadeOut( // Combine slide and opacity for exit
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = EaseOutCirc,
+
+            )
+        )
+        ) {
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            // .wrapContentWidth()
+            .padding(start = 24.dp, end = 38.dp)
+            .height(48.dp)
+            //.offset(y = offsetY)
+            //.alpha(opacity)
+            .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                // .wrapContentWidth()
+                .padding(start = 24.dp, end = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            )
+            {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
-                        coroutineScope.launch {
-                            onMarkCompletedClick(id)
+                        if (repeatOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ) {
+                            isDeleteTaskScreenOpen.value = true
+                        }else{
+                            onDeleteClick(id)
+                            visible.value = false
                             navController.popBackStack()
                         }
+
                     },
-            verticalAlignment = Alignment.CenterVertically) {
-                ThemedSquareImage(modifier = Modifier)
-                ButtonTextWhiteTheme(text = "MARK COMPLETED",color = MaterialTheme.colors.secondary)
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ThemedTrashImage()
+                    ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary, modifier = Modifier)
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .background(color = MaterialTheme.colors.background)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            coroutineScope.launch {
+                                onMarkCompletedClick(id)
+                                visible.value = false
+                                navController.popBackStack()
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically) {
+                    ThemedSquareImage(modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "MARK COMPLETED",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                }
             }
+
+        }
+    }
+
+
+    if (isDeleteTaskScreenOpen.value){
+
+            DeleteTaskScreenPage (
+                onDismiss = {isDeleteTaskScreenOpen.value = false},
+                onDeleteClick,
+                navController,
+                id = id,
+                textHeading =  stringResource(id = R.string.delete_one_task_heading),
+                textDiscription = stringResource(id = R.string.delete_one_task_subtitle)
+            )
         }
 
-    }
-    if (isDeleteTaskScreenOpen.value){
-        DeleteTaskScreenPage (onDismiss = {isDeleteTaskScreenOpen.value = false},onDeleteClick,navController,id = id)
-    }
+
 }
 @Composable
 fun ThemedTrashImage() {
@@ -758,53 +928,74 @@ fun ThemedTrashImage() {
     )
 }
 @Composable
-fun ButtonTextWhiteTheme(text:String,color: Color){
+fun ButtonTextWhiteTheme(text:String,color: Color,modifier: Modifier){
     Text(
         text = text,
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         color = color,
-        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+       // style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+        modifier = modifier,
+        overflow = TextOverflow.Ellipsis
 
     )
 }
 @Composable
-fun ButtonTextDarkTheme(text:String){
+fun ButtonTextDarkTheme(text:String,modifier: Modifier){
     Text(
         text = text,
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         color = MaterialTheme.colors.primary,
-        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
+       // style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+        modifier = modifier
     )
 }
 
 @Composable
-fun CrossFloatingActionButton(onClick:() -> Unit){
-    Box(modifier = Modifier
-        .size(72.dp)
-        .padding(top = 12.dp, start = 24.dp)
-        .fillMaxWidth()
-        .fillMaxHeight()
-        .background(Color.Transparent)
-    ) {
-        androidx.compose.material.FloatingActionButton(
-            modifier = Modifier
-                .size(48.dp)
-                .align(Alignment.BottomCenter)
-                .bounceClick()
+fun CrossFloatingActionButton(
+    onClick:() -> Unit,
+    visible:MutableState<Boolean>
+    ){
+    AnimatedVisibility(
+        visible = visible.value,
+
+        enter = scaleIn(
+            initialScale = 0.1f, // Scale starts from half the size
+            animationSpec = tween(durationMillis = 200) // Animation duration
+        ),
+
+        exit = scaleOut(
+            targetScale = 0.5f, // Scale shrinks to half the size
+            animationSpec = tween(durationMillis = 200) // Animation duration
+        )
+    ){
+        Box(modifier = Modifier
+            .size(72.dp)
+            .padding( end = 24.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .background(Color.Transparent)
+        ) {
+            androidx.compose.material.FloatingActionButton(
+                modifier = Modifier
+                    .size(48.dp)
+                    .align(Alignment.TopEnd)
+                    .bounceClick()
                 ,
-            elevation = FloatingActionButtonDefaults.elevation(0.dp),
-            onClick = {onClick.invoke()},
-            shape = CircleShape,
-            backgroundColor = MaterialTheme.colors.primary
+                elevation = FloatingActionButtonDefaults.elevation(0.dp),
+                onClick = {onClick.invoke()},
+                shape = CircleShape,
+                backgroundColor = MaterialTheme.colors.primary
 
             ) {
-            ThemedCrossImage(modifier = Modifier)
+                ThemedCrossImage(modifier = Modifier)
+            }
         }
     }
+
 }
 @Composable
 fun ThemedCrossImage(modifier: Modifier) {

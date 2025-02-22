@@ -239,7 +239,6 @@ fun UpdatedCalendarAndTimePickerScreen(
                 )
                 Box(
                     modifier = Modifier
-                        .size(width = 105.dp, height = 48.dp)
                         .offset(y = offsetY)
                         .alpha(opacity)
                         .clickable { onDismiss.invoke() }
@@ -252,12 +251,41 @@ fun UpdatedCalendarAndTimePickerScreen(
                 ) {
                     ButtonTextWhiteTheme(
                         text = "CANCEL",
-                        color = MaterialTheme.colors.secondary
+                        color = MaterialTheme.colors.secondary,
+                        modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
 
                     )
                 }
                 Spacer(modifier = Modifier.padding(40.dp))
-                Button(
+                Box(
+                    modifier = Modifier
+                        .offset(y = offsetY)
+                        .alpha(opacity)
+                        .background(
+                            color = MaterialTheme.colors.secondary,
+                            shape = RoundedCornerShape(53.dp)
+                        )
+                        .clickable {
+                            Log.d("id","$id")
+                            val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                            val dateString: String = selectedDate.value.format(dateFormatter)
+
+                            val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)
+                            val timeString: String = selectedTime.value?.format(timeFormatter) ?: ""
+
+                            Log.d("UpdatedDateString","$dateString")
+                            onDateTimeSelected(dateString, timeString)
+                            onDoneClick(dateString,timeString,selectedRepeatOption.value)
+                            handleDoneButtonClick(selectedRepeatOption.value)
+                            onDismiss.invoke()
+                        },
+                    contentAlignment = Alignment.Center
+                ){
+                    ButtonTextDarkTheme(text = "DONE",
+                        modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                    )
+                }
+               /* Button(
                     onClick = {
                         Log.d("id","$id")
                         val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
@@ -274,7 +302,6 @@ fun UpdatedCalendarAndTimePickerScreen(
                     },
                     shape = RoundedCornerShape(53.dp),
                     modifier = Modifier
-                        .size(width = 105.dp, height = 48.dp)
                         .offset(y = offsetY)
                         .alpha(opacity)
                         .bounceClick(),
@@ -282,9 +309,11 @@ fun UpdatedCalendarAndTimePickerScreen(
                     elevation = ButtonDefaults.elevation(0.dp)
 
                     ) {
-                    ButtonTextDarkTheme(text = "DONE")
+                    ButtonTextDarkTheme(text = "DONE",
+                        modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                    )
 
-                }
+                }*/
             }
 
         }

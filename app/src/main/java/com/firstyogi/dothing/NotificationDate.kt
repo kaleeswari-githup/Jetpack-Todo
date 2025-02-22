@@ -28,13 +28,17 @@ class PeriodicTaskUpdater(context: Context, params: WorkerParameters) : Coroutin
         try {
             val snapshot = tasksRef.get().await()
             val currentTime = System.currentTimeMillis()
-            Log.d("PeriodicTaskUpdater", "Current time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(currentTime))}")
+            Log.d("PeriodicTaskUpdater",
+                "Current time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
+                Locale.getDefault()).format(Date(currentTime))}")
 
             for (childSnapshot in snapshot.children) {
                 val task = childSnapshot.getValue(DataClass::class.java) ?: continue
-                Log.d("PeriodicTaskUpdater", "Checking task: ${task.id}, Next due date: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(task.nextDueDate))}")
+                Log.d("PeriodicTaskUpdater", "Checking task: ${task.id}," +
+                        " Next due date: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss",
+                            Locale.getDefault()).format(Date(task.nextDueDate!!))}")
 
-                if (currentTime >= task.nextDueDate) {
+                if (currentTime >= task.nextDueDate!!) {
                     Log.d("PeriodicTaskUpdater", "Updating task: ${task.id}")
                     updateTask(task)
                 }
@@ -52,13 +56,13 @@ class PeriodicTaskUpdater(context: Context, params: WorkerParameters) : Coroutin
         val database = FirebaseDatabase.getInstance()
         val taskRef = database.reference.child("Task").child(uid).child(data.id)
 
-        val newNextDueDate = calculateNextDueDate(data.nextDueDate, data.repeatedTaskTime!!)
+        val newNextDueDate = calculateNextDueDate(data.nextDueDate!!, data.repeatedTaskTime!!)
 
         data.apply {
-            date = SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(nextDueDate))
+            date = SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(nextDueDate!!))
             nextDueDate = newNextDueDate
             nextDueDateForCompletedTask = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(newNextDueDate))
-            updateFormattedDateForWidget()
+           // updateFormattedDateForWidget()
         }
 
         try {
@@ -66,13 +70,13 @@ class PeriodicTaskUpdater(context: Context, params: WorkerParameters) : Coroutin
             Log.d("PeriodicTaskUpdater", "Task updated successfully: ${data.id}")
             scheduleNotification(
                 applicationContext,
-                data.notificationTime,
+                data.notificationTime!!,
                 data.id,
                 data.message ?: "",
                 false,
                 data.repeatedTaskTime
             )
-            updateWidget( applicationContext)
+            //updateWidget( applicationContext)
         } catch (e: Exception) {
             Log.e("PeriodicTaskUpdater", "Error updating task: ${e.message}")
         }

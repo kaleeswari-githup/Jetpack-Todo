@@ -40,6 +40,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -47,6 +48,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
@@ -91,7 +94,8 @@ fun HomeScreen(
     navController: NavController,
     snackbarHostState:SnackbarHostState,
     coroutineScope:CoroutineScope,
-    sharedTransitionScope: SharedTransitionScope){
+    sharedTransitionScope: SharedTransitionScope,
+    modifier: Modifier){
     val scaffoldState = rememberScaffoldState()
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -122,11 +126,12 @@ fun HomeScreen(
             coroutineScope.coroutineContext.cancelChildren()
         }
     }
-
-
-
-
-
+    var homeScreenvisible = remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        homeScreenvisible.value = true // Set the visibility to true to trigger the animation
+    }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val taskNewRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
@@ -194,7 +199,7 @@ fun HomeScreen(
 
     Scaffold(
         scaffoldState = scaffoldState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         backgroundColor = Color.Transparent,
         ){
         BoxWithConstraints(modifier = Modifier
@@ -202,7 +207,9 @@ fun HomeScreen(
             .background(color = MaterialTheme.colors.background)
             .blur(radius = blurEffectBackground)
         ){
-            ThemedGridImage()
+            ThemedGridImage(modifier = Modifier
+
+            )
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center) {
@@ -213,10 +220,44 @@ fun HomeScreen(
                     selectedItemId,
                     isChecked = isCheckedState,
                     animatedVisibilityScope = animatedVisibilityScope,
-                    sharedTransitionScope = sharedTransitionScope
+                    sharedTransitionScope = sharedTransitionScope,
+                    visible = homeScreenvisible
                     )
             }
-            CanvasShadow()
+            with(animatedVisibilityScope){
+                with(sharedTransitionScope){
+                    CanvasShadow(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+
+                            .animateEnterExit(
+                                enter = fadeIn(
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        delayMillis = 0
+                                    )
+                                ) +
+                                        slideInVertically(
+                                            initialOffsetY = { 72 }, // Keep it as it is
+                                            animationSpec = tween(durationMillis = 200) // Add custom duration
+                                        ),
+                                exit = fadeOut(
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        delayMillis = 0
+                                    )
+                                ) +
+                                        slideOutVertically(
+                                            targetOffsetY = { 72 }, // Keep it as it is
+                                            animationSpec = tween(durationMillis = 200) // Add custom duration
+                                        )
+                            )
+                    )
+                }
+
+            }
+
             Column {
                 TopSectionHomeScreen(
                     navController,
@@ -225,12 +266,15 @@ fun HomeScreen(
                     isChecked = isCheckedState,
                     sharedPreferences,
                     sharedTransitionScope = sharedTransitionScope,
-                    animatedVisibilityScope = animatedVisibilityScope)
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    visible = homeScreenvisible
+                    )
                 FloatingActionButton(
                     navController = navController,
                     isChecked = isCheckedState,
                     sharedTransitionScope = sharedTransitionScope,
-                    animatedVisibilityScope = animatedVisibilityScope
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    visible = homeScreenvisible
                 )
             }
             SnackbarHost(
@@ -341,8 +385,11 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start= 24.dp,end = 24.dp)
         ) {
-            ButtonTextWhiteTheme(text = snackbarData.message,color = MaterialTheme.colors.secondary)
-            Spacer(Modifier.weight(1f))
+            ButtonTextWhiteTheme(
+                text = snackbarData.message,
+                color = MaterialTheme.colors.secondary,
+                modifier = Modifier.weight(1f))
+           // Spacer(Modifier.weight(1f))
             snackbarData.actionLabel?.let { actionLabel ->
                 TextButton(onClick = { snackbarData.performAction() }) {
                     Text(text = actionLabel,
@@ -366,7 +413,8 @@ fun LazyGridLayout(navController: NavController,
                    selectedItemId: MutableState<String>,
                    isChecked: MutableState<Boolean>,
                    animatedVisibilityScope: AnimatedVisibilityScope,
-                   sharedTransitionScope: SharedTransitionScope
+                   sharedTransitionScope: SharedTransitionScope,
+                   visible: MutableState<Boolean>
                    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -378,21 +426,16 @@ fun LazyGridLayout(navController: NavController,
     var cardDataList = remember {
         mutableStateListOf<DataClass>()
     }
-    var visible by remember { mutableStateOf(false) }
+   // var visible by remember { mutableStateOf(false) }
    /* LaunchedEffect(Unit) {
         delay(100)
         visible = true
     }*/
     val offsetYSecond by animateDpAsState(
-        targetValue = if (visible) 0.dp else 0.dp,
+        targetValue = if (visible.value) 0.dp else 0.dp,
 
     )
-    val opacitySecond by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = keyframes {
-            delayMillis = 30// Total duration of the animation
-        }
-    )
+
 
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
@@ -437,82 +480,107 @@ fun LazyGridLayout(navController: NavController,
                     )
                 } else {
                     // Permission is already granted, proceed with the operation
-                    scheduleNotification(currentContext, selectedDateTime, itemId, message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
+                    scheduleNotification(currentContext, selectedDateTime!!, itemId, message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
                 }
             } else {
                 // For versions lower than Android 6.0, no runtime permission is needed
-                scheduleNotification(context, selectedDateTime, itemId, message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
+                scheduleNotification(context, selectedDateTime!!, itemId, message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
             }
 
-            scheduleNotification(context = context,selectedDateTime,itemId,message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
+            scheduleNotification(context = context,selectedDateTime!!,itemId,message!!, isCheckedState = isChecked.value,repeatOption = repeatOption!!)
         }
     }
+    val newTaskId = navController.currentBackStackEntry?.savedStateHandle?.get<String>("newTaskId")
+    val sharedKey = "bounds-$newTaskId"
     val gridColumns = 2
-    if (cardDataList.isNotEmpty()){
-        if (cardDataList.size > 1) {
-            LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(gridColumns),
-                verticalItemSpacing = 16.dp,
-                contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 50.dp),
+    with(sharedTransitionScope){
+        if (cardDataList.isNotEmpty()){
+            if (cardDataList.size > 1) {
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(gridColumns),
+                    verticalItemSpacing = 16.dp,
+                    contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 98.dp),
 
-                ) {
-                itemsIndexed(cardDataList.reversed()) { index, cardData ->
-                    val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                    val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-                    val dateStringFromDatabase = cardData.date
-                    val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
-                        val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
-                        originalDate.format(desiredDateFormat)
-                    } else {
-                        ""
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(
-                                top = if (index == 1) 100.dp else 0.dp,
-                                bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
-                            ),
-                        contentAlignment = Alignment.Center
+
                     ) {
-
-    RoundedCircleCardDesign(
-        message = cardData.message!!,
-        time = cardData.time!!,
-        date = formattedDate,
-        id = cardData.id,
-        onMarkCompletedClick = onMarkCompletedClick,
-        selectedItemId = selectedItemId,
-        isChecked = isChecked,
-        navController = navController,
-        repeatOption = cardData.repeatedTaskTime,
-        animatedVisibilityScope = animatedVisibilityScope,
-        sharedTransitionScope = sharedTransitionScope
-    )
-
-
-
-
-                    }
-                }
-            }
-        }else if (cardDataList.size == 1) {
-            LazyColumn(){
-                itemsIndexed(cardDataList){ index,cardData ->
-                    Box(modifier = Modifier
-                        .fillMaxSize()
-                        .size(300.dp)
-                        .padding(bottom = 50.dp)
-                        , contentAlignment = Alignment.Center) {
+                    itemsIndexed(cardDataList.reversed()) { index, cardData ->
+                        val isNewTask = cardData.id == newTaskId
                         val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                         val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                         val dateStringFromDatabase = cardData.date
-                       val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                        val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
                             val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
                             originalDate.format(desiredDateFormat)
                         } else {
                             ""
                         }
+
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    top = if (index == 1) 100.dp else 0.dp,
+                                    bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
+                                )
+
+                                    .animateContentSize(animationSpec = tween(durationMillis = 200,easing = EaseInElastic)),
+                            contentAlignment = Alignment.Center
+                        ) {
+
+
+                            RoundedCircleCardDesign(
+                                message = cardData.message!!,
+                                time = cardData.time!!,
+                                date = formattedDate,
+                                id = cardData.id,
+                                onMarkCompletedClick = onMarkCompletedClick,
+                                selectedItemId = selectedItemId,
+                                isChecked = isChecked,
+                                navController = navController,
+                                repeatOption = cardData.repeatedTaskTime,
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                sharedTransitionScope = sharedTransitionScope,
+                                visible = visible,
+                                isNewTask = isNewTask,
+                                modifier = Modifier
+                                    /*.sharedBounds(
+                                        rememberSharedContentState(key = if (!isNewTask) "bounds-$id" else sharedKey),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        boundsTransform = {initialRect,targetRect ->
+                                            spring(dampingRatio = 0.8f,
+                                                stiffness = 380f)
+
+                                        },
+                                        placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
+                                    )*/
+
+                            )
+
+
+
+
+                        }
+                    }
+                }
+            }else if (cardDataList.size == 1) {
+                LazyColumn(){
+                    itemsIndexed(cardDataList){ index,cardData ->
+                        val isNewTask = cardData.id == newTaskId
+                        Box(modifier = Modifier
+                            .fillMaxSize()
+                            .size(300.dp)
+                            .padding(bottom = 50.dp)
+                            , contentAlignment = Alignment.Center) {
+                            val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                            val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                            val dateStringFromDatabase = cardData.date
+                            val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                                val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
+                                originalDate.format(desiredDateFormat)
+                            } else {
+                                ""
+                            }
 
                             RoundedCircleCardDesign (
                                 message = cardDataList[0].message!!,
@@ -525,39 +593,47 @@ fun LazyGridLayout(navController: NavController,
                                 navController = navController,
                                 repeatOption = cardDataList[0].repeatedTaskTime,
                                 animatedVisibilityScope = animatedVisibilityScope,
-                                sharedTransitionScope = sharedTransitionScope
+                                sharedTransitionScope = sharedTransitionScope,
+                                visible = visible,
+                                isNewTask = isNewTask,
+                                modifier = Modifier.animateItemPlacement()
+
+
+
                             )
 
 
 
 
+                        }
                     }
                 }
             }
-        }
-    }else{
+        }else{
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(
-                bottom = 216.dp,
-                start = 50.dp, end = 50.dp
-            )
-            .offset(y = offsetYSecond),
-            //.alpha(opacitySecond),
-            contentAlignment = Alignment.BottomCenter
-        ){
-            Text(text =  "Focus on what's essential. \n" +
-                    "Limit your priorities to three to achieve more.",
-                textAlign = TextAlign.Center,
-                fontFamily = interDisplayFamily,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
-                lineHeight = 20.sp
-            )
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    bottom = 216.dp,
+                    start = 50.dp, end = 50.dp
+                )
+                .offset(y = offsetYSecond),
+                //.alpha(opacitySecond),
+                contentAlignment = Alignment.BottomCenter
+            ){
+                Text(text =  "Focus on what's essential. \n" +
+                        "Limit your priorities to three to achieve more.",
+                    textAlign = TextAlign.Center,
+                    fontFamily = interDisplayFamily,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                    lineHeight = 24.sp
+                )
+            }
         }
     }
+
 
 }
 
@@ -581,9 +657,16 @@ fun RoundedCircleCardDesign(
     repeatOption: String?,
     animatedVisibilityScope: AnimatedVisibilityScope,
     sharedTransitionScope: SharedTransitionScope,
+    visible: MutableState<Boolean>,
+    isNewTask: Boolean,
+    modifier: Modifier
 
     )
 {
+
+    val transitionKey = remember(id, isNewTask) {
+        if (isNewTask) "bounds-$id" else "card-$id"
+    }
     val coroutineScope = rememberCoroutineScope()
     val mContext = LocalContext.current
     val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -598,16 +681,32 @@ fun RoundedCircleCardDesign(
     } else {
         ""
     }
+    val updateScreenOpen = remember {
+        mutableStateOf(false)
+    }
+    val isClicked = remember{
+        mutableStateOf(false)
+    }
+
+    val newTaskId = navController.currentBackStackEntry?.savedStateHandle?.get<String>("newTaskId")
+    val sharedKey = "bounds-$newTaskId"
+    val isNewlyAdded = id == newTaskId
+
+Log.d("homescreenid","$id")
 with(sharedTransitionScope){
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(184.dp)
             .aspectRatio(1f)
             .sharedBounds(
-                rememberSharedContentState(key = "bounds-$id"),
+                rememberSharedContentState( key =  "bounds-$id"),
                 animatedVisibilityScope = animatedVisibilityScope,
-                enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+
+                boundsTransform = {initialRect,targetRect ->
+                    spring(dampingRatio = 0.8f,
+                        stiffness = 380f)
+
+                },
                 placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
             )
 
@@ -616,17 +715,20 @@ with(sharedTransitionScope){
 
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-                navController.navigate(
-                    route = Screen.Update.passUpdateValues(
-                        id = id.toString(),
-                        isChecked = isChecked.value,
-                    )
-                )
-            },
+               updateScreenOpen.value = true
+              isClicked.value = true
+                visible.value = false
+
+            }
+
+        ,
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .heightIn(max = 200.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             ThemedSquareImage(
@@ -655,7 +757,11 @@ with(sharedTransitionScope){
                 fontSize = 13.sp,
                 color = MaterialTheme.colors.secondary,
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+                modifier = Modifier
+                    .padding(top = 24.dp, start = 16.dp, end = 16.dp)
+                    ,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsMessage-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
@@ -667,14 +773,17 @@ with(sharedTransitionScope){
 
             )
             Text(
-                text =dateString,
+                text =dateString.toUpperCase(),
                 fontFamily = interDisplayFamily,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
                 color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp)
+                modifier = Modifier
+                    .padding(top = 4.dp, start = 16.dp, end = 16.dp)
+                    .height(15.dp),
+                overflow = TextOverflow.Ellipsis
                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsDateandTime-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
@@ -684,15 +793,22 @@ with(sharedTransitionScope){
                     )*/
             )
             if (repeatOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ){
-                Image(
-                    painter = painterResource(id = R.drawable.repeated_task_icon),
-                    contentDescription = null,
+                ThemedRepeatedIconImage(
                     modifier = Modifier
                         .padding(top = 8.dp)
-                        .alpha(0.3f),
-                )
+                        .alpha(0.3f))
             }
 
+        }
+        if (updateScreenOpen.value){
+            LaunchedEffect(Unit){
+                navController.navigate(
+                    route = Screen.Update.passUpdateValues(
+                        id = id.toString(),
+                        isChecked = isChecked.value,
+                    )
+                )
+            }
         }
     }
 }
@@ -700,45 +816,70 @@ with(sharedTransitionScope){
 
 }
 @Composable
-fun CanvasShadow(){
+fun ThemedRepeatedIconImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
-    Canvas(modifier = Modifier.fillMaxSize()) {
-
-        val gradientBrush = Brush.verticalGradient(
-            colors = if(isDarkTheme){
-                listOf(
-                    Color(0xFF000000),
-                    Color(0x00000000)
-                )
-            }else{
-                listOf(
-                    Color(0xFFEDEDED),
-                    Color(0x00EDEDED)
-                )
-            }
-            ,
-            startY = 0f,
-            endY = size.height.coerceAtMost(100.dp.toPx())
-        )
-        val opacityBrush = Brush.verticalGradient(
-            colors = if (isDarkTheme){
-                listOf(
-                    Color(0x00000000),
-                    Color(0xFF000000)
-                )
-            }else{
-                listOf(
-                    Color(0x00EDEDED),
-                    Color(0xFFEDEDED)
-                )
-            }
-            ,
-            startY = (size.height - 84.dp.toPx()).coerceAtLeast(0f),
-            endY = size.height
-        )
-        drawRect(brush = gradientBrush)
-        drawRect(brush = opacityBrush)
+    val imageRes = if (isDarkTheme) {
+        R.drawable.repeated_task_icon
+    } else {
+        R.drawable.repeated_icon_white_theme
     }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+        modifier = modifier
+            
+    )
+}
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun CanvasShadow(
+    modifier:Modifier
+){
+    val isDarkTheme = isSystemInDarkTheme()
+
+            Canvas(
+                modifier = modifier) {
+
+                val gradientBrush = Brush.verticalGradient(
+                    colors = if(isDarkTheme){
+                        listOf(
+                            Color(0xFF000000),
+                            Color(0x00000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0xFFEDEDED),
+                            Color(0x00EDEDED)
+                        )
+                    }
+                    ,
+                    startY = 0f,
+                    endY = size.height.coerceAtMost(140.dp.toPx())
+                )
+                val opacityBrush = Brush.verticalGradient(
+                    colors = if (isDarkTheme){
+                        listOf(
+                            Color(0x00000000),
+                            Color(0xFF000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0x00EDEDED),
+                            Color(0xFFEDEDED)
+                        )
+                    }
+                    ,
+                    startY = (size.height - 96.dp.toPx()).coerceAtLeast(0f),
+                    endY = size.height
+                )
+                drawRect(brush = gradientBrush)
+                drawRect(brush = opacityBrush)
+            }
+
+
+
+
 }
 @RequiresApi(Build.VERSION_CODES.O)
 fun formatDate(date: LocalDate): String {
@@ -780,59 +921,101 @@ fun FloatingActionButton(
     navController: NavController,
     isChecked:MutableState<Boolean>,
     sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    visible:MutableState<Boolean>
 ){
     var isButtonProcessing by remember { mutableStateOf(false) }
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
     val shadowColor = Color.Black.copy(alpha = shadowOpacity)
-    var visible by remember { mutableStateOf(false) }
+   // var visible by remember { mutableStateOf(false) }
      val context = LocalContext.current
 
     val coroutineScope = rememberCoroutineScope()
     val mContext = LocalContext.current
-    with(sharedTransitionScope){
-        Box(modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .padding(bottom = 64.dp)
-            .background(Color.Transparent)
-        ) {
-            androidx.compose.material.FloatingActionButton(
-                modifier = Modifier
-                    .size(96.dp)
-                    .sharedBounds(
-                        rememberSharedContentState("addtask"),
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                        exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+    with(animatedVisibilityScope){
+        with(sharedTransitionScope){
+
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .padding(bottom = 78.dp)
+                .background(Color.Transparent)
+            ) {
+                androidx.compose.material.FloatingActionButton(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+
+                        .animateEnterExit(
+                            enter = fadeIn(
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 0
+                                )
+                            ) +
+                                    slideInVertically(
+                                        initialOffsetY = { 172 }, // Keep it as it is
+                                        animationSpec = tween(durationMillis = 300) // Add custom duration
+                                    ),
+                            exit = fadeOut(
+                                animationSpec = tween(
+                                    durationMillis = 200,
+                                    delayMillis = 0
+                                )
+                            ) +
+                                    slideOutVertically(
+                                        targetOffsetY = { 172 }, // Keep it as it is
+                                        animationSpec = tween(durationMillis = 200) // Add custom duration
+                                    )
+                        )
+
+
+                        .sharedBounds(
+                            rememberSharedContentState("addtask"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            /*  enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
+                            exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),*/
+                            boundsTransform = { initialRect, targetRect ->
+                                spring(
+                                    dampingRatio = 0.8f,
+                                    stiffness = 380f
+                                )
+
+                            },
+                            placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
 
 
                         )
-                    .align(Alignment.BottomCenter)
-                    .bounceClick()
-                ,
-                onClick = {
-                    if (!isButtonProcessing) {
-                        isButtonProcessing = true
-                        coroutineScope.launch {
-                            navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
-                            Vibration(context)
-                        }
+                        .align(Alignment.BottomCenter)
+                        .bounceClick()
+                    ,
+                    onClick = {
+                        if (!isButtonProcessing) {
+                            isButtonProcessing = true
+                            coroutineScope.launch {
+                                navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
+                                visible.value = false
+                                Vibration(context)
+                            }
 
-                    }
-                },
-                shape = CircleShape,
-                elevation = FloatingActionButtonDefaults.elevation(0.dp),
-                backgroundColor = FABRed,
-                contentColor = Color.White.compositeOver(shadowColor)
-            ) {
-                Image(painterResource(
-                    id = R.drawable.plus_icon) ,
-                    contentDescription = "",
-                    modifier = Modifier)
+                        }
+                    },
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(0.dp),
+                    backgroundColor = FABRed,
+                    contentColor = Color.White.compositeOver(shadowColor)
+                ) {
+                    Image(painterResource(
+                        id = R.drawable.plus_icon) ,
+                        contentDescription = "",
+                        modifier = Modifier)
+                }
             }
+
+
         }
     }
+
 
 }
 enum class ButtonState { Pressed, Idle }
@@ -1031,90 +1214,110 @@ fun TopSectionHomeScreen(navController: NavController,
                          isChecked:MutableState<Boolean>,
                          sharedPreferences: SharedPreferences,
                          sharedTransitionScope: SharedTransitionScope,
-                         animatedVisibilityScope:AnimatedVisibilityScope){
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        visible = true
-    }
+                         animatedVisibilityScope:AnimatedVisibilityScope,
+                         visible: MutableState<Boolean>,
+                         ){
+
     val context = LocalContext.current
     val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else -52.dp,
+        targetValue = if (visible.value) 0.dp else -52.dp,
         animationSpec = tween(
             durationMillis = 500,
             delayMillis = 300,
             easing = EaseOutCirc
         )
         )
-
-    Row(modifier = Modifier
-        .fillMaxWidth()
-
-        .padding(top = 12.dp, start = 24.dp, end = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        val shape = RoundedCornerShape(16.dp)
-        Text(
-            text = "DOTHING",
-            modifier = Modifier,
-            fontFamily = interDisplayFamily,
-            fontWeight = FontWeight.W100,
-            fontSize = 24.sp,
-            color = MaterialTheme.colors.secondary,
-
-            )
+    with(animatedVisibilityScope)
+   {
         with(sharedTransitionScope){
-            Box(modifier = androidx.compose.ui.Modifier
-                .size(48.dp)
-                /*  .sharedBounds(
-                    sharedContentState = rememberSharedContentState(key = "topHomeButton"),
-                    animatedVisibilityScope = animatedVisibilityScope,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                )*/
-                .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
-                    navController.navigate(route = "Screen.MarkComplete.route/${isChecked.value}")
-                    Vibration(context)
-                }
-                .clip(shape)
-                .background(color = androidx.compose.material.MaterialTheme.colors.primary),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+            Row(modifier = Modifier
+                .fillMaxWidth()
+
+                .padding(top = 56.dp, start = 24.dp, end = 24.dp)
+                .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+                .animateEnterExit(
+                    enter = fadeIn(
+                        tween(
+                            durationMillis = 150,
+                            delayMillis = 0
+                        )
+                    ) + slideInVertically() { -72 },
+                    exit = fadeOut(
+                        tween(
+                            durationMillis = 150,
+                            delayMillis = 0
+                        )
+                    ) + slideOutVertically() { -48 }
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                    Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = androidx.compose.ui.Modifier
-                            .size(4.dp)
-                            .background(
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = com.firstyogi.ui.theme.FABRed
-                            ))
-                        Box(modifier = androidx.compose.ui.Modifier
-                            .size(4.dp)
-                            .background(
-                                color = androidx.compose.material.MaterialTheme.colors.background,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ))
-                    }
-                    Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                        Box(modifier = androidx.compose.ui.Modifier
-                            .size(4.dp)
-                            .background(
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                color = androidx.compose.material.MaterialTheme.colors.background
-                            ))
-                        Box(modifier = androidx.compose.ui.Modifier
-                            .size(4.dp)
-                            .background(
-                                color = androidx.compose.material.MaterialTheme.colors.background,
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ))
+                val shape = RoundedCornerShape(16.dp)
+                Text(
+                    text = "DOTHING",
+                    modifier = Modifier,
+                    fontFamily = interDisplayFamily,
+                    fontWeight = FontWeight.W100,
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colors.secondary,
+
+                    )
+                with(sharedTransitionScope){
+                    Box(modifier = androidx.compose.ui.Modifier
+                        .size(48.dp)
+                        /*  .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "topHomeButton"),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            enter = fadeIn(),
+                            exit = fadeOut()
+                        )*/
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                            navController.navigate(route = "Screen.MarkComplete.route/${isChecked.value}")
+                            Vibration(context)
+                        }
+                        .clip(shape)
+                        .background(color = androidx.compose.material.MaterialTheme.colors.primary),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = androidx.compose.ui.Modifier
+                                    .size(4.dp)
+                                    .background(
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = com.firstyogi.ui.theme.FABRed
+                                    ))
+                                Box(modifier = androidx.compose.ui.Modifier
+                                    .size(4.dp)
+                                    .background(
+                                        color = androidx.compose.material.MaterialTheme.colors.background,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    ))
+                            }
+                            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = androidx.compose.ui.Modifier
+                                    .size(4.dp)
+                                    .background(
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = androidx.compose.material.MaterialTheme.colors.background
+                                    ))
+                                Box(modifier = androidx.compose.ui.Modifier
+                                    .size(4.dp)
+                                    .background(
+                                        color = androidx.compose.material.MaterialTheme.colors.background,
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    ))
+                            }
+                        }
                     }
                 }
+
             }
         }
 
     }
+
 }
 
 @Composable

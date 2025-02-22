@@ -8,8 +8,11 @@
     <string name="delete_all">DELETE ALL</string>
     <string name="delete">DELETE</string>
     <string name="title_activity_notification_permission">NotificationPermissionActivity</string>
-    <string name="deleteall_heading">Delete all completed tasks</string>
-    <string name="deleteall_subtitle">Are you sure you want to delete all completed tasks?</string>
+    <string name="deleteall_heading">Delete all completed tasks?</string>
+    <string name="deleteall_subtitle">This action will remove all tasks marked as completed.
+Once deleted, these tasks cannot be restored.</string>
+    <string name="delete_one_task_heading">Delete Repeating Task?</string>
+    <string name="delete_one_task_subtitle">This will delete all instances of this repeating task. This action cannot be undone.</string>
     <string name="cancel">Cancel</string>
 
 

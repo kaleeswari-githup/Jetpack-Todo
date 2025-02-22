@@ -40,8 +40,11 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                     val currentTime = System.currentTimeMillis()
                     var id = data!!.id
                     var repeatOption = data.repeatedTaskTime
-                    val nextDueDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
-                    if (currentDate >= data.nextDueDateForCompletedTask!!) {
+                   // val nextDueDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
+                    val storedDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                        .parse(data.nextDueDateForCompletedTask!!)?.time ?: 0L
+
+                    if (currentDate >= storedDateInMillis.toString()) {
                         checkAndUpdateTask(id, repeatOption!!, context = applicationContext)
                     }
                 }
@@ -59,7 +62,11 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                     val data = childSnapshot.getValue(DataClass::class.java)
                     if (data != null) {
                         val currentDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(currentDate)?.time ?: 0L
-                        val nextDueDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
+                        val nextDueDateInMillis = if (!data.nextDueDateForCompletedTask.isNullOrEmpty()) {
+                            SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
+                        } else {
+                            0L
+                        }
 
                         if (data.repeatedTaskTime in listOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY") &&
                             currentDateInMillis >= nextDueDateInMillis) {
@@ -69,10 +76,10 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                             completedTasksRef.child(completedTaskKey.toString()).removeValue()
                             checkAndUpdateTask(data.id, data.repeatedTaskTime!!, context = applicationContext)
                             // Calculate new dates before moving to active tasks
-                            val newNextDueDate = calculateNextDueDate(data.nextDueDate, data.repeatedTaskTime!!)
-                            val originalNotificationOffset = data.notificationTime - data.nextDueDate
+                            val newNextDueDate = calculateNextDueDate(data.nextDueDate!!, data.repeatedTaskTime!!)
+                            val originalNotificationOffset = data.notificationTime !!- data.nextDueDate!!
                             val nextNotificationTime = newNextDueDate + originalNotificationOffset
-                            val newDateFormatted = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(data.nextDueDate))
+                            val newDateFormatted = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(data.nextDueDate!!))
                             // Update the task data
                             val updatedData = data.copy(
                                 date = newDateFormatted,
@@ -81,7 +88,7 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                                 notificationTime = nextNotificationTime,
                                // isCheckedState = false
                             )
-                            val NextNotificationTime = calculateNextNotificationTime(data.notificationTime, newNextDueDate)
+                            val NextNotificationTime = calculateNextNotificationTime(data.notificationTime!!, newNextDueDate)
                             val now = Calendar.getInstance().timeInMillis
                             // Move to active tasks with updated data
                             val databaseRef = database.reference.child("Task").child(uid.toString()).child(data.id)
@@ -179,7 +186,7 @@ class LocalDatabaseOperations(private val context: Context) {
                 repeatOption
             )
 
-            updateWidget( context)
+           // updateWidget( context)
 
             Log.d(
                 "NotificationCheck",

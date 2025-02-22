@@ -6,12 +6,18 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -20,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,7 +39,9 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 import java.util.*
+import kotlin.math.absoluteValue
 
 @SuppressLint("UnrememberedMutableState", "UnusedBoxWithConstraintsScope")
 @RequiresApi(Build.VERSION_CODES.O)
@@ -73,6 +82,7 @@ fun UpdatedCalendar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .wrapContentHeight()
                 .background(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colors.primary)
                 .animateContentSize(
@@ -81,7 +91,9 @@ fun UpdatedCalendar(
                         stiffness = Spring.StiffnessLow
                     )
                 )
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) { }
         ) {
             if (!isDatePickervisible && !isTimePickervisible && !isClicked.value) {
                 UpdatedShrinkCalendar(startDate = selectedDate.value, selectedDate = selectedDate)
@@ -97,14 +109,17 @@ fun UpdatedCalendar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
                             isDatePickervisible = true
                             isTimePickervisible = false
-                            isClicked.value = false // Reset isClicked when clicking on the date picker
+                            isClicked.value =
+                                false // Reset isClicked when clicking on the date picker
                         }
                         .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp),
                 ) {
-                    ButtonTextWhiteTheme(text = setDateText, color = MaterialTheme.colors.secondary)
+                    ButtonTextWhiteTheme(text = setDateText, color = MaterialTheme.colors.secondary,modifier = Modifier)
                 }
             }
             Box(
@@ -151,7 +166,9 @@ fun UpdatedCalendar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 24.dp, end = 24.dp)
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
                             isTimePickervisible = true
                         },
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -198,7 +215,9 @@ fun UpdatedCalendar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
-                    .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }) {
                         isClicked.value = true
                         isTimePickervisible = false
                         isDatePickervisible = false
@@ -218,10 +237,13 @@ fun UpdatedCalendar(
                 }
                 if (isClicked .value ) {
                     isTimePickervisible = false
-                    RepeatedTaskScreen(initiallySelectedOption = repeatableOption.value)
-                    {selectedRepeatOption ->
-                        selectedRepeatoption.value = selectedRepeatOption
-                    }
+                    RepeatedTaskScreen(
+                        initiallySelectedOption = selectedRepeatoption.value, // Pass selected option
+                        onRepeatOptionSelected = { selectedOption ->
+                            selectedRepeatoption.value = selectedOption
+                          //  isClicked.value = false // Close repeat options after selection
+                        })
+
                 }
             }
 
@@ -241,25 +263,26 @@ fun UpdatedCalendar(
 
 
 @Composable
-fun RepeatedTaskScreen(initiallySelectedOption: String,
-                       onRepeatOptionSelected: (String) -> Unit){
+fun RepeatedTaskScreen(
+    initiallySelectedOption: String,
+    onRepeatOptionSelected: (String) -> Unit
+) {
     val textOptions = listOf("NO REPEAT", "DAILY", "WEEKLY", "MONTHLY", "YEARLY")
     val clickedIndex = remember {
-        mutableStateOf(textOptions.indexOf(initiallySelectedOption))
+        mutableStateOf(textOptions.indexOf(initiallySelectedOption)) // Initialize with selected option
     }
 
-    Column (
+    Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
-    ){
+    ) {
         textOptions.forEachIndexed { index, text ->
-
             RepeatedTaskText(
                 text = text,
                 isClicked = index == clickedIndex.value,
                 onClick = {
                     clickedIndex.value = index
-                    onRepeatOptionSelected(text)
+                    onRepeatOptionSelected(text) // Update selected option
                 }
             )
         }
@@ -308,133 +331,287 @@ fun parseTime(timeString: String?): LocalTime? {
         null
     }
 }
-@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun UpdatedShrinkCalendar(
+    startDate: LocalDate,
+    selectedDate: MutableState<LocalDate>,
+) {
+    val startMonth = YearMonth.from(startDate)
+    val totalPageCount = 1000
+    val pastMonthCount = totalPageCount / 2
+    val pagerState = rememberPagerState(
+        initialPage = pastMonthCount,
+        pageCount = { totalPageCount }
+    )
+
+    val context = LocalContext.current
+
+    // Ensure pager state stays in sync with the selected date
+    LaunchedEffect(selectedDate.value) {
+        val selectedMonth = YearMonth.from(selectedDate.value)
+        val currentPageMonth = startMonth.plusMonths((pagerState.currentPage - pastMonthCount).toLong())
+
+        // Only scroll if the selected month is not the current visible month
+        if (selectedMonth != currentPageMonth) {
+            val tarrgetPage = pastMonthCount + ChronoUnit.MONTHS.between(startMonth, selectedMonth).toInt()
+            pagerState.scrollToPage(tarrgetPage)
+        }
+    }
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier,
+                contentPadding = PaddingValues(end = 48.dp)
+    ) { page ->
+        val month = startMonth.plusMonths((page - pastMonthCount).toLong())
+        val daysInMonth = calculateDaysInMonth(month)
+        val pageOffset = calculateCurrentOffsetForPage(page, pagerState)
+        val alpha = 1f - 0.8f * pageOffset.absoluteValue.coerceIn(0f, 1f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { this.alpha = alpha }
+        ) {
+            // Month header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, start = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = month.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)).uppercase(),
+                    fontFamily = interDisplayFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colors.secondary
+                )
+            }
+
+            // Day labels (Weekdays)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val daysOfWeek = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+                for (dayOfWeek in daysOfWeek) {
+                    Text(
+                        text = dayOfWeek,
+                        fontFamily = interDisplayFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                        textAlign = TextAlign.Center,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                        modifier = Modifier.width(32.dp)
+                    )
+                }
+            }
+
+            // Calendar days
+            val weeks = daysInMonth.chunked(7)
+            weeks.forEach { week ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 22.dp, end = 22.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (day in week) {
+                        val isCurrentMonth = day.monthValue == month.monthValue
+                        val isCurrentDate = day == LocalDate.now()
+                        val isSelectedDate = day == selectedDate.value
+                        val textColor = when {
+                            isSelectedDate -> MaterialTheme.colors.primary
+                            isCurrentDate -> FABRed
+                            isCurrentMonth -> MaterialTheme.colors.secondary
+                            else -> Color.Transparent
+                        }
+                        val background = if (isSelectedDate && isCurrentMonth) {
+                            MaterialTheme.colors.secondary
+                        } else {
+                            Color.Transparent
+                        }
+                        val isClickable = isCurrentMonth
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(background, shape = CircleShape)
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    if (isClickable) {
+                                        selectedDate.value = day
+                                        Vibration(context)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isCurrentMonth) {
+                                Text(
+                                    text = day.dayOfMonth.toString(),
+                                    fontFamily = interDisplayFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                                    color = textColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalFoundationApi::class)
+fun calculateCurrentOffsetForPage(
+    page: Int,
+    pagerState: PagerState
+): Float {
+    return (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+}
+@OptIn(ExperimentalFoundationApi::class)
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun UdatedShrinkCalendar(
     startDate:LocalDate,
     selectedDate: MutableState<LocalDate>,
 ){
     val startMonth = YearMonth.from(startDate)
-    var currentMonth by remember(startMonth) { mutableStateOf(startMonth) }
-    var monthOffset by remember { mutableStateOf(0) }
-    LaunchedEffect(monthOffset) {
-        currentMonth = startMonth.plusMonths(monthOffset.toLong())
-    }
-    val days: List<LocalDate> = remember(currentMonth) {
-        calculateDaysInMonth(currentMonth)
-    }
+
     val context = LocalContext.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, start = 24.dp, end = 24.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = (currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy",Locale.ENGLISH))).uppercase(),
-            fontFamily = interDisplayFamily,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
-            modifier = Modifier
-                .weight(1f),
-            color = MaterialTheme.colors.secondary
-        )
-        IconButton(
-            onClick = {
-                monthOffset--
-            }
-        ) {
-            Icon(
-                Icons.Filled.KeyboardArrowLeft,
-                contentDescription = "Previous Month",
-                tint = MaterialTheme.colors.secondary)
-        }
-
-        IconButton(
-            onClick = {
-                monthOffset++
-            }
-        ) {
-            Icon(Icons.Filled.KeyboardArrowRight,
-                contentDescription = "Next Month",
-                tint = MaterialTheme.colors.secondary)
-        }
+    val initialPage = remember(startDate, selectedDate.value) {
+        val monthsBetween = ChronoUnit.MONTHS.between(startMonth, YearMonth.from(selectedDate.value))
+        monthsBetween.toInt() // Calculate months difference
     }
 
-    // Day labels
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        val daysOfWeek = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-        for (dayOfWeek in daysOfWeek) {
-            Text(
-                text = dayOfWeek,
-                fontFamily = interDisplayFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
-                textAlign = TextAlign.Center,
-                style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
-                modifier = Modifier.width(32.dp)
-            )
-        }
-    }
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { 1000 } // Large number to allow extensive scrolling (can also be infinite if needed)
+    )
+    HorizontalPager(
+        // pageCount = Int.MAX_VALUE, // Infinite scrolling (limited by implementation)
+        state = pagerState,
+        modifier = Modifier.fillMaxWidth()
+    ) { pageIndex ->
+        val currentMonth = startMonth.plusMonths(pageIndex.toLong())
 
-    // Calendar days
-    val weeks = days.chunked(7)
-    weeks.forEach { week ->
-        Row(
+        val days: List<LocalDate> = remember(currentMonth) {
+            calculateDaysInMonth(currentMonth)
+        }
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 22.dp, end = 22.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp)
         ) {
-            for (day in week) {
-                val isCurrentMonth = day.monthValue == currentMonth.monthValue
-                val isCurrentDate = day == LocalDate.now()
-                val isSelectedDate = day == selectedDate.value
-                val textColor = when {
-                    isSelectedDate -> MaterialTheme.colors.primary
-                    isCurrentDate -> FABRed
-                    isCurrentMonth -> MaterialTheme.colors.secondary
-                    else -> Color.Transparent
-                }
-                val background = if (isSelectedDate && isCurrentMonth) {
-                    MaterialTheme.colors.secondary
-                } else {
-                    Color.Transparent
-                }
-                val isClickable = isCurrentMonth
-                Box(
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, start = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = (currentMonth.format(
+                        DateTimeFormatter.ofPattern(
+                            "MMMM yyyy",
+                            Locale.ENGLISH
+                        )
+                    )).uppercase(),
+                    fontFamily = interDisplayFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(background, shape = CircleShape)
-                        .clickable(indication = null,
-                            interactionSource = remember { MutableInteractionSource() }) {
-                            if (isClickable) {
-                                selectedDate.value = day
-                                Vibration(context)
+                        .weight(1f),
+                    color = MaterialTheme.colors.secondary
+                )
+
+
+            }
+
+            // Day labels
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp, bottom = 24.dp, start = 24.dp, end = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val daysOfWeek = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+                for (dayOfWeek in daysOfWeek) {
+                    Text(
+                        text = dayOfWeek,
+                        fontFamily = interDisplayFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                        textAlign = TextAlign.Center,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                        modifier = Modifier.width(32.dp)
+                    )
+                }
+            }
+
+            // Calendar days
+            val weeks = days.chunked(7)
+            weeks.forEach { week ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 22.dp, end = 22.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (day in week) {
+                        val isCurrentMonth = day.monthValue == currentMonth.monthValue
+                        val isCurrentDate = day == LocalDate.now()
+                        val isSelectedDate = day == selectedDate.value
+                        val textColor = when {
+                            isSelectedDate -> MaterialTheme.colors.primary
+                            isCurrentDate -> FABRed
+                            isCurrentMonth -> MaterialTheme.colors.secondary
+                            else -> Color.Transparent
+                        }
+                        val background = if (isSelectedDate && isCurrentMonth) {
+                            MaterialTheme.colors.secondary
+                        } else {
+                            Color.Transparent
+                        }
+                        val isClickable = isCurrentMonth
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(background, shape = CircleShape)
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
+                                    if (isClickable) {
+                                        selectedDate.value = day
+                                        Vibration(context)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (isCurrentMonth) {
+                                Text(
+                                    text = day.dayOfMonth.toString(),
+                                    fontFamily = interDisplayFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                                    color = textColor
+
+                                )
                             }
                         }
-                    ,
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isCurrentMonth) {
-                        Text(
-                            text = day.dayOfMonth.toString(),
-                            fontFamily = interDisplayFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp,
-                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
-                            color = textColor
-
-                        )
                     }
                 }
             }

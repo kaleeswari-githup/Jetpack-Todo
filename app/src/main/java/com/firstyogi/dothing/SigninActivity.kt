@@ -1,5 +1,6 @@
 package com.firstyogi.dothing
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ContentValues.TAG
 import android.content.Context
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -99,6 +101,7 @@ class SigninActivity : ComponentActivity() {
             Log.d("singintime", "Sign-in process took $elapsedTime milliseconds")
         }
     }
+    @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
         // Exit the app when the back button is pressed
         finishAffinity()
@@ -173,7 +176,7 @@ fun SignInScreen(){
             delay(100)
             googleVisible = true
         }
-        ThemedGridImage()
+        ThemedGridImage(modifier = Modifier)
         Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center) {
             Column(modifier = Modifier.fillMaxSize(),
@@ -210,10 +213,10 @@ fun SignInScreen(){
                     .offset(y = offsetY)
                     .alpha(scale))
                 Box(modifier = Modifier
-                    .wrapContentWidth()
+                    .fillMaxWidth()
                     .offset(y = googleOffsetY)
                     .alpha(googleScale)
-                    .padding(bottom = 152.dp)
+                    .padding(start = 24.dp,end = 24.dp,bottom = 152.dp)
                     .height(72.dp)
                     .background(
                         color = MaterialTheme.colors.primary,
@@ -236,7 +239,9 @@ fun SignInScreen(){
                     ){
                         Image(painter = painterResource(id = R.drawable.google_icon), contentDescription = "")
                         Spacer(modifier = Modifier.padding(start = 16.dp))
-                        ButtonTextWhiteTheme(text = ("Continue with Google").uppercase(),color = MaterialTheme.colors.secondary)
+                        ButtonTextWhiteTheme(text = ("Continue with Google").uppercase(),
+                            color = MaterialTheme.colors.secondary,
+                            modifier = Modifier)
                     }
                 }
             }

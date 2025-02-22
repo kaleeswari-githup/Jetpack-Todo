@@ -82,7 +82,7 @@ fun SplashScreen(navController: NavController){
     Box(modifier = Modifier
         .fillMaxSize()
         .background(color = MaterialTheme.colors.background)) {
-        ThemedGridImage()
+        ThemedGridImage(modifier = Modifier)
 
         Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -131,16 +131,23 @@ fun SplashScreen(navController: NavController){
     }
 }
 @Composable
-fun ThemedGridImage() {
+fun ThemedGridImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
-        R.drawable.dark_grid_lines
+        R.drawable.grid_line_white
     } else {
-        R.drawable.light_grid_lines
+        R.drawable.grid_line_black
     }
 
     Image(
         painter = painterResource(id = imageRes),
         contentDescription = null,
+        modifier = modifier
+            .scale(2.8f,2.5f)
+            .alpha(if (isDarkTheme){
+                0.08f
+            }else{
+                0.03f
+            })
     )
 }

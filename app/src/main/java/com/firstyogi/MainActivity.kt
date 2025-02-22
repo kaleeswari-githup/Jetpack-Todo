@@ -11,14 +11,17 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -46,14 +49,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             AppJetpackComposeTheme{
-
+                enableEdgeToEdge()
                 val context = this
                /* val myWorkRequest = OneTimeWorkRequestBuilder<MyWorker>()
                     .setInitialDelay(10, TimeUnit.MINUTES) // Delay execution if needed
                     .build()
                 WorkManager.getInstance(context).enqueue(myWorkRequest)*/
          schedulePeriodicWorkManager(context)
-                PeriodicTaskUpdater.enqueue(this)
+               PeriodicTaskUpdater.enqueue(this)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(

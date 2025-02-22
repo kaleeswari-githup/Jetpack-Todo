@@ -101,6 +101,11 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
 
+    implementation "androidx.constraintlayout:constraintlayout-compose:1.0.1"
 
+    implementation "com.google.accompanist:accompanist-systemuicontroller:0.27.0"
+
+    implementation 'androidx.compose.foundation:foundation:1.4.3'
+    implementation "com.google.accompanist:accompanist-pager-indicators:0.30.1"
 
 }

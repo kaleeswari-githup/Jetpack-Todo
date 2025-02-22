@@ -33,9 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,7 +52,8 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
 @Composable
-fun DeleteAllScreenPage(onDismiss:() -> Unit){
+fun DeleteAllScreenPage(onDismiss:() -> Unit,
+                        ){
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -59,20 +62,75 @@ fun DeleteAllScreenPage(onDismiss:() -> Unit){
             usePlatformDefaultWidth = false
         )
     ){
+        val clicked = remember { mutableStateOf(false) }
         ThemedBackground()
         Box(modifier = Modifier
             .fillMaxSize()
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             contentAlignment = Alignment.Center){
-            DeleteAllScreenCircle(onDismiss)
+            Column(modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center) {
+                DeleteAllScreenCircle(onDismiss)
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 48.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .background(color = Color.White, shape = RoundedCornerShape(53.dp)),
+                        contentAlignment = Alignment.Center
+
+                        ){
+                        Text(
+                            text = stringResource(id = R.string.cancel).toUpperCase(),
+                            fontFamily = interDisplayFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black,
+                            modifier = Modifier
+                                .padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                                .clickable {
+                                onDismiss.invoke()
+                            }
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .background(color = FABRed, shape = RoundedCornerShape(53.dp)),
+                        contentAlignment = Alignment.Center
+
+                        ){
+                        Text(text = stringResource(id = R.string.delete_all),
+                            fontSize = 14.sp,
+                            fontFamily = interDisplayFamily,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White,
+                            modifier = Modifier
+                                .padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                                .clickable {
+                                    clicked.value = true
+
+                                }
+                        )
+                    }
+
+
+                }
+            }
+
+            if (clicked.value){
+                DeleteAllCompletedTask(onDismiss)
+            }
         }
     }
 
 }
 @Composable
 fun DeleteAllScreenCircle(onDismiss: () -> Unit){
-    val clicked = remember { mutableStateOf(false) }
+
     var visible by remember {
         mutableStateOf(false)
     }
@@ -103,7 +161,7 @@ fun DeleteAllScreenCircle(onDismiss: () -> Unit){
             .scale(scale)
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(FABRed, shape = CircleShape)
+            .background(color = MaterialTheme.colors.primary, shape = CircleShape)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -119,69 +177,35 @@ fun DeleteAllScreenCircle(onDismiss: () -> Unit){
                   fontFamily = interDisplayFamily,
                   fontSize = 24.sp,
                   fontWeight = FontWeight.Bold,
-                  color = Color.White,
+                  color = MaterialTheme.colors.secondary,
                   modifier = Modifier,
                   textAlign = TextAlign.Center,
                   lineHeight = 32.sp
               )
             Text(
-                text = stringResource(id = R.string.deleteall_subtitle).toUpperCase(),
+                text = stringResource(id = R.string.deleteall_subtitle),
                 fontFamily = interDisplayFamily,
-                fontSize = 13.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White,
+                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
                 modifier = Modifier.padding(top = 16.dp ),
+                maxLines = 4,
                 textAlign = TextAlign.Center,
-                lineHeight = 24.sp
+                lineHeight = 24.sp,
+                overflow = TextOverflow.Ellipsis
             )
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 48.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(id = R.string.cancel).toUpperCase(),
-                    fontFamily = interDisplayFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    modifier = Modifier.clickable {
-                        onDismiss.invoke()
-                    }
-                    )
-                Box(
-                    modifier = Modifier
-                        .background(color = Color.White, shape = RoundedCornerShape(53.dp)),
 
-                    ){
-                    Text(text = stringResource(id = R.string.delete_all),
-                        fontSize = 14.sp,
-                        fontFamily = interDisplayFamily,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black,
-                        modifier = Modifier
-                            .padding(top = 12.dp, start = 16.dp,end = 16.dp, bottom = 12.dp)
-                            .clickable {
-                            clicked.value = true
-
-                        }
-                    )
-                }
-
-
-            }
-            if (clicked.value){
-                DeleteAllCompletedTask(onDismiss)
-            }
 
         }
     }
 }
 @Composable
-fun DeleteAllCompletedTask(onDismiss: () -> Unit){
+fun DeleteAllCompletedTask(onDismiss: () -> Unit,
+                           ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
+    var context = LocalContext.current
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
     completedTasksRef.addListenerForSingleValueEvent(object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -189,8 +213,17 @@ fun DeleteAllCompletedTask(onDismiss: () -> Unit){
                 val task = taskSnapshot.getValue(DataClass::class.java)
                 if (task != null && task.repeatedTaskTime in listOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY")) {
                     // If the task has a repeated task time value of interest, move it back to main tasks list
-                    val databaseRef = database.reference.child("Task").child(uid.toString()).push()
+                    val databaseRef = database.reference.child("Task").child(uid.toString()).child(task.id)
                     databaseRef.setValue(task)
+//                    val nextDueDate = calculateNextDueDate(System.currentTimeMillis(), task.repeatedTaskTime!!)
+//                    scheduleNotification(
+//                        context,
+//                        nextDueDate,
+//                        task.id,
+//                        task.message!!,
+//                        false,
+//                        task.repeatedTaskTime!!
+//                    )
                 }
             }
             // Remove all completed tasks

@@ -9,8 +9,10 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.util.Log
+import android.view.animation.OvershootInterpolator
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -20,6 +22,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -52,6 +56,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.toUpperCase
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -166,9 +172,13 @@ fun MarkCompletedScreen(
                 val data = snapshot.getValue(DataClass::class.java)
                 if (data != null) {
 Log.d("unmarkcompletid","${completedNewTaskRef.key}")
-
                     val nextDueDate = calculateNextDueDate(System.currentTimeMillis(), data.repeatedTaskTime!!)
-                    data.nextDueDate = nextDueDate
+                    if (data.date != null){
+
+                     //   data.nextDueDate = nextDueDate
+                    }
+
+
 
                     completedTasksRef.removeValue()
                     taskRef.setValue(data)
@@ -220,10 +230,10 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
         else -> 0.dp
     }
     )
-    var visible by remember { mutableStateOf(false) }
+    var markCompletevisible = remember { mutableStateOf(false) }
     val gson = Gson()
     LaunchedEffect(Unit) {
-                visible = true // Set the visibility to true to trigger the animation
+                markCompletevisible.value = true // Set the visibility to true to trigger the animation
             }
     val snackbarDeleteMessage = navController.currentBackStackEntry?.savedStateHandle?.get<String>("snackbarDeleteMessage")
     val taskId = navController.currentBackStackEntry?.savedStateHandle?.get<String>("taskId")
@@ -329,14 +339,18 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                 )*/
                 .background(color = MaterialTheme.colors.background)
                 .clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) { navController.popBackStack() },) {
-                ThemedGridImage()
-                CanvasShadow()
+                    interactionSource = remember { MutableInteractionSource() }) {
+                    navController.popBackStack()
+                    markCompletevisible.value = false
+                                                                                 },
+                ) {
+                ThemedGridImage(modifier = Modifier)
+              //  CanvasShadow(modifier = Modifier.fillMaxSize())
                 LazyColumn(modifier = Modifier.fillMaxSize(),
                 ) {
                     item{
-                        val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 32.dp,
+                       /* val offsetY by animateDpAsState(
+                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
                             animationSpec = tween(
                                 durationMillis = 300,
                                 delayMillis = 0,
@@ -345,87 +359,123 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
                             )
                         val opacity by animateFloatAsState(
-                            targetValue = if (visible) 1f else 0f,
+                            targetValue = if (markCompletevisible.value) 1f else 0f,
                             animationSpec = keyframes {
                                 durationMillis = 300 // Total duration of the animation
                                 0.3f at 100 // Opacity becomes 0.3f after 200ms
                                 0.6f at 200 // Opacity becomes 0.6f after 500ms
                                 1f at 300 // Opacity becomes 1f after 1000ms (end of the animation)
                             }
-                        )
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .offset(y = offsetY)
-                            .alpha(opacity)
-                            .padding(start = 24.dp, end = 24.dp, top = 120.dp)
-                            .background(
-                                color = MaterialTheme.colors.primary,
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                            .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) { },
+                        )*/
+                        AnimatedVisibility(
+                            visible = markCompletevisible.value,
 
-                            ) {
-                            Row(modifier = Modifier.padding(start = 24.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier
-                                    .size(48.dp)
-                                    .background(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colors.primary
-                                    ),
-                                    contentAlignment = Alignment.Center
+                            enter = slideInVertically(
+                                initialOffsetY = { 32 }, // Starts off-screen at the top
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    easing = { OvershootInterpolator().getInterpolation(it) },
+                                )
+                            )+ fadeIn( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                   // delayMillis = 300,
+                                    easing = EaseOutCirc,
+
+                                    )
+                            ),
+
+                            exit = slideOutVertically(
+                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 150,
+                                    easing = EaseOutCirc,
+                                )
+                            ) + fadeOut( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 150,
+                                    easing = EaseOutCirc,
+
+                                    )
+                            )
+                        ){
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+                               // .offset(y = offsetY)
+                               // .alpha(opacity)
+                                .padding(start = 24.dp, end = 24.dp, top = 138.dp)
+                                .background(
+                                    color = MaterialTheme.colors.primary,
+                                    shape = RoundedCornerShape(32.dp)
+                                )
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) { },
+
                                 ) {
-                                    val firebaseAuth = FirebaseAuth.getInstance()
-                                    val user = firebaseAuth.currentUser
-                                    val photoUrl = user?.photoUrl
-                                    val initials = user?.email?.take(1)?.toUpperCase()
-                                    if (photoUrl != null) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(photoUrl)
-                                                .build(),
-                                            contentDescription = "Profile picture",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(CircleShape)
-                                        )
-                                    }else{
+                                Row(modifier = Modifier.padding(start = 24.dp,end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier
+                                        .size(48.dp)
+                                        .background(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colors.primary
+                                        ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        val firebaseAuth = FirebaseAuth.getInstance()
+                                        val user = firebaseAuth.currentUser
+                                        val photoUrl = user?.photoUrl
+                                        val initials = user?.email?.take(1)?.toUpperCase()
+                                        if (photoUrl != null) {
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(LocalContext.current)
+                                                    .data(photoUrl)
+                                                    .build(),
+                                                contentDescription = "Profile picture",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(CircleShape)
+                                            )
+                                        }else{
+                                            Text(
+                                                text = initials ?: "",
+                                                color = Color.White,
+                                                fontFamily = interDisplayFamily,
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                    }
+                                    Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
+                                        ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
+                                        Spacer(modifier = Modifier.padding(top = 4.dp))
                                         Text(
-                                            text = initials ?: "",
-                                            color = Color.White,
+                                            text = if (user?.email?.length ?: 0 > 32) user?.email?.substring(0, 32) + "..." else user?.email.orEmpty(),
                                             fontFamily = interDisplayFamily,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = MaterialTheme.colors.secondary,
+                                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                                         )
                                     }
+                                }
 
-                                }
-                                Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                                    ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase(),color = MaterialTheme.colors.secondary)
-                                    Spacer(modifier = Modifier.padding(top = 4.dp))
-                                    Text(
-                                        text = if (user?.email?.length ?: 0 > 32) user?.email?.substring(0, 32) + "..." else user?.email.orEmpty(),
-                                        fontFamily = interDisplayFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        color = MaterialTheme.colors.secondary,
-                                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
-                                    )
-                                }
                             }
-
                         }
+
                     }
                     item {
-                        val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 32.dp,
+                     /*   val offsetY by animateDpAsState(
+                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
                             animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
                         )
                         val opacity by animateFloatAsState(
-                            targetValue = if (visible) 1f else 0f,
+                            targetValue = if (markCompletevisible.value) 1f else 0f,
                             animationSpec = keyframes {
                                 durationMillis = 300 // Total duration of the animation
                                 0.3f at 100 // Opacity becomes 0.3f after 200ms
@@ -434,90 +484,135 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
                                 delayMillis = 100
                             }
-                        )
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
+                        )*/
+                        AnimatedVisibility(
+                            visible = markCompletevisible.value,
 
-                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                            .offset(y = offsetY)
-                            .alpha(opacity)
-                            .background(
-                                color = MaterialTheme.colors.primary,
-                                shape = RoundedCornerShape(32.dp)
+                            enter = slideInVertically(
+                                initialOffsetY = { 32 }, // Starts off-screen at the top
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 50,
+                                    easing = { OvershootInterpolator().getInterpolation(it) },
+                                )
+                            )+ fadeIn( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 50,
+                                    easing = EaseOutCirc,
+
+                                    )
+                            ),
+
+                            exit = slideOutVertically(
+                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 100,
+                                    easing = EaseOutCirc,
+                                )
+                            ) + fadeOut( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 100,
+                                    easing = EaseOutCirc,
+
+                                    )
                             )
-                            .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) { },
-                            contentAlignment = Alignment.Center) {
-                            Column(modifier = Modifier,
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                val completedTasksCount = completedTasksCountState.value
+                        ){
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
 
-                                Spacer(modifier = Modifier.padding(top = 24.dp))
-                                Row(modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceAround) {
-                                    ButtonTextWhiteTheme(text = ("Completed ($completedTasksCount)").uppercase(),color = MaterialTheme.colors.secondary)
-                                    if (completedTasksCount > 0 ){
-                                        Text(text = stringResource(id = R.string.delete_all),
-                                            fontSize = 14.sp,
-                                            fontFamily = interDisplayFamily,
-                                            fontWeight = FontWeight.Medium,
-                                            color = FABRed,
-                                            modifier = Modifier.clickable {
-                                                isDeleteAllScreenOpen = true
-                                            }
-                                        )
-                                    }
+                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                              //  .offset(y = offsetY)
+                              //  .alpha(opacity)
+                                .background(
+                                    color = MaterialTheme.colors.primary,
+                                    shape = RoundedCornerShape(32.dp)
+                                )
 
-                                }
-                                Spacer(modifier = Modifier.padding(top = 12.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(218.dp)
-                                        .padding(start = 24.dp, end = 24.dp)
-                                        .background(
-                                            color = MaterialTheme.colors.background,
-                                            shape = RoundedCornerShape(24.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) { },
+                                contentAlignment = Alignment.Center) {
+                                Column(modifier = Modifier
+                                    ,
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    if (completedTasksCount > 0) {
-                                        LazyRowCompletedTask(
-                                            onUnMarkCompletedClick,
-                                            isChecked,
-                                            repeatableOption = repeatableOption,
-                                            animatedVisibilityScope = animatedVisibilityScope,
-                                            sharedTransitionScope = sharedTransitionScope,
-                                            navController = navController
-                                        )
+                                    val completedTasksCount = completedTasksCountState.value
+
+                                    Spacer(modifier = Modifier.padding(top = 24.dp))
+                                    Row(modifier = Modifier.fillMaxWidth()
+                                        .padding(start = 24.dp,end = 24.dp)
+                                        ,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+
+                                    ) {
+                                        ButtonTextWhiteTheme(
+                                            text = ("Completed ($completedTasksCount)").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
+                                        if (completedTasksCount > 0 ){
+                                            Text(text = stringResource(id = R.string.delete_all),
+                                                fontSize = 14.sp,
+                                                fontFamily = interDisplayFamily,
+                                                fontWeight = FontWeight.Medium,
+                                                color = FABRed,
+                                                modifier = Modifier.clickable {
+                                                    isDeleteAllScreenOpen = true
+                                                }
+                                            )
+                                        }
+
                                     }
-                                    else {
-                                        Text(
-                                            text = ("No completed tasks").uppercase(),
-                                            fontFamily = interDisplayFamily,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colors.secondary.copy(alpha = 0.50f),
-                                            //  modifier = Modifier.padding(top = 24.dp)
-                                        )
-                                    }
+                                    Spacer(modifier = Modifier.padding(top = 12.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(218.dp)
+                                            .padding(start = 24.dp, end = 24.dp)
+
+                                            .background(
+                                                color = MaterialTheme.colors.background,
+                                                shape = RoundedCornerShape(24.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (completedTasksCount > 0) {
+                                            LazyRowCompletedTask(
+                                                onUnMarkCompletedClick,
+                                                isChecked,
+                                                repeatableOption = repeatableOption,
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                sharedTransitionScope = sharedTransitionScope,
+                                                navController = navController
+                                            )
+                                        }
+                                        else {
+                                            Text(
+                                                text = ("No completed tasks").uppercase(),
+                                                fontFamily = interDisplayFamily,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colors.secondary.copy(alpha = 0.50f),
+                                                //  modifier = Modifier.padding(top = 24.dp)
+                                            )
+                                        }
 
 
+                                    }
+
+                                    Spacer(modifier = Modifier.padding(top = 24.dp))
                                 }
-
-                                Spacer(modifier = Modifier.padding(top = 24.dp))
                             }
                         }
+
                     }
                     item {
-                        val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 32.dp,
+                       /* val offsetY by animateDpAsState(
+                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
                             animationSpec = tween(durationMillis = 300, delayMillis = 200,easing =  EaseOutCirc)
                         )
                         val opacity by animateFloatAsState(
-                            targetValue = if (visible) 1f else 0f,
+                            targetValue = if (markCompletevisible.value) 1f else 0f,
                             animationSpec = keyframes {
                                 durationMillis = 300 // Total duration of the animation
                                 0.3f at 100 // Opacity becomes 0.3f after 200ms
@@ -526,102 +621,139 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
                                 delayMillis = 200
                             }
-                        )
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
+                        )*/
+                        AnimatedVisibility(
+                            visible = markCompletevisible.value,
 
-                            .offset(y = offsetY)
-                            .alpha(opacity)
-                            .height(72.dp)
-                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                            .background(
-                                color = MaterialTheme.colors.primary,
-                                shape = RoundedCornerShape(24.dp)
+                            enter = slideInVertically(
+                                initialOffsetY = { 32 }, // Starts off-screen at the top
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 100,
+                                    easing = { OvershootInterpolator().getInterpolation(it) },
+                                )
+                            )+ fadeIn( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 100,
+                                    easing = EaseOutCirc,
+
+                                    )
+                            ),
+
+                            exit = slideOutVertically(
+                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 50,
+                                    easing = EaseOutCirc,
+                                )
+                            ) + fadeOut( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 50,
+                                    easing = EaseOutCirc,
+
+                                    )
                             )
-                            .clickable(indication = null,
-                                interactionSource = remember { MutableInteractionSource() }) {
-                                isChecked.value = !isChecked.value
-                                saveIsChecked(isChecked.value)
-                                if (isChecked.value) {
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        val mMediaPlayer =
-                                            MediaPlayer.create(context, R.raw.toggle_sound)
-                                        mMediaPlayer.start()
-                                        delay(mMediaPlayer.duration.toLong())
-                                        mMediaPlayer.release()
+                        ){
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+
+                               // .offset(y = offsetY)
+                               // .alpha(opacity)
+                                .height(72.dp)
+                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                                .background(
+                                    color = MaterialTheme.colors.primary,
+                                    shape = RoundedCornerShape(24.dp)
+                                )
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
+                                    isChecked.value = !isChecked.value
+                                    saveIsChecked(isChecked.value)
+                                    if (isChecked.value) {
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            val mMediaPlayer =
+                                                MediaPlayer.create(context, R.raw.toggle_sound)
+                                            mMediaPlayer.start()
+                                            delay(mMediaPlayer.duration.toLong())
+                                            mMediaPlayer.release()
+                                        }
                                     }
-                                }
-                                Vibration(context)
-                            },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 24.dp, end = 24.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween) {
-                                Box() {
+                                    Vibration(context)
+                                },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Box() {
 
-                                    ButtonTextWhiteTheme(text = ("Sound").uppercase(),color = MaterialTheme.colors.secondary)
-
+                                        ButtonTextWhiteTheme(text = ("Sound").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
 
 
-                                }
 
-                                Box(modifier = Modifier) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clickable(indication = null,
-                                                interactionSource = remember { MutableInteractionSource() }) {
-                                                isChecked.value = !isChecked.value
-                                                saveIsChecked(isChecked.value)
-                                                if(isChecked.value){
-                                                    coroutineScope.launch(Dispatchers.IO) {
-                                                        val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
-                                                        mMediaPlayer.start()
-                                                        delay(mMediaPlayer.duration.toLong())
-                                                        mMediaPlayer.release()
-                                                    }
-                                                }
+                                    }
 
-
-                                                Vibration(context)
-                                            }
-                                    ) {
+                                    Box(modifier = Modifier) {
                                         Box(
                                             modifier = Modifier
-                                                .size(48.dp, 28.dp)
-                                                .background(
-                                                    if (isChecked.value) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
-                                                    shape = CircleShape
-                                                )
-                                            , contentAlignment = Alignment.Center
-                                        ) {
+                                                .clickable(indication = null,
+                                                    interactionSource = remember { MutableInteractionSource() }) {
+                                                    isChecked.value = !isChecked.value
+                                                    saveIsChecked(isChecked.value)
+                                                    if(isChecked.value){
+                                                        coroutineScope.launch(Dispatchers.IO) {
+                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
+                                                            mMediaPlayer.start()
+                                                            delay(mMediaPlayer.duration.toLong())
+                                                            mMediaPlayer.release()
+                                                        }
+                                                    }
 
-                                            Spacer(
+
+                                                    Vibration(context)
+                                                }
+                                        ) {
+                                            Box(
                                                 modifier = Modifier
-                                                    .padding(start = 4.dp, end = 4.dp)
-                                                    .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
-                                                    .size(20.dp)
+                                                    .size(48.dp, 28.dp)
                                                     .background(
-                                                        MaterialTheme.colors.primary,
-                                                        CircleShape
+                                                        if (isChecked.value) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
+                                                        shape = CircleShape
                                                     )
-                                            ) }
+                                                , contentAlignment = Alignment.Center
+                                            ) {
+
+                                                Spacer(
+                                                    modifier = Modifier
+                                                        .padding(start = 4.dp, end = 4.dp)
+                                                        .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
+                                                        .size(20.dp)
+                                                        .background(
+                                                            MaterialTheme.colors.primary,
+                                                            CircleShape
+                                                        )
+                                                ) }
+                                        }
                                     }
+
                                 }
 
                             }
-
                         }
+
                     }
                     item {
-                        val offsetY by animateDpAsState(
-                            targetValue = if (visible) 0.dp else 32.dp,
+                       /* val offsetY by animateDpAsState(
+                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
                             animationSpec = tween(durationMillis = 300, delayMillis = 300,easing = EaseOutCirc)
                         )
                         val opacity by animateFloatAsState(
-                            targetValue = if (visible) 1f else 0f,
+                            targetValue = if (markCompletevisible.value) 1f else 0f,
                             animationSpec = keyframes {
                                 durationMillis = 300 // Total duration of the animation
                                 0.3f at 100 // Opacity becomes 0.3f after 200ms
@@ -630,73 +762,121 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
                                 delayMillis = 300
                             }
-                        )
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
+                        )*/
+                        AnimatedVisibility(
+                            visible = markCompletevisible.value,
 
-                            .offset(y = offsetY)
-                            .alpha(opacity)
-                            .height(72.dp)
-                            .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                            .background(
-                                color = MaterialTheme.colors.primary,
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                            .clickable(indication = null,
-
-                                interactionSource = remember { MutableInteractionSource() }) {
-                                val user = FirebaseAuth.getInstance().currentUser
-                                val currentuserId = user?.uid
-                                if (currentuserId != null) {
-                                    cancelAllNotifications(context, currentuserId)
-                                }
-                                val auth = FirebaseAuth.getInstance()
-                                // Sign out from Firebase
-                                auth.signOut()
-                                val googleSignInClient = GoogleSignIn.getClient(
-                                    context,
-                                    GoogleSignInOptions.DEFAULT_SIGN_IN
+                            enter = slideInVertically(
+                                initialOffsetY = { 32 }, // Starts off-screen at the top
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 150,
+                                    easing =  { OvershootInterpolator().getInterpolation(it) },
                                 )
-                                // Sign out from Google
-                                googleSignInClient
-                                    .signOut()
-                                    .addOnCompleteListener {
-                                        // Optional: Perform any additional actions after sign out
-                                        val intent = Intent(context, SigninActivity::class.java)
-                                        context.startActivity(intent)
-                                        (context as Activity).overridePendingTransition(
-                                            android.R.anim.fade_in,
-                                            android.R.anim.fade_out
-                                        )
-                                        // onDismiss.invoke()
-                                    }
-                            },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 24.dp, end = 24.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween) {
-                                ButtonTextWhiteTheme(text = ("Log Out").uppercase(),color = MaterialTheme.colors.secondary)
-                                Box(modifier = Modifier
+                            )+ fadeIn( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    delayMillis = 150,
+                                    easing = EaseOutCirc,
 
-                                    .align(Alignment.CenterVertically)
-                                ) {
-                                    ThemedRightIcon()
+                                    )
+                            ),
+
+                            exit = slideOutVertically(
+                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                   // delayMillis = 300,
+                                    easing = EaseOutCirc,
+                                )
+                            ) + fadeOut( // Combine slide and opacity for exit
+                                animationSpec = tween(
+                                    durationMillis = 300,
+                                    //delayMillis = 300,
+                                    easing = EaseOutCirc,
+
+                                    )
+                            )
+                        ){
+                            Box(modifier = Modifier
+                                .fillMaxWidth()
+
+                               // .offset(y = offsetY)
+                               // .alpha(opacity)
+                                .height(72.dp)
+                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                                .background(
+                                    color = MaterialTheme.colors.primary,
+                                    shape = RoundedCornerShape(24.dp)
+                                )
+                                .clickable(indication = null,
+
+                                    interactionSource = remember { MutableInteractionSource() }) {
+                                    val user = FirebaseAuth.getInstance().currentUser
+                                    val currentuserId = user?.uid
+                                    if (currentuserId != null) {
+                                        cancelAllNotifications(context, currentuserId)
+                                    }
+                                    val auth = FirebaseAuth.getInstance()
+                                    // Sign out from Firebase
+                                    auth.signOut()
+                                    val googleSignInClient = GoogleSignIn.getClient(
+                                        context,
+                                        GoogleSignInOptions.DEFAULT_SIGN_IN
+                                    )
+                                    // Sign out from Google
+                                    googleSignInClient
+                                        .signOut()
+                                        .addOnCompleteListener {
+                                            // Optional: Perform any additional actions after sign out
+                                            val intent = Intent(context, SigninActivity::class.java)
+                                            context.startActivity(intent)
+                                            (context as Activity).overridePendingTransition(
+                                                android.R.anim.fade_in,
+                                                android.R.anim.fade_out
+                                            )
+                                            // onDismiss.invoke()
+                                        }
+                                },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 24.dp, end = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween) {
+                                    ButtonTextWhiteTheme(text = ("Log Out").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
+                                    Box(modifier = Modifier
+
+                                        .align(Alignment.CenterVertically)
+                                    ) {
+                                        ThemedRightIcon()
+                                    }
+
                                 }
 
                             }
+                       }
 
-                        }
                     }
 
 
                 }
-                CrossFloatingActionButton {
-                    navController.popBackStack()
-
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 56.dp),
+                    contentAlignment = Alignment.TopEnd
+                ){
+                    CrossFloatingActionButton(
+                        onClick = {
+                            navController.popBackStack()
+                            markCompletevisible.value = false
+                        },
+                        visible = markCompletevisible
+                    )
                 }
+
                 SnackbarHost(
                     hostState = snackbarHostState,
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -711,7 +891,7 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
     if (isDeleteAllScreenOpen){
         DeleteAllScreenPage(onDismiss = {
             isDeleteAllScreenOpen = false
-        })
+        } )
     }
 }
 @Composable
@@ -808,23 +988,37 @@ fun LazyRowCompletedTask(
             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
             val dateStringFromDatabase = cardData.nextDueDate
-            val formattedDate = if (cardData.nextDueDate != 0L) {
-                val originalDate = Date(cardData.nextDueDate)
+            val formattedDate = cardData.nextDueDate?.takeIf { it != 0L }?.let { nextDueDate ->
+                val originalDate = Date(nextDueDate)
                 val calendar = Calendar.getInstance().apply { time = originalDate }
                 val currentYear = LocalDate.now().year
                 val desiredDateFormat = if (calendar[Calendar.YEAR] == currentYear) {
-                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Current year format
                 } else {
-                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
+                    DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Different year format
                 }
                 val localDate = originalDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
                 desiredDateFormat.format(localDate)
-            } else {
-                ""
+            } ?: run {
+                // Check if cardData.date is not empty or null before parsing
+                if (!cardData.date.isNullOrEmpty()) {
+                    val originalDate = LocalDate.parse(cardData.date, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+                    val calendar = Calendar.getInstance().apply { time = Date(originalDate.toEpochDay()) }
+                    val currentYear = LocalDate.now().year
+                    val desiredDateFormat = if (calendar[Calendar.YEAR] == currentYear) {
+                        DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Current year format
+                    } else {
+                        DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH) // Different year format
+                    }
+                    desiredDateFormat.format(originalDate)
+                } else {
+                    // Return a default value if date is empty or null
+                    "No Date Available"
+                }
             }
 
 
-Log.d("formattedDateValue" , "$formattedDate")
+            Log.d("formattedDateValue" , "$formattedDate")
             MarkCompletedCircleDesign(
                 id = cardData.id,
                 message = cardData.message!!,
@@ -871,8 +1065,15 @@ fun MarkCompletedCircleDesign(
                 .sharedBounds(
                     rememberSharedContentState(key = "boundsUnMark-$id"),
                     animatedVisibilityScope = animatedVisibilityScope,
-                    enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                    exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                   // enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
+                   // exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                    boundsTransform = { initialRect, targetRect ->
+                        spring(
+                            dampingRatio = 0.8f,
+                            stiffness = 380f
+                        )
+
+                    },
                     placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
                 )
                 .bounceClick()
@@ -946,12 +1147,15 @@ fun MarkCompletedCircleDesign(
                     fontWeight = FontWeight.Medium,
                     fontSize = 13.sp,
                     color = MaterialTheme.colors.secondary,
-                    modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp),
+                    modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+                        ,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                 )
                 Text(
 
-                    text = dateString,
+                    text = dateString.toUpperCase(),
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
@@ -961,13 +1165,10 @@ fun MarkCompletedCircleDesign(
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                 )
                 if (repeatableOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ){
-                    Image(
-                        painter = painterResource(id = R.drawable.repeated_task_icon),
-                        contentDescription = null,
+                    ThemedRepeatedIconImage(
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .alpha(0.3f),
-                    )
+                            .alpha(0.3f))
                 }
             }
            /* if (selectedMarkedItemId.value == id){

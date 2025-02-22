@@ -15,11 +15,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -52,7 +57,9 @@ fun DeleteTaskScreenPage(
     onDismiss:() -> Unit,
     onDeleteClick:(String)->Unit,
     navController: NavController,
-    id:String){
+    id:String,
+    textHeading:String,
+    textDiscription:String){
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -61,24 +68,85 @@ fun DeleteTaskScreenPage(
             usePlatformDefaultWidth = false
         )
     ){
+        val clicked = remember { mutableStateOf(false) }
         ThemedBackground()
         Box(modifier = Modifier
             .fillMaxSize()
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() },
             contentAlignment = Alignment.Center){
-            DeleteTaskScreenCircle(onDismiss,onDeleteClick,navController,id = id)
+            Column(modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center) {
+                DeleteTaskScreenCircle(
+                    textHeading,
+                    textDiscription
+                    )
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 48.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .background(color = Color.White, shape = RoundedCornerShape(53.dp)),
+                        contentAlignment = Alignment.Center
+
+                        ){
+                        Text(
+                            text = stringResource(id = R.string.cancel).toUpperCase(),
+                            fontFamily = interDisplayFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black,
+                            modifier = Modifier
+                                .padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                                .clickable {
+                                onDismiss.invoke()
+                            }
+
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+
+                            .background(color = FABRed, shape = RoundedCornerShape(53.dp)),
+                        contentAlignment = Alignment.Center
+
+                        ){
+                        Text(text = stringResource(id = R.string.delete_all),
+                            fontSize = 14.sp,
+                            fontFamily = interDisplayFamily,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White,
+                            modifier = Modifier
+                                 .padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
+                                .clickable {
+                                    clicked.value = true
+
+                                }
+
+
+                        )
+                    }
+
+
+                }
+                if (clicked.value){
+                    DeleteCompletedTask(onDismiss,onDeleteClick,navController,id = id)
+                }
+            }
+
+
         }
     }
 
 }
 @Composable
 fun DeleteTaskScreenCircle(
-    onDismiss: () -> Unit,
-    onDeleteClick:(String)->Unit,
-    navController: NavController,
-    id:String){
-    val clicked = remember { mutableStateOf(false) }
+    textHeading:String,
+    textDiscription:String){
+
     var visible by remember {
         mutableStateOf(false)
     }
@@ -103,82 +171,53 @@ fun DeleteTaskScreenCircle(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp,end = 24.dp)
-            .size(344.dp)
+            .padding(start = 24.dp, end = 24.dp)
+            // .size(344.dp)
             .offset(y = offsetY)
             .scale(scale)
             .aspectRatio(1f)
             .clip(CircleShape)
-            .background(FABRed, shape = CircleShape)
+            .background(color = MaterialTheme.colors.primary, shape = CircleShape)
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) { },
 
-        contentAlignment = Alignment.Center
+      //  contentAlignment = Alignment.Center
     ){
         Column(modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(start = 32.dp, end = 32.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(id = R.string.deleteall_heading).toUpperCase(),
+                text = textHeading.toUpperCase(),
                 fontFamily = interDisplayFamily,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier,
+                color = MaterialTheme.colors.secondary,
+                modifier = Modifier
+
+
+                ,
+               // maxLines = 2,
                 textAlign = TextAlign.Center,
-                lineHeight = 32.sp
+                lineHeight = 32.sp,
+               // overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = stringResource(id = R.string.deleteall_subtitle).toUpperCase(),
+                text = textDiscription,
                 fontFamily = interDisplayFamily,
-                fontSize = 13.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White,
-                modifier = Modifier.padding(top = 16.dp ),
+                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                modifier = Modifier
+
+                    .padding(top = 16.dp),
+                maxLines = 3,
                 textAlign = TextAlign.Center,
-                lineHeight = 24.sp
+                lineHeight = 24.sp,
+                overflow = TextOverflow.Ellipsis
             )
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 48.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(id = R.string.cancel).toUpperCase(),
-                    fontFamily = interDisplayFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    modifier = Modifier.clickable {
-                        onDismiss.invoke()
-                    }
-                )
-                Box(
-                    modifier = Modifier
-                        .background(color = Color.White, shape = RoundedCornerShape(53.dp)),
-
-                    ){
-                    Text(text = stringResource(id = R.string.delete),
-                        fontSize = 14.sp,
-                        fontFamily = interDisplayFamily,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black,
-                        modifier = Modifier
-                            .padding(top = 12.dp, start = 16.dp,end = 16.dp, bottom = 12.dp)
-                            .clickable {
-                                clicked.value = true
-
-                            }
-                    )
-                }
-
-
-            }
-            if (clicked.value){
-                DeleteCompletedTask(onDismiss,onDeleteClick,navController,id = id)
-            }
 
         }
     }

@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
@@ -18,6 +19,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -107,6 +111,12 @@ fun UnMarkCompletedTaskScreen(
         isPickerOpen.value -> 10.dp
         else -> 0.dp
     })
+    var unmarkCompletevisible = remember {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        unmarkCompletevisible.value = true // Set the visibility to true to trigger the animation
+    }
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -178,6 +188,7 @@ fun UnMarkCompletedTaskScreen(
 
         }
         navController.popBackStack()
+        unmarkCompletevisible.value = false
 
     }
     val onUnMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
@@ -197,7 +208,7 @@ fun UnMarkCompletedTaskScreen(
                     taskRef.setValue(data)
                     scheduleNotification(
                         context,
-                        data.notificationTime,
+                        data.notificationTime!!,
                         data.id,
                         data.message ?: "",
                         false,
@@ -232,6 +243,7 @@ fun UnMarkCompletedTaskScreen(
                     }
 
                     navController.popBackStack()
+                    unmarkCompletevisible.value = false
                 }
             }
 
@@ -247,11 +259,12 @@ Log.d("UnMarkCompletedPageMessage","$dataClassMessage")
         .fillMaxSize()
         .background(color = MaterialTheme.colors.background)
     ) {
-        ThemedGridImage()
+        ThemedGridImage(modifier = Modifier)
         Box(modifier = Modifier
             .fillMaxSize()
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
+                unmarkCompletevisible.value = false
                 navController.popBackStack()
             }
             , contentAlignment = Alignment.Center){
@@ -281,15 +294,30 @@ Log.d("UnMarkCompletedPageMessage","$dataClassMessage")
                         .padding(bottom = 40.dp)
 
                 ) {
-                    UnMarkCompletedButtons( id = id.toString(),navController = navController,onDeleteClick ,onUnMarkCompletedClick)
+                    UnMarkCompletedButtons(
+                        id = id.toString(),
+                        navController = navController,
+                        onDeleteClick ,onUnMarkCompletedClick,
+                        visible = unmarkCompletevisible)
                 }
 
             }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 56.dp),
+            contentAlignment = Alignment.TopEnd
+        ){
+            CrossFloatingActionButton(
+                onClick = {
+                    unmarkCompletevisible.value = false
+                navController.popBackStack()
+            },
+                visible = unmarkCompletevisible
+                )
+        }
 
-        CrossFloatingActionButton(onClick = {
-            navController.popBackStack()
-        })
     }
 
 
@@ -362,13 +390,20 @@ Log.d("initialSelecteddate","$initialSelectedate")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, top = 38.dp)
-                .size(344.dp)
+                .padding(start = 24.dp, end = 24.dp, top = 88.dp)
+               // .size(344.dp)
                 .sharedBounds(
                     rememberSharedContentState(key = "boundsUnMark-$id"),
                     animatedVisibilityScope = animatedVisibilityScope,
-                    enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack )),
-                    exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack )),
+                   // enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack )),
+                  //  exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack )),
+                    boundsTransform = { initialRect, targetRect ->
+                        spring(
+                            dampingRatio = 0.8f,
+                            stiffness = 380f
+                        )
+
+                    },
                     placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
                 )
                  // .offset(y = offsetY)
@@ -396,6 +431,8 @@ Log.d("initialSelecteddate","$initialSelectedate")
                         onValueChange = onTaskChange ,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(90.dp)
+                            .wrapContentHeight()
                             .padding(start = 32.dp, end = 32.dp)
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
@@ -406,6 +443,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                                     isMessageFieldFocused.value = false
                                 }
                             },
+                        maxLines = 3,
 
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                             capitalization = KeyboardCapitalization.Sentences),
@@ -452,9 +490,9 @@ Log.d("initialSelecteddate","$initialSelectedate")
                 }
                 Box(
                     modifier = Modifier
-                        .wrapContentSize(Alignment.Center)
+                       // .wrapContentSize(Alignment.Center)
                         .padding(
-                            top = 20.dp
+                            top = 20.dp,start = 8.dp,end = 8.dp
                         )
                       //  .bounceClick()
                       /*  .clickable(indication = null,
@@ -481,7 +519,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier.alpha(0.5f))
                             Text(
-                                text = dateString,
+                                text = dateString.toUpperCase(),
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
@@ -495,7 +533,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier.alpha(0.5f))
                             Text(
-                                text = "$dateString, $timeString",
+                                text = "${dateString.toUpperCase()}, ${timeString}",
                                 fontFamily = interDisplayFamily,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
@@ -582,21 +620,16 @@ Log.d("initialSelecteddate","$initialSelectedate")
 fun UnMarkCompletedButtons(id: String,
                            navController: NavController,
                            onDeleteClick : (String) -> Unit,
-                           onUnMarkCompletedClick:(String) -> Unit)
+                           onUnMarkCompletedClick:(String) -> Unit,
+                           visible:MutableState<Boolean>)
 {
     val coroutineScope = rememberCoroutineScope()
-    var visible by remember {
-        mutableStateOf(false)
-    }
-    LaunchedEffect(Unit) {
-        visible = true // Set the visibility to true to trigger the animation
-    }
     val offsetY by animateDpAsState(
-        targetValue = if (visible) 0.dp else 24.dp,
+        targetValue = if (visible.value) 0.dp else 24.dp,
         animationSpec = tween(durationMillis = 300,easing = EaseOutCirc, delayMillis = 200)
     )
     val opacity by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
+        targetValue = if (visible.value) 1f else 0f,
         animationSpec = keyframes {
             durationMillis = 300
             0.0f at 0
@@ -605,58 +638,87 @@ fun UnMarkCompletedButtons(id: String,
         }
 
     )
-    Box(modifier = Modifier
-        .wrapContentWidth()
-        .height(48.dp)
-        .offset(y = offsetY)
-        .alpha(opacity)
-        .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
-    ) {
-        Row(modifier = Modifier
-            .wrapContentWidth()
-            .padding(start = 24.dp, end = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.clickable(indication = null,
-                    interactionSource = remember { MutableInteractionSource() }) {
+    AnimatedVisibility(
+        visible = visible.value,
 
-                        onDeleteClick(id)
-                       // navController.popBackStack()
-
-
-                                                                                 },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ThemedTrashImage()
-                ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary)
-            }
-            Box(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .width(1.dp)
-                    .fillMaxHeight()
-                    .background(color = MaterialTheme.colors.background)
+        enter = slideInVertically(
+            initialOffsetY = { 96 }, // Starts off-screen at the top
+            animationSpec = spring(
+                dampingRatio = 0.6f,
+                stiffness = Spring.StiffnessVeryLow
 
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .clickable(indication = null,
+        ),
+
+        exit = slideOutVertically(
+            targetOffsetY = { 96 }, // Exits off-screen at the bottom
+            animationSpec = tween(
+                durationMillis = 500,
+                easing = EaseOutCirc,
+            )
+        ) + fadeOut( // Combine slide and opacity for exit
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = EaseOutCirc,
+
+                )
+        )
+    ){
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp,end = 24.dp)
+            .height(48.dp)
+           // .offset(y = offsetY)
+           // .alpha(opacity)
+            .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
+        ) {
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
 
-                            onUnMarkCompletedClick(id)
-                           // navController.popBackStack()
+                        onDeleteClick(id)
+                        // navController.popBackStack()
 
 
                     },
-                verticalAlignment = Alignment.CenterVertically) {
-                ThemedSquareImage(modifier = Modifier)
-                ButtonTextWhiteTheme(text = "MARK UNCOMPLETED",color = MaterialTheme.colors.secondary)
-            }
-        }
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ThemedTrashImage()
+                    ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .background(color = MaterialTheme.colors.background)
 
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+
+                            onUnMarkCompletedClick(id)
+                            // navController.popBackStack()
+
+
+                        },
+                    verticalAlignment = Alignment.CenterVertically) {
+                    ThemedSquareImage(modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "MARK UNCOMPLETED",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                }
+            }
+
+        }
     }
+
 }
 
 
