@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.drawable.GradientDrawable
+import android.health.connect.datatypes.units.Velocity
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -21,15 +23,21 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -40,16 +48,28 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
@@ -61,6 +81,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.firstyogi.dothing.*
 import com.firstyogi.ui.theme.*
+import com.google.api.Distribution.BucketOptions.Linear
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +102,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter", "CoroutineCreationDuringComposition",
@@ -195,68 +219,361 @@ fun HomeScreen(
             else -> 0.dp
         }
    )
+    val currentDateNow = LocalDate.now()
+    val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("MM/dd/yyyy"))
+    val formattedDate = currentDateNow.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH)).toUpperCase()
+    var isNotificationSet = remember { mutableStateOf(false) }
+    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
+    var cardDataList = remember {
+        mutableStateListOf<DataClass>()
+    }
 
+    val isDarkTheme = isSystemInDarkTheme()
+    val todayTasks = cardDataList.filter { it.date == currentDate ||it.date.isNullOrEmpty() || it.date!! <= currentDate }
+    val upcomingTasks = cardDataList.filter { it.date!! > currentDate }
+    val todayTaskCount = todayTasks.size
+    val upcomingTaskCount = upcomingTasks.size
+    LaunchedEffect(Unit){
+        val valueEventListener = object :ValueEventListener{
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                cardDataList.clear()
+                for(childSnapshot in dataSnapshot.children){
+                    val id = childSnapshot.key.toString()
+                    val data = childSnapshot.getValue(DataClass::class.java)
+                    data?.let {
+                        cardDataList.add(it.copy(id = id))
+                        isNotificationSet.value = true
+                    }
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", "Database operation cancelled: $error")
+            }
+        }
+        databaseRef.addValueEventListener(valueEventListener)
+    }
 
+    /*LaunchedEffect(Unit){
+        val valueEventListener = object :ValueEventListener{
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                cardDataList.clear()
+                for (childSnapshot in dataSnapshot.children) {
+                    val id = childSnapshot.key ?: continue
+                    val map = childSnapshot.value as? Map<*, *> ?: continue
+
+                    val data = DataClass(
+                        id = id,
+                        message = map["message"] as? String ?: "",
+                        time = map["time"] as? String ?: "",
+                        date = map["date"] as? String ?: "",
+                        notificationTime = when (val nt = map["notificationTime"]) {
+                            is Long -> nt
+                            is String -> nt.toLongOrNull() ?: 0L
+                            else -> 0L
+                        },
+                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                        nextDueDate = when (val nd = map["nextDueDate"]) {
+                            is Long -> nd
+                            is String -> nd.toLongOrNull()
+                            else -> null
+                        },
+                        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                    )
+
+                    cardDataList.add(data)
+                    isNotificationSet.value = true
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", "Database operation cancelled: $error")
+            }
+        }
+        databaseRef.addValueEventListener(valueEventListener)
+    }*/
+    val overscrollOffset = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    // Custom NestedScrollConnection to handle overscroll
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                val currentOffset = overscrollOffset.value
+
+                // Detect if we're at the top or bottom and overscrolling
+                val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                val isAtBottom = !listState.canScrollForward
+
+                return when {
+                    // Overscroll at the top
+                    delta > 0 && isAtTop -> {
+                        coroutineScope.launch {
+                            overscrollOffset.snapTo((currentOffset + delta).coerceAtMost(700f)) // Max stretch
+                        }
+                        available // Consume the scroll
+                    }
+                    // Overscroll at the bottom
+                    delta < 0 && isAtBottom -> {
+                        coroutineScope.launch {
+                            overscrollOffset.snapTo((currentOffset + delta).coerceAtLeast(-700f)) // Max stretch
+                        }
+                        available // Consume the scroll
+                    }
+                    else -> Offset.Zero // Normal scrolling
+                }
+            }
+
+            override suspend fun onPostFling(
+                consumed: androidx.compose.ui.unit.Velocity,
+                available: androidx.compose.ui.unit.Velocity
+            ): androidx.compose.ui.unit.Velocity {
+                // Smoothly animate back to 0 when scrolling stops
+                overscrollOffset.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy, // Elastic effect
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+                return super.onPostFling(consumed, available)
+            }
+        }
+    }
     Scaffold(
         scaffoldState = scaffoldState,
         modifier = modifier.fillMaxSize(),
-        backgroundColor = Color.Transparent,
+        //backgroundColor = Color.Transparent,
         ){
         BoxWithConstraints(modifier = Modifier
             .fillMaxSize()
+
             .background(color = MaterialTheme.colors.background)
             .blur(radius = blurEffectBackground)
         ){
-            ThemedGridImage(modifier = Modifier
+          //  ThemedGridImage(modifier = Modifier)
+            val listState = rememberLazyListState()
+            val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+            if (cardDataList.isNotEmpty()){
+            LazyColumn(modifier = Modifier
+                .fillMaxSize()
+               // .nestedScroll(nestedScrollConnection) // Attach the nested scroll behavior
+               // .offset { IntOffset(0, overscrollOffset.value.roundToInt()) }
+               ,
+                state = listState,
+                horizontalAlignment = Alignment.CenterHorizontally){
+                if (todayTasks.isNotEmpty()){
+                    item{
 
-            )
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center) {
-                val completedTasksCount = completedTasksCountState.value
-                LazyGridLayout(
-                    navController = navController,
-                    onMarkCompletedClick = onMarkCompletedClick,
-                    selectedItemId,
-                    isChecked = isCheckedState,
-                    animatedVisibilityScope = animatedVisibilityScope,
-                    sharedTransitionScope = sharedTransitionScope,
-                    visible = homeScreenvisible
-                    )
-            }
-            with(animatedVisibilityScope){
-                with(sharedTransitionScope){
-                    CanvasShadow(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
+                        Box(
+                            modifier = Modifier
+                               // .fillMaxWidth()
+                                .wrapContentHeight()
+                               // .background(color = Color.Green)
+                            ,
+                            contentAlignment = Alignment.Center) {
+                            val completedTasksCount = completedTasksCountState.value
 
-                            .animateEnterExit(
-                                enter = fadeIn(
-                                    animationSpec = tween(
-                                        durationMillis = 200,
-                                        delayMillis = 0
+                            Column(modifier = Modifier
+                                //  .fillMaxHeight()
+                                .padding(top = 144.dp)
+                                ,
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Today",
+                                    modifier = Modifier,
+                                    color = MaterialTheme.colors.primary,
+                                    fontFamily = interDisplayFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(text = formattedDate,
+                                    color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                    fontFamily = interDisplayFamily,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 1.sp,
+                                    modifier = Modifier.padding(top = 2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 1000.dp) // Restrict height to avoid conflicts
+                                ) {
+                                    LazyGridLayout(
+                                        navController = navController,
+                                        onMarkCompletedClick = onMarkCompletedClick,
+                                        selectedItemId,
+                                        isChecked = isCheckedState,
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        visible = homeScreenvisible,
+                                        cardDataList = todayTasks,
+                                        isNotificationSet = isNotificationSet
                                     )
-                                ) +
-                                        slideInVertically(
-                                            initialOffsetY = { 72 }, // Keep it as it is
-                                            animationSpec = tween(durationMillis = 200) // Add custom duration
-                                        ),
-                                exit = fadeOut(
-                                    animationSpec = tween(
-                                        durationMillis = 200,
-                                        delayMillis = 0
-                                    )
-                                ) +
-                                        slideOutVertically(
-                                            targetOffsetY = { 72 }, // Keep it as it is
-                                            animationSpec = tween(durationMillis = 200) // Add custom duration
-                                        )
-                            )
-                    )
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+               if (upcomingTasks.isNotEmpty()){
+                   item{
+
+                       Box(
+                           modifier = Modifier
+                               .wrapContentHeight()
+
+                              // .background(color = Color.Blue)
+                           ,
+                           contentAlignment = Alignment.Center) {
+                           val completedTasksCount = completedTasksCountState.value
+
+                           Column(modifier = Modifier
+                               //  .fillMaxHeight()
+                               .padding(top = if (todayTasks.isEmpty()) 144.dp else 0.dp )
+                               ,
+                               horizontalAlignment = Alignment.CenterHorizontally) {
+                               Text("UPCOMING",
+                                   modifier = Modifier,
+                                   color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                   fontFamily = interDisplayFamily,
+                                   fontWeight = FontWeight.Medium,
+                                   fontSize = 11.sp,
+                                   letterSpacing = 1.sp)
+
+                               Box(
+                                   modifier = Modifier
+                                       .fillMaxWidth()
+                                       .heightIn(max = 1000.dp) // Restrict height to avoid conflicts
+                               ) {
+                                   LazyGridLayout(
+                                       navController = navController,
+                                       onMarkCompletedClick = onMarkCompletedClick,
+                                       selectedItemId,
+                                       isChecked = isCheckedState,
+                                       animatedVisibilityScope = animatedVisibilityScope,
+                                       sharedTransitionScope = sharedTransitionScope,
+                                       visible = homeScreenvisible,
+                                       cardDataList = upcomingTasks,
+                                       isNotificationSet = isNotificationSet
+                                   )
+                               }
+
+                           }
+
+                       }
+                   }
+               }
+
                 }
 
+            }else {
+                // Show the empty state text only when cardDataList is empty
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 200.dp, start = 50.dp, end = 50.dp)
+                    ,
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition()
+
+                    val animationOffset by infiniteTransition.animateFloat(
+                        initialValue = -450f,
+                        targetValue = 450f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 5000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        )
+                    )
+
+                    // Function to rotate a point (x, y) by angle (in radians)
+                    fun rotate(x: Float, y: Float, angle: Float): Pair<Float, Float> {
+                        val rad = Math.toRadians(angle.toDouble())
+                        val cos = cos(rad).toFloat()
+                        val sin = sin(rad).toFloat()
+                        return Pair(
+                            x * cos - y * sin,
+                            x * sin + y * cos
+                        )
+                    }
+
+// Create a rotated horizontal gradient
+                    val angle = -30f // degrees
+                    val start = rotate(animationOffset, 0f, angle)
+                    val end = rotate(animationOffset + 472f, 0f, angle)
+
+                    val fadeBrush = Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colors.primary.copy(alpha = 0.3f),
+                            MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                            MaterialTheme.colors.primary.copy(alpha = 0.3f)
+                        ),
+                        start = Offset(start.first, start.second),
+                        end = Offset(end.first, end.second)
+                    )
+
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(brush = fadeBrush)) {
+                                append("Focus on what's essential. \nLimit your priorities to three \nto achieve more.")
+                            }
+                        },
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+
+
+                    textAlign = TextAlign.Center,
+                        fontFamily = interDisplayFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Unspecified,
+                        lineHeight = 24.sp,
+
+                    )
+                }
             }
+            Canvas(modifier = Modifier.fillMaxSize()) {
+
+                val gradientBrush = Brush.verticalGradient(
+                    colors = if(isDarkTheme){
+                        listOf(
+                            Color(0xFF000000),
+                            Color(0x00000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0xFFD8DFE7),
+                            Color(0x00EDEDED)
+                        )
+                    }
+                    ,
+                    startY = 0f,
+                    endY = size.height.coerceAtMost(100.dp.toPx())
+                )
+
+                val opacityBrush = Brush.verticalGradient(
+                    colors = if (isDarkTheme){
+                        listOf(
+                            Color(0x00000000),
+                            Color(0xFF000000)
+                        )
+                    }else{
+                        listOf(
+                            Color(0x00D8DFE7),
+                            Color(0xFFD8DFE7)
+                        )
+                    }
+                    ,
+                    startY = (size.height - 84.dp.toPx()).coerceAtLeast(0f),
+                    endY = size.height
+                )
+                drawRect(brush = gradientBrush)
+                drawRect(brush = opacityBrush)
+            }
+
 
             Column {
                 TopSectionHomeScreen(
@@ -267,7 +584,9 @@ fun HomeScreen(
                     sharedPreferences,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
-                    visible = homeScreenvisible
+                    visible = homeScreenvisible,
+                    todayTaskCount = todayTaskCount,
+                    upcomingTaskCount = upcomingTaskCount
                     )
                 FloatingActionButton(
                     navController = navController,
@@ -285,6 +604,8 @@ fun HomeScreen(
         }
     }
 }
+
+
 private fun moveTaskToMainList(taskData: DataClass) {
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
@@ -370,7 +691,7 @@ fun getNextDueDate(dateString: String, repeatOption: String): String {
 fun CustomSnackbar(snackbarData: SnackbarData) {
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colors.primary,
+        color = MaterialTheme.colors.secondary,
         modifier = Modifier
             .fillMaxWidth()
             .height(82.dp)
@@ -387,7 +708,7 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
         ) {
             ButtonTextWhiteTheme(
                 text = snackbarData.message,
-                color = MaterialTheme.colors.secondary,
+                color = MaterialTheme.colors.primary,
                 modifier = Modifier.weight(1f))
            // Spacer(Modifier.weight(1f))
             snackbarData.actionLabel?.let { actionLabel ->
@@ -414,18 +735,18 @@ fun LazyGridLayout(navController: NavController,
                    isChecked: MutableState<Boolean>,
                    animatedVisibilityScope: AnimatedVisibilityScope,
                    sharedTransitionScope: SharedTransitionScope,
-                   visible: MutableState<Boolean>
+                   visible: MutableState<Boolean>,
+                   cardDataList:List<DataClass>,
+                   isNotificationSet:MutableState<Boolean>
                    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
-    val databaseRef: DatabaseReference = database.reference.child("Task").child(uid.toString())
-    var isNotificationSet by remember { mutableStateOf(false) }
+
+
     val context = LocalContext.current
 
-    var cardDataList = remember {
-        mutableStateListOf<DataClass>()
-    }
+
    // var visible by remember { mutableStateOf(false) }
    /* LaunchedEffect(Unit) {
         delay(100)
@@ -437,27 +758,9 @@ fun LazyGridLayout(navController: NavController,
     )
 
 
-    LaunchedEffect(Unit){
-        val valueEventListener = object :ValueEventListener{
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                cardDataList.clear()
-                for(childSnapshot in dataSnapshot.children){
-                    val id = childSnapshot.key.toString()
-                    val data = childSnapshot.getValue(DataClass::class.java)
-                    data?.let {
-                        cardDataList.add(it.copy(id = id))
-                        isNotificationSet = true
-                    }
-                }
-            }
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Database operation cancelled: $error")
-            }
-        }
-        databaseRef.addValueEventListener(valueEventListener)
-    }
+
     val MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM = 123
-    if (isNotificationSet){
+    if (isNotificationSet.value){
         cardDataList.forEach { data ->
             var selectedDateTime = data.notificationTime
             val itemId = data.id
@@ -493,13 +796,14 @@ fun LazyGridLayout(navController: NavController,
     val newTaskId = navController.currentBackStackEntry?.savedStateHandle?.get<String>("newTaskId")
     val sharedKey = "bounds-$newTaskId"
     val gridColumns = 2
+
     with(sharedTransitionScope){
         if (cardDataList.isNotEmpty()){
             if (cardDataList.size > 1) {
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(gridColumns),
                     verticalItemSpacing = 16.dp,
-                    contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 98.dp),
+                    contentPadding = PaddingValues(start = 24.dp,end = 24.dp,top = 24.dp),
 
 
                     ) {
@@ -521,10 +825,15 @@ fun LazyGridLayout(navController: NavController,
                                 .fillMaxSize()
                                 .padding(
                                     top = if (index == 1) 100.dp else 0.dp,
-                                    bottom = if (index == cardDataList.size - 1) 90.dp else 0.dp
+                                    bottom = if (index == cardDataList.size - 1) 24.dp else 0.dp
                                 )
 
-                                    .animateContentSize(animationSpec = tween(durationMillis = 200,easing = EaseInElastic)),
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = 200,
+                                        easing = EaseInElastic
+                                    )
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
 
@@ -569,8 +878,9 @@ fun LazyGridLayout(navController: NavController,
                         val isNewTask = cardData.id == newTaskId
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .size(300.dp)
-                            .padding(bottom = 50.dp)
+                            //.size(300.dp)
+                            .padding(top = 24.dp, bottom = 24.dp)
+
                             , contentAlignment = Alignment.Center) {
                             val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                             val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
@@ -608,28 +918,6 @@ fun LazyGridLayout(navController: NavController,
                         }
                     }
                 }
-            }
-        }else{
-
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    bottom = 216.dp,
-                    start = 50.dp, end = 50.dp
-                )
-                .offset(y = offsetYSecond),
-                //.alpha(opacitySecond),
-                contentAlignment = Alignment.BottomCenter
-            ){
-                Text(text =  "Focus on what's essential. \n" +
-                        "Limit your priorities to three to achieve more.",
-                    textAlign = TextAlign.Center,
-                    fontFamily = interDisplayFamily,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
-                    lineHeight = 24.sp
-                )
             }
         }
     }
@@ -699,24 +987,26 @@ with(sharedTransitionScope){
             .size(184.dp)
             .aspectRatio(1f)
             .sharedBounds(
-                rememberSharedContentState( key =  "bounds-$id"),
+                rememberSharedContentState(key = "bounds-$id"),
                 animatedVisibilityScope = animatedVisibilityScope,
 
-                boundsTransform = {initialRect,targetRect ->
-                    spring(dampingRatio = 0.8f,
-                        stiffness = 380f)
+                boundsTransform = { initialRect, targetRect ->
+                    spring(
+                        dampingRatio = 0.8f,
+                        stiffness = 380f
+                    )
 
                 },
                 placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
             )
 
             .clip(CircleShape)
-            .background(MaterialTheme.colors.primary, shape = CircleShape)
+            .background(MaterialTheme.colors.secondary, shape = CircleShape)
 
             .clickable(indication = null,
                 interactionSource = remember { MutableInteractionSource() }) {
-               updateScreenOpen.value = true
-              isClicked.value = true
+                updateScreenOpen.value = true
+                isClicked.value = true
                 visible.value = false
 
             }
@@ -731,9 +1021,12 @@ with(sharedTransitionScope){
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ThemedSquareImage(
+            Box(
                 modifier = Modifier
-                    .padding(top = 24.dp)
+                    .padding(top = 8.dp)
+                    .size(32.dp)
+
+                    .background(color = MaterialTheme.colors.background, shape = CircleShape)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         if (isChecked.value) {
@@ -755,13 +1048,14 @@ with(sharedTransitionScope){
                 fontFamily = interDisplayFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
-                color = MaterialTheme.colors.secondary,
+                color = MaterialTheme.colors.primary,
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                 modifier = Modifier
-                    .padding(top = 24.dp, start = 16.dp, end = 16.dp)
+                    .padding(top = 26.dp, start = 16.dp, end = 16.dp)
                     ,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                letterSpacing = 0.5.sp
                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsMessage-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
@@ -778,12 +1072,13 @@ with(sharedTransitionScope){
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
-                color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                color = MaterialTheme.colors.primary.copy(alpha = 0.50f),
                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
                 modifier = Modifier
                     .padding(top = 4.dp, start = 16.dp, end = 16.dp)
                     .height(15.dp),
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                letterSpacing = 1.sp
                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsDateandTime-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
@@ -792,7 +1087,7 @@ with(sharedTransitionScope){
                         }
                     )*/
             )
-            if (repeatOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ){
+            if (repeatOption in listOf("Daily","Weekly","Monthly","Yearly") ){
                 ThemedRepeatedIconImage(
                     modifier = Modifier
                         .padding(top = 8.dp)
@@ -819,15 +1114,17 @@ with(sharedTransitionScope){
 fun ThemedRepeatedIconImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
-        R.drawable.repeated_task_icon
+        R.drawable.repeat_icon_black
     } else {
-        R.drawable.repeated_icon_white_theme
+        R.drawable.repeat_icon_white
     }
 
     Image(
         painter = painterResource(id = imageRes),
         contentDescription = null,
         modifier = modifier
+            .alpha(0.5f)
+
             
     )
 }
@@ -943,7 +1240,7 @@ fun FloatingActionButton(
             ) {
                 androidx.compose.material.FloatingActionButton(
                     modifier = Modifier
-                        .size(96.dp)
+                        .size(84.dp)
                         .renderInSharedTransitionScopeOverlay(zIndexInOverlay = 1f)
 
                         .animateEnterExit(
@@ -1005,10 +1302,7 @@ fun FloatingActionButton(
                     backgroundColor = FABRed,
                     contentColor = Color.White.compositeOver(shadowColor)
                 ) {
-                    Image(painterResource(
-                        id = R.drawable.plus_icon) ,
-                        contentDescription = "",
-                        modifier = Modifier)
+                   ThemedPlusIconImage()
                 }
             }
 
@@ -1216,6 +1510,8 @@ fun TopSectionHomeScreen(navController: NavController,
                          sharedTransitionScope: SharedTransitionScope,
                          animatedVisibilityScope:AnimatedVisibilityScope,
                          visible: MutableState<Boolean>,
+                         todayTaskCount:Int,
+                         upcomingTaskCount:Int
                          ){
 
     val context = LocalContext.current
@@ -1253,13 +1549,37 @@ fun TopSectionHomeScreen(navController: NavController,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val shape = RoundedCornerShape(16.dp)
+                val backgroundColor = MaterialTheme.colors.background
                 Text(
-                    text = "DOTHING",
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = MaterialTheme.colors.primary.copy(alpha = 0.5f))) {
+                            append("You have ")
+                        }
+                        withStyle(style = SpanStyle(color = MaterialTheme.colors.primary)) {
+                            append(
+                                if (todayTaskCount == 0) "no tasks today"
+                                else "$todayTaskCount ${if (todayTaskCount == 1) "task" else "tasks"} today"
+                            )
+                        }
+                        withStyle(style = SpanStyle(color = MaterialTheme.colors.primary.copy(alpha = 0.5f))) {
+                            append(",\nand ")
+                        }
+                        withStyle(style = SpanStyle(color = MaterialTheme.colors.primary.copy(alpha = 0.5f))) {
+                            append(
+                                if (upcomingTaskCount == 0) "no upcoming tasks"
+                                else "$upcomingTaskCount upcoming ${if (upcomingTaskCount == 1) "task" else "tasks"}"
+                            )
+                        }
+                        append(".")
+                    }
+                    ,
                     modifier = Modifier,
                     fontFamily = interDisplayFamily,
-                    fontWeight = FontWeight.W100,
-                    fontSize = 24.sp,
-                    color = MaterialTheme.colors.secondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                    lineHeight = 20.sp,
+                    letterSpacing = 0.5.sp
 
                     )
                 with(sharedTransitionScope){
@@ -1277,39 +1597,65 @@ fun TopSectionHomeScreen(navController: NavController,
                             Vibration(context)
                         }
                         .clip(shape)
-                        .background(color = androidx.compose.material.MaterialTheme.colors.primary),
+                        .background(color = androidx.compose.material.MaterialTheme.colors.secondary),
                         contentAlignment = androidx.compose.ui.Alignment.Center
                     ) {
-                        Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+
+                            Row(modifier = Modifier,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                 Box(modifier = androidx.compose.ui.Modifier
-                                    .size(4.dp)
+                                    .size(width = 12.dp, height = 32.dp)
+                                    .drawBehind {
+                                        val strokeWidth = 2.dp.toPx()
+                                        drawRoundRect(
+
+                                            color = backgroundColor,
+                                            style = Stroke(width = strokeWidth),
+                                            cornerRadius = CornerRadius(12.dp.toPx()),
+                                            size = Size(size.width - strokeWidth, size.height - strokeWidth), // Shrink for inside border
+                                            topLeft = Offset(strokeWidth / 2, strokeWidth / 2) // Offset to center stroke inside
+                                        )
+
+                                    }
                                     .background(
-                                        shape = androidx.compose.foundation.shape.CircleShape,
-                                        color = com.firstyogi.ui.theme.FABRed
-                                    ))
-                                Box(modifier = androidx.compose.ui.Modifier
-                                    .size(4.dp)
-                                    .background(
-                                        color = androidx.compose.material.MaterialTheme.colors.background,
-                                        shape = androidx.compose.foundation.shape.CircleShape
-                                    ))
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colors.background
+                                    )
+
+                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp
+                                )) {
+                                    Box(modifier = androidx.compose.ui.Modifier
+                                        .size(12.dp)
+
+                                        .background(
+                                            color = androidx.compose.material.MaterialTheme.colors.background,
+                                            shape = androidx.compose.foundation.shape.CircleShape
+                                        )
+
+                                      )
+                                    Box(modifier = androidx.compose.ui.Modifier
+                                        .size(12.dp)
+
+                                        .background(
+                                            color = androidx.compose.material.MaterialTheme.colors.primaryVariant,
+                                            shape = androidx.compose.foundation.shape.CircleShape
+                                        )
+                                        .drawBehind {
+                                            drawCircle(
+                                                color = backgroundColor,
+                                                style = Stroke(width = 2.dp.toPx()),
+
+                                                )
+
+                                        }
+                                        )
+                                }
+
                             }
-                            Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
-                                Box(modifier = androidx.compose.ui.Modifier
-                                    .size(4.dp)
-                                    .background(
-                                        shape = androidx.compose.foundation.shape.CircleShape,
-                                        color = androidx.compose.material.MaterialTheme.colors.background
-                                    ))
-                                Box(modifier = androidx.compose.ui.Modifier
-                                    .size(4.dp)
-                                    .background(
-                                        color = androidx.compose.material.MaterialTheme.colors.background,
-                                        shape = androidx.compose.foundation.shape.CircleShape
-                                    ))
-                            }
-                        }
+
+
                     }
                 }
 
@@ -1322,19 +1668,16 @@ fun TopSectionHomeScreen(navController: NavController,
 
 @Composable
 fun ThemedSquareImage(modifier: Modifier) {
-    val isDarkTheme = isSystemInDarkTheme()
-
-    val imageRes = if (isDarkTheme) {
-        R.drawable.dark_square
-    } else {
-        R.drawable.light_square
-    }
-
-    Image(
-        painter = painterResource(id = imageRes),
-        contentDescription = null,
-        modifier = modifier
-
+    var circleColor = MaterialTheme.colors.primary
+    Box(
+        modifier = modifier.size(24.dp)
+            .background(color = MaterialTheme.colors.secondary, shape = CircleShape)
+            .drawBehind {
+                drawCircle(
+                    color = circleColor.copy(alpha = 0.5f),
+                    style = Stroke(width = 1.dp.toPx())
+                )
+            }
     )
 
 }
@@ -1370,4 +1713,18 @@ fun cancelAllNotifications(context: Context, uid: String) {
             Log.e("Firebase", "Error reading data from Firebase", error.toException())
         }
     })
+}
+@Composable
+fun ThemedPlusIconImage() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.new_plus_icon
+    } else {
+        R.drawable.new_white_plus_icon
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
 }

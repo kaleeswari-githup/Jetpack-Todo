@@ -126,7 +126,7 @@ fun SplashScreen(navController: NavController){
                 drawRect(brush = opacityBrush)
                 //  drawRect(brush = gradientBrush)
             }
-            ThemedImage(modifier = Modifier.scale(scale).offset(y=offsetY).alpha(opacity))
+           // ThemedImage(modifier = Modifier.scale(scale).offset(y=offsetY).alpha(opacity))
         }
     }
 }

@@ -5,9 +5,9 @@
         <item name="android:windowNoTitle">true</item>
 
         <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="s">
-            @mipmap/launcher_dothing_icon_test1
+            @mipmap/ic_launcher_round
         </item>
-
+        <item name="android:windowBackground">@android:color/black</item>
         <item name="android:windowLightStatusBar" tools:ignore="NewApi">false</item>
         <item name="android:navigationBarColor" tools:ignore="NewApi">@color/black</item>
 

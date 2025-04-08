@@ -118,7 +118,6 @@ fun UpdateTaskScreen(
     LaunchedEffect(Unit) {
         updateScreenvisible.value = true // Set the visibility to true to trigger the animation
     }
-
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -126,10 +125,10 @@ fun UpdateTaskScreen(
                 if (selectedData != null) {
                     data = selectedData
 
-                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
+                    val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                    val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
 
-                        // Check if the date is not empty before attempting to parse
+                    // Check if the date is not empty before attempting to parse
                     if (!selectedData.date.isNullOrBlank()) {
                         try {
                             // Convert Long to LocalDate
@@ -146,7 +145,7 @@ fun UpdateTaskScreen(
                     dataClassMessage.value = selectedData.message ?: ""
                     dataClassTime.value = selectedData.time?:""
                     repeatableOption.value = selectedData.repeatedTaskTime?:""
-                   // animationID.value = selectedData.id
+                    // animationID.value = selectedData.id
                     Log.d("updatedataclassname","${selectedData.message}")
                 }
             }
@@ -161,6 +160,72 @@ fun UpdateTaskScreen(
             databaseRef.removeEventListener(listener)
         }
     }
+   /* DisposableEffect(Unit) {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val map = snapshot.child(id.toString()).value as? Map<*, *>
+                if (map != null) {
+                    val selectedData = DataClass(
+                        id = id.toString(),
+                        message = map["message"] as? String ?: "",
+                        time = map["time"] as? String ?: "",
+                        date = map["date"] as? String ?: "",
+                        notificationTime = when (val nt = map["notificationTime"]) {
+                            is Long -> nt
+                            is String -> nt.toLongOrNull() ?: 0L
+                            else -> 0L
+                        },
+                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                        nextDueDate = when (val nd = map["nextDueDate"]) {
+                            is Long -> nd
+                            is String -> nd.toLongOrNull()
+                            else -> null
+                        },
+                        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                    )
+
+                    // Now you can use selectedData safely
+                    if (selectedData != null) {
+                        data = selectedData
+
+                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
+
+                        // Check if the date is not empty before attempting to parse
+                        if (!selectedData.date.isNullOrBlank()) {
+                            try {
+                                // Convert Long to LocalDate
+                                val parsedDate = LocalDate.parse(selectedData.date, originalDateFormat)
+                                dataClassDate.value = parsedDate.format(desiredDateFormat)
+                            } catch (e: DateTimeParseException) {
+                                // Handle parsing error if needed
+                                Log.e("DateParsingError", "Error parsing date: ${selectedData.date}", e)
+                            }
+                        } else {
+                            // Handle the case where the date is empty
+                            dataClassDate.value = ""
+                        }
+                        dataClassMessage.value = selectedData.message ?: ""
+                        dataClassTime.value = selectedData.time?:""
+                        repeatableOption.value = selectedData.repeatedTaskTime?:""
+                        // animationID.value = selectedData.id
+                        Log.d("updatedataclassname","${selectedData.message}")
+                    }
+                }
+
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+            }
+        }
+
+        databaseRef.addListenerForSingleValueEvent(listener)
+
+        onDispose {
+            databaseRef.removeEventListener(listener)
+        }
+    }*/
 
 //Log.d("selectedDate","$selectedDate.value")
         var context = LocalContext.current
@@ -239,7 +304,30 @@ fun UpdateTaskScreen(
 
             coroutineScope.launch {
                 snackbarHostState.currentSnackbarData?.dismiss()
-                val data = databaseRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
+               // val data = databaseRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
+                val snapshot = databaseRef.child(clickedTaskId).get().await()
+                val map = snapshot.value as? Map<*, *>
+                val data = map?.let {
+                    DataClass(
+                        id = id!!,
+                        message = it["message"] as? String ?: "",
+                        time = it["time"] as? String ?: "",
+                        date = it["date"] as? String ?: "",
+                        notificationTime = when (val nt = it["notificationTime"]) {
+                            is Long -> nt
+                            is String -> nt.toLongOrNull() ?: 0L
+                            else -> 0L
+                        },
+                        repeatedTaskTime = it["repeatedTaskTime"] as? String ?: "",
+                        nextDueDate = when (val nd = it["nextDueDate"]) {
+                            is Long -> nd
+                            is String -> nd.toLongOrNull()
+                            else -> null
+                        },
+                        nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
+                        formatedDateForWidget = it["formatedDateForWidget"] as? String ?: ""
+                    )
+                }
 
                 if (data != null) {
                     databaseRef.child(clickedTaskId).removeValue()
@@ -268,7 +356,28 @@ fun UpdateTaskScreen(
             var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
             taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val data = snapshot.getValue(DataClass::class.java)
+                    val snapshotValue = snapshot.value as? Map<*, *>
+                    val data = snapshotValue?.let {
+                        DataClass(
+                            id = id!!, // or wherever you're storing the ID
+                            message = it["message"] as? String ?: "",
+                            time = it["time"] as? String ?: "",
+                            date = it["date"] as? String ?: "",
+                            notificationTime = when (val nt = it["notificationTime"]) {
+                                is Long -> nt
+                                is String -> nt.toLongOrNull() ?: 0L
+                                else -> 0L
+                            },
+                            repeatedTaskTime = it["repeatedTaskTime"] as? String ?: "",
+                            nextDueDate = when (val nd = it["nextDueDate"]) {
+                                is Long -> nd
+                                is String -> nd.toLongOrNull()
+                                else -> null
+                            },
+                            nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
+                            formatedDateForWidget = it["formatedDateForWidget"] as? String ?: ""
+                        )
+                    }
                     if (data != null) {
                         taskRef.removeValue()
                         completedTasksRef.setValue(data)
@@ -378,7 +487,7 @@ fun UpdateTaskScreen(
             updateScreenvisible.value = false
         }
             ) {
-                ThemedGridImage(modifier = Modifier)
+              //  ThemedGridImage(modifier = Modifier)
                 // CanvasShadow(modifier = Modifier.fillMaxSize())
                 Box(
                     modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -417,6 +526,7 @@ fun UpdateTaskScreen(
                                 .padding(bottom = 40.dp)
                                 .alpha(alpha)
                         ) {
+
                             UpdatedButtons(
                                 id = id.toString(),
                                 navController = navController,
@@ -424,7 +534,10 @@ fun UpdateTaskScreen(
                                 onDeleteClick = onDeleteClick,
                                 isDeleteTaskScreenOpen = isDeleteTaskScreenOpen,
                                 repeatOption = repeatableOption.value,
-                                visible = updateScreenvisible
+                                visible = updateScreenvisible,
+                                date = dataClassDate.value,
+                                time = dataClassTime.value,
+                                message = dataClassMessage.value,
                             )
 
                         }
@@ -565,7 +678,7 @@ val dataClassMessageMutable by remember{
                 //.scale(scale)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+                .background(color = MaterialTheme.colors.secondary, shape = CircleShape)
 
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
@@ -629,7 +742,7 @@ val dataClassMessageMutable by remember{
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 24.sp,
                                 fontFamily = interDisplayFamily,
-                                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
                         },
@@ -639,8 +752,8 @@ val dataClassMessageMutable by remember{
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = interDisplayFamily,
-                            color = MaterialTheme.colors.secondary,
-                            letterSpacing = -1.sp
+                            color = MaterialTheme.colors.primary,
+                            letterSpacing = 0.5.sp
                         ),
 
                         )
@@ -670,8 +783,8 @@ val dataClassMessageMutable by remember{
                             }
                         )*/
                         .border(
-                            width = 0.4.dp,
-                            color = MaterialTheme.colors.secondary, // Change to your desired border color
+                            width = 1.5.dp,
+                            color = MaterialTheme.colors.primary.copy(alpha = 0.5f), // Change to your desired border color
                             shape = CircleShape
                         )
                         .padding(8.dp)
@@ -683,15 +796,15 @@ val dataClassMessageMutable by remember{
                         ThemedCalendarImage(modifier = Modifier)
                     }else if(selectedDate.value.isNotEmpty() && selectedTime.value.isNullOrEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ThemedCalendarImage(modifier = Modifier)
                             Text(
-                                text = selectedDate.value.toUpperCase(),
+                                text = selectedDate.value,
                                 fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary,
-                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                                color = MaterialTheme.colors.primary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp)
                             )
                         }
                     }else{
@@ -699,12 +812,12 @@ val dataClassMessageMutable by remember{
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier)
                             Text(
-                                text = "${selectedDate.value.toUpperCase()}, ${timeString}",
+                                text = "${selectedDate.value}, ${timeString}",
                                 fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary,
-                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                                color = MaterialTheme.colors.primary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp)
                             )
                         }
                     }
@@ -757,7 +870,7 @@ val dataClassMessageMutable by remember{
                     addtaskCrossClick = false,
                     unMarkCompletedCrossClick = false,
                     updatetaskCrossClick = true,
-                    color = MaterialTheme.colors.secondary,
+                    color = MaterialTheme.colors.primary,
                     modifier = Modifier,
                     isClickable = isClickable
                 )
@@ -788,7 +901,10 @@ fun UpdatedButtons(
     onDeleteClick: (String) -> Unit,
     isDeleteTaskScreenOpen:MutableState<Boolean>,
     repeatOption: String?,
-    visible:MutableState<Boolean>
+    visible:MutableState<Boolean>,
+    date:String,
+    time:String,
+    message:String
 ){
     val coroutineScope = rememberCoroutineScope()
 
@@ -837,27 +953,28 @@ fun UpdatedButtons(
         )
         ) {
         Box(modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             // .wrapContentWidth()
-            .padding(start = 24.dp, end = 38.dp)
+            .padding(start = 24.dp, end = 24.dp)
             .height(48.dp)
             //.offset(y = offsetY)
             //.alpha(opacity)
-            .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
+            .background(color = MaterialTheme.colors.secondary, shape = RoundedCornerShape(30.dp)),
             contentAlignment = Alignment.Center
         ) {
             Row(modifier = Modifier
-                .fillMaxWidth()
+               // .fillMaxWidth()
+              //  .background(color = Color.Red)
                 // .wrapContentWidth()
-                .padding(start = 24.dp, end = 24.dp),
+                .padding(start = 16.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
+                //horizontalArrangement = Arrangement.SpaceEvenly
             )
             {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
-                        if (repeatOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ) {
+                        if (repeatOption in listOf("Daily","Weekly","Monthly","Yearly") ) {
                             isDeleteTaskScreenOpen.value = true
                         }else{
                             onDeleteClick(id)
@@ -869,7 +986,7 @@ fun UpdatedButtons(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ThemedTrashImage()
-                    ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary, modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "Delete",color = MaterialTheme.colors.primary, modifier = Modifier)
                 }
                 Box(
                     modifier = Modifier
@@ -891,7 +1008,7 @@ fun UpdatedButtons(
                         },
                     verticalAlignment = Alignment.CenterVertically) {
                     ThemedSquareImage(modifier = Modifier)
-                    ButtonTextWhiteTheme(text = "MARK COMPLETED",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "Mark completed",color = MaterialTheme.colors.primary,modifier = Modifier)
                 }
             }
 
@@ -907,7 +1024,11 @@ fun UpdatedButtons(
                 navController,
                 id = id,
                 textHeading =  stringResource(id = R.string.delete_one_task_heading),
-                textDiscription = stringResource(id = R.string.delete_one_task_subtitle)
+                textDiscription = stringResource(id = R.string.delete_one_task_subtitle),
+                date = date,
+                time = time,
+                message = message,
+                repeatOption = repeatOption!!
             )
         }
 
@@ -925,6 +1046,7 @@ fun ThemedTrashImage() {
     Image(
         painter = painterResource(id = imageRes),
         contentDescription = null,
+        modifier = Modifier.alpha(0.5f)
     )
 }
 @Composable
@@ -935,9 +1057,10 @@ fun ButtonTextWhiteTheme(text:String,color: Color,modifier: Modifier){
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         color = color,
-       // style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
         modifier = modifier,
-        overflow = TextOverflow.Ellipsis
+        overflow = TextOverflow.Ellipsis,
+        lineHeight = 24.sp
 
     )
 }
@@ -948,8 +1071,8 @@ fun ButtonTextDarkTheme(text:String,modifier: Modifier){
         fontFamily = interDisplayFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = MaterialTheme.colors.primary,
-       // style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+        color = MaterialTheme.colors.secondary,
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
         modifier = modifier
     )
 }
@@ -988,7 +1111,7 @@ fun CrossFloatingActionButton(
                 elevation = FloatingActionButtonDefaults.elevation(0.dp),
                 onClick = {onClick.invoke()},
                 shape = CircleShape,
-                backgroundColor = MaterialTheme.colors.primary
+                backgroundColor = MaterialTheme.colors.secondary
 
             ) {
                 ThemedCrossImage(modifier = Modifier)
@@ -1010,6 +1133,7 @@ fun ThemedCrossImage(modifier: Modifier) {
         painter = painterResource(id = imageRes),
         contentDescription = null,
         modifier = modifier
+            .alpha(0.5f)
     )
 }
 

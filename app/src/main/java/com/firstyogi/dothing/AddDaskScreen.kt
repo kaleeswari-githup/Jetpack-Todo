@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -30,7 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -40,32 +38,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
-import androidx.glance.appwidget.Tracing.enabled
-import androidx.glance.text.TextStyle
 import androidx.navigation.NavController
 
 import com.firstyogi.ui.theme.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.sql.Timestamp
 import java.text.SimpleDateFormat
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
-import java.util.concurrent.TimeUnit
-import kotlin.collections.HashMap
 
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -85,7 +74,7 @@ fun AddDaskScreen(
         mutableStateOf(textValue)
     }
     val repeatableOption = remember {
-        mutableStateOf("NO REPEAT")
+        mutableStateOf("No Repeat")
     }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
     var isPickerOpen = remember { mutableStateOf(false) }
@@ -257,7 +246,7 @@ fun AddDaskScreen(
                     addTaskvisible.value = false
                 }
         ) {
-            ThemedGridImage(modifier = Modifier)
+            //ThemedGridImage(modifier = Modifier)
             // CanvasShadow(modifier = Modifier.fillMaxSize())
             Box(
                 modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -292,8 +281,9 @@ fun AddDaskScreen(
 
                     Box(
                         modifier = Modifier
-                            .padding(top = 32.dp)
-
+                            .padding(top = 24.dp)
+                            .offset(y = offsetY)
+                            .alpha(opacity)
                     ) {
                         Row(
                             modifier = Modifier
@@ -306,7 +296,7 @@ fun AddDaskScreen(
                                     .bounceClick()
                                     .background(
                                         shape = RoundedCornerShape(53.dp),
-                                        color = MaterialTheme.colors.primary
+                                        color = MaterialTheme.colors.secondary
                                     )
                                     .clickable(indication = null,
                                         interactionSource = remember { MutableInteractionSource() }) {
@@ -317,20 +307,20 @@ fun AddDaskScreen(
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
-                                ButtonTextWhiteTheme(text = "CANCEL",
-                                    color = MaterialTheme.colors.secondary,
+                                ButtonTextWhiteTheme(text = "Cancel",
+                                    color = MaterialTheme.colors.primary,
                                     modifier = Modifier
                                         .padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp))
                             }
 
-                            Spacer(modifier = Modifier.padding(40.dp))
+                            Spacer(modifier = Modifier.padding(32.dp))
 
                                 Box(
                                     modifier = Modifier
                                         .bounceClick()
                                         .background(
                                             shape = RoundedCornerShape(53.dp),
-                                            color = MaterialTheme.colors.secondary
+                                            color = MaterialTheme.colors.primary
                                         )
                                         .clickable(indication = null,
                                             interactionSource = remember { MutableInteractionSource() }) {
@@ -339,7 +329,7 @@ fun AddDaskScreen(
                                         },
                                     contentAlignment = Alignment.Center
                                 ){
-                                    ButtonTextDarkTheme(text = "SAVE",
+                                    ButtonTextDarkTheme(text = "Create",
                                         modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp))
 
                                 }
@@ -411,8 +401,12 @@ fun AddDaskCircleDesign(
     var visible by remember {
         mutableStateOf(false)
     }
+    val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
         visible = true
+            focusRequester.requestFocus()
+            keyboardController?.show()
+
 
     }
     Log.d("RepeatText","$repeatableOption.value")
@@ -439,32 +433,14 @@ fun AddDaskCircleDesign(
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 88.dp)
                 // .size(344.dp)
-                .sharedBounds(
-                    rememberSharedContentState(
-                        key = "addtask"
-
-                    ),
-                    animatedVisibilityScope = animatedVisibilityScope,
-                    /*  enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                    exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),*/
-                    boundsTransform = { initialRect, targetRect ->
-                        spring(
-                            dampingRatio = 0.8f,
-                            stiffness = 380f
-                        )
-
-                    },
-                    placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
 
 
-                )
 
-
-                //.offset(y = offsetY)
-                // .scale(scale)
+                .offset(y = offsetY)
+                 .scale(scale)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(MaterialTheme.colors.primary, shape = CircleShape)
+                .background(MaterialTheme.colors.secondary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -489,12 +465,7 @@ fun AddDaskCircleDesign(
                             .wrapContentHeight()
                             .padding(start = 32.dp, end = 32.dp)
                             .focusRequester(focusRequester)
-                            .onFocusChanged { focusState ->
-                                if (focusState.isFocused) {
-                                    focusRequester.requestFocus()
-                                    softwareKeyboardController?.show()
-                                }
-                            },
+                           ,
 
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
@@ -518,7 +489,7 @@ fun AddDaskCircleDesign(
                                 textAlign = TextAlign.Center,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 24.sp,
-                                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                 fontFamily = interDisplayFamily,
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
@@ -529,8 +500,8 @@ fun AddDaskCircleDesign(
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = interDisplayFamily,
-                            color = MaterialTheme.colors.secondary,
-                            letterSpacing = 1.sp
+                            color = MaterialTheme.colors.primary,
+                            letterSpacing = 0.5.sp
 
                         ),
                         singleLine = false
@@ -538,7 +509,9 @@ fun AddDaskCircleDesign(
                 }
 
 
-                TextStyle(text = "${task.value.length} / 32")
+                TextStyle(
+                    text =
+                "${task.value.length} / 32")
                 Box(
                     modifier = Modifier
                         .wrapContentSize(Alignment.Center)
@@ -549,8 +522,8 @@ fun AddDaskCircleDesign(
                             isPickerOpen.value = true
                         }
                         .border(
-                            width = 0.4.dp,
-                            color = MaterialTheme.colors.secondary, // Change to your desired border color
+                            width = 1.5.dp,
+                            color = MaterialTheme.colors.primary.copy(alpha = 0.5f), // Change to your desired border color
                             shape = CircleShape
                         )
                         .padding(8.dp)
@@ -561,21 +534,21 @@ fun AddDaskCircleDesign(
                         val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
                         Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ThemedCalendarImage(modifier = Modifier)
                             Text(
-                                text = formattedDate.toUpperCase(),
+                                text = formattedDate,
                                 fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary,
-                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                                color = MaterialTheme.colors.primary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp)
                             )
                         }
                     }else{
                         val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
                         val formattedDate = selectedDate.value?.format(formatter) ?: ""
-                        val dateString:String = formattedDate.toUpperCase()
+                        val dateString:String = formattedDate
                         val timeFormat = selectedTime.value?.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH))?.toUpperCase() ?: ""
                         val timeString:String = timeFormat.toUpperCase()
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -584,10 +557,10 @@ fun AddDaskCircleDesign(
                             Text(
                                 text = "${dateString}, $timeString",
                                 fontFamily = interDisplayFamily,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary,
-                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                                color = MaterialTheme.colors.primary,
+                                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp)
                             )
 
                         }
@@ -633,7 +606,7 @@ fun AddDaskCircleDesign(
                     id = id,
                     addtaskCrossClick = true,
                     unMarkCompletedCrossClick = false,
-                    color = MaterialTheme.colors.secondary,
+                    color = MaterialTheme.colors.primary,
                     modifier = Modifier,
                     isClickable = isClickable)
 
@@ -684,7 +657,7 @@ fun RepeatedTaskBoxImplement(repeatableOption:MutableState<String>,
     val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
 Log.d("CheckWrongTime","$repeatableOption.value")
     val coroutineScope = rememberCoroutineScope()
-    if (isBoxVisible && repeatableOption.value in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ){
+    if (isBoxVisible && repeatableOption.value in listOf("Daily","Weekly","Monthly","Yearly") ){
         val context = LocalContext.current
 
         Box(
@@ -702,30 +675,38 @@ Log.d("CheckWrongTime","$repeatableOption.value")
 
 
                 .border(
-                    width = 0.4.dp,
-                    color = color, // Change to your desired border color
+                    width = 1.5.dp,
+                    color = color.copy(alpha = 0.5f), // Change to your desired border color
                     shape = CircleShape
                 )
-                .padding(8.dp)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
         ){
             Row(modifier = Modifier
-                .padding(start = 8.dp, end = 8.dp)
+              //  .padding(top = 4.dp, bottom = 4.dp)
                 ,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 ThemedRepeatedIconImage(modifier = modifier)
                 Text(text = repeatableOption.value,
                     fontFamily = interDisplayFamily,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = color,)
+                    color = color,
+                    letterSpacing = 1.sp)
                 Box(modifier = Modifier
+                    .border(
+                        width = 1.5.dp,
+                        color = color.copy(alpha = 0.5f), // Change to your desired border color
+                        shape = CircleShape
+                    )
                     .clickable (
                         enabled = isClickable.value,
                         onClick = {
-                            repeatableOption.value = "NO REPEAT"
+                            repeatableOption.value = "No Repeat"
                             if (addtaskCrossClick){
-                                databaseRef.child(id).child("repeatedTaskTime").setValue("NO REPEAT")
+                                databaseRef.child(id).child("repeatedTaskTime").setValue("No Repeat")
                                 isBoxVisible = false
                             }
                             if (updatetaskCrossClick){
@@ -747,7 +728,7 @@ Log.d("CheckWrongTime","$repeatableOption.value")
                                             val updates = mutableMapOf<String, Any>()
 
                                             // Add required updates with null checks
-                                            updates["repeatedTaskTime"] = "NO REPEAT"
+                                            updates["repeatedTaskTime"] = "No Repeat"
                                             updates["nextDueDate"] = data.notificationTime!! // This is Long so no type mismatch
                                             updates["nextDueDateForCompletedTask"] = currentDate // Using non-null current date
                                             updates["date"] = currentDate
@@ -771,7 +752,7 @@ Log.d("CheckWrongTime","$repeatableOption.value")
                                 
 }
                             if (unMarkCompletedCrossClick){
-                                completedTasksRef.child(id).child("repeatedTaskTime").setValue("NO REPEAT")
+                                completedTasksRef.child(id).child("repeatedTaskTime").setValue("No Repeat")
                                 isBoxVisible = false
                             }
                         }
@@ -791,7 +772,7 @@ Log.d("CheckWrongTime","$repeatableOption.value")
         }
 
 
-    }else if ( repeatableOption.value in listOf("DAILY","WEEKLY","MONTHLY","YEARLY")  ) {
+    }else if ( repeatableOption.value in listOf("Daily","Weekly","Monthly","Yearly")  ) {
         // Set isBoxVisible to true when repeatableOption is "DAILY"
         isBoxVisible = true
     }
@@ -800,15 +781,18 @@ Log.d("CheckWrongTime","$repeatableOption.value")
 fun ThemedCalendarImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
-        R.drawable.dark_calendar_icon
+        R.drawable.calendar_light_theme
     } else {
-        R.drawable.light_calendar_icon
+        R.drawable.calendar_dark_theme
     }
 
     Image(
         painter = painterResource(id = imageRes),
         contentDescription = null,
         modifier = modifier
+            .alpha(0.5f)
+
+
         )
 }
 @Composable
@@ -817,7 +801,8 @@ fun TextStyle(text:String) {
     fontFamily = interDisplayFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 11.sp,
-    color = MaterialTheme.colors.secondary.copy(alpha = 0.25f)
+    color = MaterialTheme.colors.primary.copy(alpha = 0.25f),
+        letterSpacing = 1.sp
    )
 }
 @Composable

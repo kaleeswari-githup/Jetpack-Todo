@@ -9,6 +9,7 @@
         </item>
         <item name="android:windowSplashScreenBackground" tools:targetApi="s">@color/SurfaceGray
         </item>
+        <item name="android:windowBackground">@color/SurfaceGray</item>
         <item name="android:windowLightStatusBar" tools:ignore="NewApi">true</item>
         <item name="android:navigationBarColor" tools:ignore="NewApi">@color/SurfaceGray</item>
 

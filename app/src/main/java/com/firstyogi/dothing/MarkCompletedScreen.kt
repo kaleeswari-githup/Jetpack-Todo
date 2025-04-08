@@ -6,8 +6,10 @@ import android.app.Service.START_STICKY
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
+import android.provider.ContactsContract.Data
 import android.util.Log
 import android.view.animation.OvershootInterpolator
 import androidx.annotation.RequiresApi
@@ -46,7 +48,12 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -137,7 +144,47 @@ fun MarkCompletedScreen(
         }
     }
 
+    var cardDataList = remember {
+        mutableStateListOf<DataClass>()
+    }
+    LaunchedEffect(Unit){
+        val valueEventListener = object :ValueEventListener{
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                cardDataList.clear()
+                for(childSnapshot in dataSnapshot.children){
+                    val id = childSnapshot.key.toString()
+                    val map = childSnapshot.value as? Map<*, *>
+                    if (map != null) {
+                        val safeData = DataClass(
+                            id = childSnapshot.key ?: "",
+                            message = map["message"] as? String ?: "",
+                            time = map["time"] as? String ?: "",
+                            date = map["date"] as? String ?: "",
+                            notificationTime = when (val nt = map["notificationTime"]) {
+                                is Long -> nt
+                                is String -> nt.toLongOrNull() ?: 0L
+                                else -> 0L
+                            },
+                            repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                            nextDueDate = when (val nd = map["nextDueDate"]) {
+                                is Long -> nd
+                                is String -> nd.toLongOrNull()
+                                else -> null
+                            },
+                            nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                            formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                        )
+                        cardDataList.add(safeData)
+                    }
+                }
+            }
 
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("FirebaseError", "Database operation cancelled: $error")
+            }
+        }
+        completedTasksRef.addValueEventListener(valueEventListener)
+    }
 
     val onDeleteClick:(String)  -> Unit = {clickedTaskId ->
         var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
@@ -232,6 +279,7 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
     )
     var markCompletevisible = remember { mutableStateOf(false) }
     val gson = Gson()
+
     LaunchedEffect(Unit) {
                 markCompletevisible.value = true // Set the visibility to true to trigger the animation
             }
@@ -242,7 +290,9 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
             coroutineScope.launch {
 
-                val data = completedTasksRef.child(taskId).get().await().getValue(DataClass::class.java)
+                val snapshot = completedTasksRef.child(taskId).get().await()
+                val map = snapshot.value as? Map<*, *>
+                val data = map?.let { parseDataClassFromSnapshot(it, taskId) }
                 if (data != null){
                     completedTasksRef.child(taskId).removeValue()
                     val snackbarResult = snackbarHostState.showSnackbar(
@@ -342,526 +392,577 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                     interactionSource = remember { MutableInteractionSource() }) {
                     navController.popBackStack()
                     markCompletevisible.value = false
-                                                                                 },
+                },
                 ) {
-                ThemedGridImage(modifier = Modifier)
+                //ThemedGridImage(modifier = Modifier)
               //  CanvasShadow(modifier = Modifier.fillMaxSize())
-                LazyColumn(modifier = Modifier.fillMaxSize(),
-                ) {
-                    item{
-                       /* val offsetY by animateDpAsState(
-                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
-                            animationSpec = tween(
-                                durationMillis = 300,
-                                delayMillis = 0,
-                                easing = EaseOutCirc
-                            ),
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    LazyColumn(modifier = Modifier.wrapContentHeight(),
+                    ) {
+                        item{
+                            /* val offsetY by animateDpAsState(
+                                 targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
+                                 animationSpec = tween(
+                                     durationMillis = 300,
+                                     delayMillis = 0,
+                                     easing = EaseOutCirc
+                                 ),
 
-                            )
-                        val opacity by animateFloatAsState(
-                            targetValue = if (markCompletevisible.value) 1f else 0f,
-                            animationSpec = keyframes {
-                                durationMillis = 300 // Total duration of the animation
-                                0.3f at 100 // Opacity becomes 0.3f after 200ms
-                                0.6f at 200 // Opacity becomes 0.6f after 500ms
-                                1f at 300 // Opacity becomes 1f after 1000ms (end of the animation)
-                            }
-                        )*/
-                        AnimatedVisibility(
-                            visible = markCompletevisible.value,
+                                 )
+                             val opacity by animateFloatAsState(
+                                 targetValue = if (markCompletevisible.value) 1f else 0f,
+                                 animationSpec = keyframes {
+                                     durationMillis = 300 // Total duration of the animation
+                                     0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                     0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                     1f at 300 // Opacity becomes 1f after 1000ms (end of the animation)
+                                 }
+                             )*/
+                            AnimatedVisibility(
+                                visible = markCompletevisible.value,
 
-                            enter = slideInVertically(
-                                initialOffsetY = { 32 }, // Starts off-screen at the top
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    easing = { OvershootInterpolator().getInterpolation(it) },
-                                )
-                            )+ fadeIn( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                   // delayMillis = 300,
-                                    easing = EaseOutCirc,
-
+                                enter = slideInVertically(
+                                    initialOffsetY = { 32 }, // Starts off-screen at the top
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        easing = { OvershootInterpolator().getInterpolation(it) },
                                     )
-                            ),
+                                )+ fadeIn( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        // delayMillis = 300,
+                                        easing = EaseOutCirc,
 
-                            exit = slideOutVertically(
-                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 150,
-                                    easing = EaseOutCirc,
-                                )
-                            ) + fadeOut( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 150,
-                                    easing = EaseOutCirc,
+                                        )
+                                ),
 
+                                exit = slideOutVertically(
+                                    targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 150,
+                                        easing = EaseOutCirc,
                                     )
-                            )
-                        ){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                               // .offset(y = offsetY)
-                               // .alpha(opacity)
-                                .padding(start = 24.dp, end = 24.dp, top = 138.dp)
-                                .background(
-                                    color = MaterialTheme.colors.primary,
-                                    shape = RoundedCornerShape(32.dp)
-                                )
-                                .clickable(indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }) { },
+                                ) + fadeOut( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 150,
+                                        easing = EaseOutCirc,
 
-                                ) {
-                                Row(modifier = Modifier.padding(start = 24.dp,end = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colors.primary
-                                        ),
-                                        contentAlignment = Alignment.Center
+                                        )
+                                )
+                            ){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+                                    // .offset(y = offsetY)
+                                    // .alpha(opacity)
+
+                                    .padding(start = 24.dp, end = 24.dp, top = 104.dp)
+
+                                   ,
+
                                     ) {
-                                        val firebaseAuth = FirebaseAuth.getInstance()
-                                        val user = firebaseAuth.currentUser
-                                        val photoUrl = user?.photoUrl
-                                        val initials = user?.email?.take(1)?.toUpperCase()
-                                        if (photoUrl != null) {
-                                            AsyncImage(
-                                                model = ImageRequest.Builder(LocalContext.current)
-                                                    .data(photoUrl)
-                                                    .build(),
-                                                contentDescription = "Profile picture",
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .clip(CircleShape)
-                                            )
-                                        }else{
-                                            Text(
-                                                text = initials ?: "",
-                                                color = Color.White,
-                                                fontFamily = interDisplayFamily,
-                                                fontSize = 20.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                    Column(modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 24.dp, end = 24.dp),
+
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(modifier = Modifier
+                                            .size(48.dp)
+                                            .background(
+                                                shape = RoundedCornerShape(16.dp),
+                                                color = MaterialTheme.colors.secondary,
+
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            val firebaseAuth = FirebaseAuth.getInstance()
+                                            val user = firebaseAuth.currentUser
+                                            val photoUrl = user?.photoUrl
+                                            val initials = user?.email?.take(1)?.toUpperCase()
+                                            if (photoUrl != null) {
+                                                AsyncImage(
+                                                    model = ImageRequest.Builder(LocalContext.current)
+                                                        .data(photoUrl)
+                                                        .build(),
+                                                    contentDescription = "Profile picture",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(RoundedCornerShape(16.dp))
+                                                )
+                                            }else{
+                                                Text(
+                                                    text = initials ?: "",
+                                                    color = Color.White,
+                                                    fontFamily = interDisplayFamily,
+                                                    fontSize = 20.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+
                                         }
 
-                                    }
-                                    Column(modifier = Modifier.padding(start = 16.dp,top = 28.dp, bottom = 28.dp)) {
-                                        ButtonTextWhiteTheme(text = ("${user?.displayName}").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
-                                        Spacer(modifier = Modifier.padding(top = 4.dp))
+                                        ButtonTextWhiteTheme(text = ("${user?.displayName}"),
+                                            color = MaterialTheme.colors.primary,
+                                            modifier = Modifier.padding(top = 12.dp),
+                                        )
+
                                         Text(
                                             text = if (user?.email?.length ?: 0 > 32) user?.email?.substring(0, 32) + "..." else user?.email.orEmpty(),
                                             fontFamily = interDisplayFamily,
-                                            fontSize = 12.sp,
+                                            fontSize = 14.sp,
                                             fontWeight = FontWeight.Normal,
-                                            color = MaterialTheme.colors.secondary,
-                                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                                            color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                            style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                                            modifier = Modifier.padding(top = 4.dp)
                                         )
+
                                     }
+
                                 }
-
                             }
+
                         }
+                        item {
+                            /*   val offsetY by animateDpAsState(
+                                   targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
+                                   animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
+                               )
+                               val opacity by animateFloatAsState(
+                                   targetValue = if (markCompletevisible.value) 1f else 0f,
+                                   animationSpec = keyframes {
+                                       durationMillis = 300 // Total duration of the animation
+                                       0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                       0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                       1f at 300
 
-                    }
-                    item {
-                     /*   val offsetY by animateDpAsState(
-                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
-                            animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
-                        )
-                        val opacity by animateFloatAsState(
-                            targetValue = if (markCompletevisible.value) 1f else 0f,
-                            animationSpec = keyframes {
-                                durationMillis = 300 // Total duration of the animation
-                                0.3f at 100 // Opacity becomes 0.3f after 200ms
-                                0.6f at 200 // Opacity becomes 0.6f after 500ms
-                                1f at 300
+                                       delayMillis = 100
+                                   }
+                               )*/
+                            AnimatedVisibility(
+                                visible = markCompletevisible.value,
 
-                                delayMillis = 100
-                            }
-                        )*/
-                        AnimatedVisibility(
-                            visible = markCompletevisible.value,
-
-                            enter = slideInVertically(
-                                initialOffsetY = { 32 }, // Starts off-screen at the top
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 50,
-                                    easing = { OvershootInterpolator().getInterpolation(it) },
-                                )
-                            )+ fadeIn( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 50,
-                                    easing = EaseOutCirc,
-
+                                enter = slideInVertically(
+                                    initialOffsetY = { 32 }, // Starts off-screen at the top
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 50,
+                                        easing = { OvershootInterpolator().getInterpolation(it) },
                                     )
-                            ),
+                                )+ fadeIn( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 50,
+                                        easing = EaseOutCirc,
 
-                            exit = slideOutVertically(
-                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 100,
-                                    easing = EaseOutCirc,
-                                )
-                            ) + fadeOut( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 100,
-                                    easing = EaseOutCirc,
+                                        )
+                                ),
 
+                                exit = slideOutVertically(
+                                    targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 100,
+                                        easing = EaseOutCirc,
                                     )
-                            )
-                        ){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
+                                ) + fadeOut( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 100,
+                                        easing = EaseOutCirc,
 
-                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                              //  .offset(y = offsetY)
-                              //  .alpha(opacity)
-                                .background(
-                                    color = MaterialTheme.colors.primary,
-                                    shape = RoundedCornerShape(32.dp)
+                                        )
                                 )
+                            ){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
 
-                                .clickable(indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }) { },
-                                contentAlignment = Alignment.Center) {
-                                Column(modifier = Modifier
-                                    ,
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    val completedTasksCount = completedTasksCountState.value
+                                    .padding(start = 24.dp, end = 24.dp, top = 24.dp)
+                                    //  .offset(y = offsetY)
+                                    //  .alpha(opacity)
+                                    .background(
+                                        color = MaterialTheme.colors.secondary,
+                                        shape = RoundedCornerShape(32.dp)
+                                    )
 
-                                    Spacer(modifier = Modifier.padding(top = 24.dp))
-                                    Row(modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 24.dp,end = 24.dp)
+                                    .clickable(indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }) { },
+                                    contentAlignment = Alignment.Center) {
+                                    Column(modifier = Modifier
                                         ,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        ButtonTextWhiteTheme(
-                                            text = ("Completed ($completedTasksCount)").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
-                                        if (completedTasksCount > 0 ){
-                                            Text(text = stringResource(id = R.string.delete_all),
-                                                fontSize = 14.sp,
-                                                fontFamily = interDisplayFamily,
-                                                fontWeight = FontWeight.Medium,
-                                                color = FABRed,
-                                                modifier = Modifier.clickable {
-                                                    isDeleteAllScreenOpen = true
-                                                }
-                                            )
-                                        }
+                                        val completedTasksCount = completedTasksCountState.value
 
-                                    }
-                                    Spacer(modifier = Modifier.padding(top = 12.dp))
-                                    Box(
-                                        modifier = Modifier
+                                        Spacer(modifier = Modifier.padding(top = 24.dp))
+                                        Row(modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(218.dp)
                                             .padding(start = 24.dp, end = 24.dp)
+                                            ,
+                                            horizontalArrangement = Arrangement.SpaceBetween
 
-                                            .background(
-                                                color = MaterialTheme.colors.background,
-                                                shape = RoundedCornerShape(24.dp)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (completedTasksCount > 0) {
-                                            LazyRowCompletedTask(
-                                                onUnMarkCompletedClick,
-                                                isChecked,
-                                                repeatableOption = repeatableOption,
-                                                animatedVisibilityScope = animatedVisibilityScope,
-                                                sharedTransitionScope = sharedTransitionScope,
-                                                navController = navController
-                                            )
+                                        ) {
+                                            ButtonTextWhiteTheme(
+                                                text = ("Completed ($completedTasksCount)"),color = MaterialTheme.colors.primary,modifier = Modifier)
+                                            if (completedTasksCount > 0 ){
+                                                Text(text = stringResource(id = R.string.delete_all).toUpperCase(),
+                                                    fontSize = 11.sp,
+                                                    fontFamily = interDisplayFamily,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = FABRed,
+                                                    letterSpacing = 1.sp,
+                                                    modifier = Modifier.clickable {
+                                                        isDeleteAllScreenOpen = true
+                                                    }
+                                                )
+                                            }
+
                                         }
-                                        else {
-                                            Text(
-                                                text = ("No completed tasks").uppercase(),
-                                                fontFamily = interDisplayFamily,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colors.secondary.copy(alpha = 0.50f),
-                                                //  modifier = Modifier.padding(top = 24.dp)
-                                            )
-                                        }
-
-
-                                    }
-
-                                    Spacer(modifier = Modifier.padding(top = 24.dp))
-                                }
-                            }
-                        }
-
-                    }
-                    item {
-                       /* val offsetY by animateDpAsState(
-                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
-                            animationSpec = tween(durationMillis = 300, delayMillis = 200,easing =  EaseOutCirc)
-                        )
-                        val opacity by animateFloatAsState(
-                            targetValue = if (markCompletevisible.value) 1f else 0f,
-                            animationSpec = keyframes {
-                                durationMillis = 300 // Total duration of the animation
-                                0.3f at 100 // Opacity becomes 0.3f after 200ms
-                                0.6f at 200 // Opacity becomes 0.6f after 500ms
-                                1f at 300
-
-                                delayMillis = 200
-                            }
-                        )*/
-                        AnimatedVisibility(
-                            visible = markCompletevisible.value,
-
-                            enter = slideInVertically(
-                                initialOffsetY = { 32 }, // Starts off-screen at the top
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 100,
-                                    easing = { OvershootInterpolator().getInterpolation(it) },
-                                )
-                            )+ fadeIn( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 100,
-                                    easing = EaseOutCirc,
-
-                                    )
-                            ),
-
-                            exit = slideOutVertically(
-                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 50,
-                                    easing = EaseOutCirc,
-                                )
-                            ) + fadeOut( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 50,
-                                    easing = EaseOutCirc,
-
-                                    )
-                            )
-                        ){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-
-                               // .offset(y = offsetY)
-                               // .alpha(opacity)
-                                .height(72.dp)
-                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                                .background(
-                                    color = MaterialTheme.colors.primary,
-                                    shape = RoundedCornerShape(24.dp)
-                                )
-                                .clickable(indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }) {
-                                    isChecked.value = !isChecked.value
-                                    saveIsChecked(isChecked.value)
-                                    if (isChecked.value) {
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            val mMediaPlayer =
-                                                MediaPlayer.create(context, R.raw.toggle_sound)
-                                            mMediaPlayer.start()
-                                            delay(mMediaPlayer.duration.toLong())
-                                            mMediaPlayer.release()
-                                        }
-                                    }
-                                    Vibration(context)
-                                },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 24.dp, end = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Box() {
-
-                                        ButtonTextWhiteTheme(text = ("Sound").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
-
-
-
-                                    }
-
-                                    Box(modifier = Modifier) {
+                                        Spacer(modifier = Modifier.padding(top = 12.dp))
                                         Box(
                                             modifier = Modifier
-                                                .clickable(indication = null,
-                                                    interactionSource = remember { MutableInteractionSource() }) {
-                                                    isChecked.value = !isChecked.value
-                                                    saveIsChecked(isChecked.value)
-                                                    if(isChecked.value){
-                                                        coroutineScope.launch(Dispatchers.IO) {
-                                                            val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
-                                                            mMediaPlayer.start()
-                                                            delay(mMediaPlayer.duration.toLong())
-                                                            mMediaPlayer.release()
-                                                        }
-                                                    }
+                                                .fillMaxWidth()
+                                                .height(218.dp)
+                                            //  .padding(start = 24.dp, end = 24.dp)
 
-
-                                                    Vibration(context)
-                                                }
+                                            ,
+                                            contentAlignment = Alignment.Center
                                         ) {
+                                            if (completedTasksCount > 0) {
+                                                LazyRowCompletedTask(
+                                                    onUnMarkCompletedClick,
+                                                    isChecked,
+                                                    repeatableOption = repeatableOption,
+                                                    animatedVisibilityScope = animatedVisibilityScope,
+                                                    sharedTransitionScope = sharedTransitionScope,
+                                                    navController = navController,
+                                                    cardDataList = cardDataList
+                                                )
+                                            }
+                                            else {
+                                                Text(
+                                                    text = ("No completed tasks").uppercase(),
+                                                    fontFamily = interDisplayFamily,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    letterSpacing = 1.sp,
+                                                    color = MaterialTheme.colors.primary.copy(alpha = 0.50f),
+                                                    //  modifier = Modifier.padding(top = 24.dp)
+                                                )
+                                            }
+
+
+                                        }
+
+                                        Spacer(modifier = Modifier.padding(top = 24.dp))
+                                    }
+                                }
+                            }
+
+                        }
+                        item {
+                            /* val offsetY by animateDpAsState(
+                                 targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
+                                 animationSpec = tween(durationMillis = 300, delayMillis = 200,easing =  EaseOutCirc)
+                             )
+                             val opacity by animateFloatAsState(
+                                 targetValue = if (markCompletevisible.value) 1f else 0f,
+                                 animationSpec = keyframes {
+                                     durationMillis = 300 // Total duration of the animation
+                                     0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                     0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                     1f at 300
+
+                                     delayMillis = 200
+                                 }
+                             )*/
+                            AnimatedVisibility(
+                                visible = markCompletevisible.value,
+
+                                enter = slideInVertically(
+                                    initialOffsetY = { 32 }, // Starts off-screen at the top
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 100,
+                                        easing = { OvershootInterpolator().getInterpolation(it) },
+                                    )
+                                )+ fadeIn( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 100,
+                                        easing = EaseOutCirc,
+
+                                        )
+                                ),
+
+                                exit = slideOutVertically(
+                                    targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 50,
+                                        easing = EaseOutCirc,
+                                    )
+                                ) + fadeOut( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 50,
+                                        easing = EaseOutCirc,
+
+                                        )
+                                )
+                            ){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+
+                                    // .offset(y = offsetY)
+                                    // .alpha(opacity)
+                                    .height(72.dp)
+                                    .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                                    .background(
+                                        color = MaterialTheme.colors.secondary,
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
+                                    .clickable(indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }) {
+                                        isChecked.value = !isChecked.value
+                                        saveIsChecked(isChecked.value)
+                                        if (isChecked.value) {
+                                            coroutineScope.launch(Dispatchers.IO) {
+                                                val mMediaPlayer =
+                                                    MediaPlayer.create(context, R.raw.toggle_sound)
+                                                mMediaPlayer.start()
+                                                delay(mMediaPlayer.duration.toLong())
+                                                mMediaPlayer.release()
+                                            }
+                                        }
+                                        Vibration(context)
+                                    },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(start = 24.dp, end = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Box() {
+
+                                            ButtonTextWhiteTheme(text = ("Sound"),color = MaterialTheme.colors.primary,modifier = Modifier)
+
+
+
+                                        }
+
+                                        Box(modifier = Modifier) {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(48.dp, 28.dp)
-                                                    .background(
-                                                        if (isChecked.value) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
-                                                        shape = CircleShape
-                                                    )
-                                                , contentAlignment = Alignment.Center
-                                            ) {
+                                                    .clickable(indication = null,
+                                                        interactionSource = remember { MutableInteractionSource() }) {
+                                                        isChecked.value = !isChecked.value
+                                                        saveIsChecked(isChecked.value)
+                                                        if(isChecked.value){
+                                                            coroutineScope.launch(Dispatchers.IO) {
+                                                                val mMediaPlayer = MediaPlayer.create(context, R.raw.toggle_sound)
+                                                                mMediaPlayer.start()
+                                                                delay(mMediaPlayer.duration.toLong())
+                                                                mMediaPlayer.release()
+                                                            }
+                                                        }
 
-                                                Spacer(
+
+                                                        Vibration(context)
+                                                    }
+                                            ) {
+                                                Box(
                                                     modifier = Modifier
-                                                        .padding(start = 4.dp, end = 4.dp)
-                                                        .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
-                                                        .size(20.dp)
+                                                        .size(width = 24.dp, height = 32.dp)
                                                         .background(
-                                                            MaterialTheme.colors.primary,
-                                                            CircleShape
+                                                            if (isChecked.value) MaterialTheme.colors.primary else MaterialTheme.colors.background,
+                                                            shape = RoundedCornerShape(8.dp)
                                                         )
-                                                ) }
+                                                    , contentAlignment = Alignment.Center
+                                                ) {
+
+                                                    Spacer(
+                                                        modifier = Modifier
+                                                            .padding(start = 2.dp, end = 2.dp)
+                                                            .align(if (isChecked.value) Alignment.CenterEnd else Alignment.CenterStart)
+                                                            .size(width = 12.dp, height = 28.dp)
+                                                            .background(
+                                                                MaterialTheme.colors.secondary,
+                                                                CircleShape
+                                                            )
+                                                    ) }
+                                            }
                                         }
+
                                     }
 
                                 }
-
                             }
+
+                        }
+                        item {
+                            /* val offsetY by animateDpAsState(
+                                 targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
+                                 animationSpec = tween(durationMillis = 300, delayMillis = 300,easing = EaseOutCirc)
+                             )
+                             val opacity by animateFloatAsState(
+                                 targetValue = if (markCompletevisible.value) 1f else 0f,
+                                 animationSpec = keyframes {
+                                     durationMillis = 300 // Total duration of the animation
+                                     0.3f at 100 // Opacity becomes 0.3f after 200ms
+                                     0.6f at 200 // Opacity becomes 0.6f after 500ms
+                                     1f at 300
+
+                                     delayMillis = 300
+                                 }
+                             )*/
+                            AnimatedVisibility(
+                                visible = markCompletevisible.value,
+
+                                enter = slideInVertically(
+                                    initialOffsetY = { 32 }, // Starts off-screen at the top
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 150,
+                                        easing =  { OvershootInterpolator().getInterpolation(it) },
+                                    )
+                                )+ fadeIn( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        delayMillis = 150,
+                                        easing = EaseOutCirc,
+
+                                        )
+                                ),
+
+                                exit = slideOutVertically(
+                                    targetOffsetY = { 32 }, // Exits off-screen at the bottom
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        // delayMillis = 300,
+                                        easing = EaseOutCirc,
+                                    )
+                                ) + fadeOut( // Combine slide and opacity for exit
+                                    animationSpec = tween(
+                                        durationMillis = 300,
+                                        //delayMillis = 300,
+                                        easing = EaseOutCirc,
+
+                                        )
+                                )
+                            ){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+
+                                    // .offset(y = offsetY)
+                                    // .alpha(opacity)
+                                    .height(72.dp)
+                                    .padding(start = 24.dp, end = 24.dp, top = 8.dp)
+                                    .background(
+                                        color = MaterialTheme.colors.secondary,
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
+                                    .clickable(indication = null,
+
+                                        interactionSource = remember { MutableInteractionSource() }) {
+                                        val user = FirebaseAuth.getInstance().currentUser
+                                        val currentuserId = user?.uid
+                                        if (currentuserId != null) {
+                                            cancelAllNotifications(context, currentuserId)
+                                        }
+                                        val auth = FirebaseAuth.getInstance()
+                                        // Sign out from Firebase
+                                        auth.signOut()
+                                        val googleSignInClient = GoogleSignIn.getClient(
+                                            context,
+                                            GoogleSignInOptions.DEFAULT_SIGN_IN
+                                        )
+                                        // Sign out from Google
+                                        googleSignInClient
+                                            .signOut()
+                                            .addOnCompleteListener {
+                                                // Optional: Perform any additional actions after sign out
+                                                val intent =
+                                                    Intent(context, SigninActivity::class.java)
+                                                context.startActivity(intent)
+                                                (context as Activity).overridePendingTransition(
+                                                    android.R.anim.fade_in,
+                                                    android.R.anim.fade_out
+                                                )
+                                                // onDismiss.invoke()
+                                            }
+                                    },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(start = 24.dp, end = 24.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween) {
+                                        ButtonTextWhiteTheme(text = ("Log Out"),color = MaterialTheme.colors.primary,modifier = Modifier)
+                                        Box(modifier = Modifier
+
+                                            .align(Alignment.CenterVertically)
+                                        ) {
+                                            ThemedRightIcon()
+                                        }
+
+                                    }
+
+                                }
+                            }
+
                         }
 
-                    }
-                    item {
-                       /* val offsetY by animateDpAsState(
-                            targetValue = if (markCompletevisible.value) 0.dp else 32.dp,
-                            animationSpec = tween(durationMillis = 300, delayMillis = 300,easing = EaseOutCirc)
-                        )
-                        val opacity by animateFloatAsState(
-                            targetValue = if (markCompletevisible.value) 1f else 0f,
-                            animationSpec = keyframes {
-                                durationMillis = 300 // Total duration of the animation
-                                0.3f at 100 // Opacity becomes 0.3f after 200ms
-                                0.6f at 200 // Opacity becomes 0.6f after 500ms
-                                1f at 300
-
-                                delayMillis = 300
-                            }
-                        )*/
-                        AnimatedVisibility(
-                            visible = markCompletevisible.value,
-
-                            enter = slideInVertically(
-                                initialOffsetY = { 32 }, // Starts off-screen at the top
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 150,
-                                    easing =  { OvershootInterpolator().getInterpolation(it) },
-                                )
-                            )+ fadeIn( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    delayMillis = 150,
-                                    easing = EaseOutCirc,
-
-                                    )
-                            ),
-
-                            exit = slideOutVertically(
-                                targetOffsetY = { 32 }, // Exits off-screen at the bottom
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                   // delayMillis = 300,
-                                    easing = EaseOutCirc,
-                                )
-                            ) + fadeOut( // Combine slide and opacity for exit
-                                animationSpec = tween(
-                                    durationMillis = 300,
-                                    //delayMillis = 300,
-                                    easing = EaseOutCirc,
-
-                                    )
-                            )
-                        ){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-
-                               // .offset(y = offsetY)
-                               // .alpha(opacity)
-                                .height(72.dp)
-                                .padding(start = 24.dp, end = 24.dp, top = 8.dp)
-                                .background(
-                                    color = MaterialTheme.colors.primary,
-                                    shape = RoundedCornerShape(24.dp)
-                                )
-                                .clickable(indication = null,
-
-                                    interactionSource = remember { MutableInteractionSource() }) {
-                                    val user = FirebaseAuth.getInstance().currentUser
-                                    val currentuserId = user?.uid
-                                    if (currentuserId != null) {
-                                        cancelAllNotifications(context, currentuserId)
-                                    }
-                                    val auth = FirebaseAuth.getInstance()
-                                    // Sign out from Firebase
-                                    auth.signOut()
-                                    val googleSignInClient = GoogleSignIn.getClient(
-                                        context,
-                                        GoogleSignInOptions.DEFAULT_SIGN_IN
-                                    )
-                                    // Sign out from Google
-                                    googleSignInClient
-                                        .signOut()
-                                        .addOnCompleteListener {
-                                            // Optional: Perform any additional actions after sign out
-                                            val intent = Intent(context, SigninActivity::class.java)
-                                            context.startActivity(intent)
-                                            (context as Activity).overridePendingTransition(
-                                                android.R.anim.fade_in,
-                                                android.R.anim.fade_out
-                                            )
-                                            // onDismiss.invoke()
-                                        }
-                                },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 24.dp, end = 24.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween) {
-                                    ButtonTextWhiteTheme(text = ("Log Out").uppercase(),color = MaterialTheme.colors.secondary,modifier = Modifier)
-                                    Box(modifier = Modifier
-
-                                        .align(Alignment.CenterVertically)
-                                    ) {
-                                        ThemedRightIcon()
-                                    }
-
-                                }
-
-                            }
-                       }
 
                     }
+var openXPage by remember{
+    mutableStateOf(false)
+}
+                    Box(modifier = Modifier
+                        .padding(bottom = 40.dp)
+                        .wrapContentWidth()
+                        .height(48.dp)
 
 
+                        .clickable {
+                            openXPage = true
+                        },
+                        contentAlignment = Alignment.Center
+                    ){
+                        Row(modifier = Modifier.padding(start = 24.dp,end = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Connect With Us".toUpperCase(),
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                fontFamily = interDisplayFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 1.sp)
+
+                            ThemedTwitterIcon()
+
+                            Text(text = "@to_dothing",
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                fontFamily = interDisplayFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.5.sp)
+                        }
+                    }
+                    if (openXPage){
+                        OpenXButton{openXPage = false}
+                    }
                 }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -891,16 +992,53 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
     if (isDeleteAllScreenOpen){
         DeleteAllScreenPage(onDismiss = {
             isDeleteAllScreenOpen = false
-        } )
+        } ,
+            cardDataList = cardDataList)
     }
 }
+@Composable
+fun ThemedTwitterIcon() {
+    val isDarkTheme = isSystemInDarkTheme()
+    val imageRes = if (isDarkTheme) {
+        R.drawable.twitter_x_icon_dark_theme
+    } else {
+        R.drawable.twitter_x_icon_light_theme
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = null,
+    )
+}
+
+@Composable
+fun OpenXButton(onPageOpened: () -> Unit) {
+    val context = LocalContext.current
+    val twitterUsername = "to_dothing" // REMOVE '@' from the username
+
+
+        val twitterAppUri = Uri.parse("twitter://user?screen_name=$twitterUsername")
+        val twitterWebUri = Uri.parse("https://twitter.com/$twitterUsername")
+
+        val intent = Intent(Intent.ACTION_VIEW, twitterAppUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            context.startActivity(intent) // Open in the X app
+        } catch (e: Exception) {
+            context.startActivity(Intent(Intent.ACTION_VIEW, twitterWebUri)) // Open in browser if X app is not installed
+        }
+    onPageOpened()
+}
+
 @Composable
 fun ThemedRightIcon() {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
-        R.drawable.dark_right_icon
+        R.drawable.exit_logout_icon_dark_theme
     } else {
-        R.drawable.light_right_icon
+        R.drawable.exit_logout_icon_light_theme
     }
 
     Image(
@@ -950,38 +1088,16 @@ fun LazyRowCompletedTask(
                          repeatableOption: MutableState<String>,
                          animatedVisibilityScope: AnimatedVisibilityScope,
                          sharedTransitionScope: SharedTransitionScope,
-                         navController: NavController
+                         navController: NavController,
+    cardDataList:List<DataClass>
                          ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
     var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-    var cardDataList = remember {
-        mutableStateListOf<DataClass>()
-    }
-    LaunchedEffect(Unit ){
 
-    }
 
-    LaunchedEffect(Unit){
-        val valueEventListener = object :ValueEventListener{
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                cardDataList.clear()
-                for(childSnapshot in dataSnapshot.children){
-                    val id = childSnapshot.key.toString()
-                    val data = childSnapshot.getValue(DataClass::class.java)
-                    data?.let {
-                        cardDataList.add(it.copy(id = id))
-                    }
-                }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Database operation cancelled: $error")
-            }
-        }
-        completedTasksRef.addValueEventListener(valueEventListener)
-    }
     LazyRow(contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)){
         items(cardDataList.reversed(),key = {it.id}){cardData ->
@@ -1058,15 +1174,19 @@ fun MarkCompletedCircleDesign(
     sharedTransitionScope: SharedTransitionScope,
     navController: NavController
                               ){
+    var shadowColors = MaterialTheme.colors.secondary
+    var borderShadowColor = MaterialTheme.colors.primary
     with(sharedTransitionScope){
         Box(
             modifier = modifier
                 .size(184.dp)
+
+
                 .sharedBounds(
                     rememberSharedContentState(key = "boundsUnMark-$id"),
                     animatedVisibilityScope = animatedVisibilityScope,
-                   // enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
-                   // exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
+                    // enter = fadeIn(tween(durationMillis = 300, easing = EaseOutBack)),
+                    // exit = fadeOut(tween(durationMillis = 300, easing = EaseOutBack)),
                     boundsTransform = { initialRect, targetRect ->
                         spring(
                             dampingRatio = 0.8f,
@@ -1076,9 +1196,32 @@ fun MarkCompletedCircleDesign(
                     },
                     placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
                 )
+
                 .bounceClick()
-                .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+                .background(color = MaterialTheme.colors.secondary, shape = CircleShape)
                 .clip(CircleShape)
+                .drawBehind {
+                    val shadowColor = borderShadowColor.copy(alpha = 0.05f) // Soft inner shadow
+                    val strokeWidth = 2.dp.toPx() // Shadow thickness
+                    val topOffset = 1.5.dp.toPx() // Adjust to keep top shadow visible
+                    val bottomOffset = 4.dp.toPx() // Slightly hide bottom shadow
+
+                    drawCircle(
+                        color = shadowColor,
+                        radius = size.minDimension / 2 - strokeWidth, // Make shadow inner
+                        center = Offset(
+                            size.width / 2,
+                            size.height / 2 - topOffset
+                        ), // Shift shadow upward
+                        style = Stroke(width = strokeWidth)
+                    )
+
+                    drawCircle(
+                        color = shadowColors, // Hide bottom part of the shadow
+                        radius = size.minDimension / 2 - strokeWidth - bottomOffset,
+                        center = Offset(size.width / 2, size.height / 2 + bottomOffset)
+                    )
+                }
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
                     // selectedMarkedItemId.value = id
@@ -1126,7 +1269,7 @@ fun MarkCompletedCircleDesign(
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
                 ThemedFilledSquareImage(modifier = Modifier
-                    .padding(top = 32.dp)
+                    .padding(top = 8.dp)
                     .clickable {
                         onUnMarkcompletedClick(id.toString())
 
@@ -1145,13 +1288,13 @@ fun MarkCompletedCircleDesign(
                     textAlign = TextAlign.Center,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colors.secondary,
-                    modifier = Modifier.padding(top = 24.dp,start = 16.dp,end = 16.dp)
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colors.primary,
+                    modifier = Modifier.padding(top = 26.dp,start = 16.dp,end = 16.dp)
                         ,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp)
                 )
                 Text(
 
@@ -1160,11 +1303,11 @@ fun MarkCompletedCircleDesign(
                     fontWeight = FontWeight.Normal,
                     fontSize = 11.sp,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.75f),
                     modifier = Modifier.padding(top = 4.dp,start = 16.dp,end = 16.dp),
-                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
                 )
-                if (repeatableOption in listOf("DAILY","WEEKLY","MONTHLY","YEARLY") ){
+                if (repeatableOption in listOf("Daily","Weekly","Monthly","Yearly") ){
                     ThemedRepeatedIconImage(
                         modifier = Modifier
                             .padding(top = 8.dp)

@@ -87,8 +87,8 @@ fun UpdatedScrollableTimePicker(
                         fontFamily = interDisplayFamily,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp,
-                        color = MaterialTheme.colors.secondary,
-                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+                        color = MaterialTheme.colors.primary,
+                        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp),
 
 
                     )
@@ -113,7 +113,7 @@ fun UpdatedScrollableTimePicker(
                     overflow = TextOverflow.Ellipsis,
                     fontFamily = interDisplayFamily,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp)
                 )
             }
@@ -131,11 +131,11 @@ fun UpdatedScrollableTimePicker(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.sp
                     ),
-                    textColor = MaterialTheme.colors.secondary,
+                    textColor = MaterialTheme.colors.primary,
                     selectorProperties = WheelPickerDefaults.selectorProperties(
                         enabled = true,
-                        color = MaterialTheme.colors.primary,
-                        border = BorderStroke(width = 0.dp, color = MaterialTheme.colors.primary)
+                        color = MaterialTheme.colors.secondary,
+                        border = BorderStroke(width = 0.dp, color = MaterialTheme.colors.primary.copy(alpha = 0.5f))
                     )
                 ) { snappedTime ->
                     selectedTime.value = snappedTime

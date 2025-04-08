@@ -7,17 +7,18 @@ import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 private val LightColorPalette = lightColors(
-    primary = Color.White,
+    primary = textLight,
     primaryVariant = FABRed,
-    secondary = Text1,
-    background = MarkCompleteBack
+    secondary = cardBackgroundLight,
+    background = backgroundLight,
+
 
 )
 private val DarkColorPalette = darkColors(
-    primary = Text1,
+    primary = textDark,
     primaryVariant = FABRed,
-    secondary = Color.White,
-    background = Color.Black
+    secondary = cardBackgroundDark,
+    background = backgroundDark
 )
 
 

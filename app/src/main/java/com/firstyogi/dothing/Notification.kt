@@ -35,10 +35,10 @@ fun getNextDueDateNotification(currentDate: String, repeatOption: String): Strin
     calendar.time = date
 
     when (repeatOption) {
-        "DAILY" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
-        "WEEKLY" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
-        "MONTHLY" -> calendar.add(Calendar.MONTH, 1)
-        "YEARLY" -> calendar.add(Calendar.YEAR, 1)
+        "Daily" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
+        "Weekly" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
+        "Monthly" -> calendar.add(Calendar.MONTH, 1)
+        "Yearly" -> calendar.add(Calendar.YEAR, 1)
         else -> return currentDate // No repeat option, return the current date
     }
 
@@ -51,10 +51,10 @@ val id = System.currentTimeMillis().toString() + (0..1000).random()
 fun calculateNextDueDate(currentDate: Long, repeatOption: String): Long {
     val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
     when (repeatOption) {
-        "DAILY" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
-        "WEEKLY" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
-        "MONTHLY" -> calendar.add(Calendar.MONTH, 1)
-        "YEARLY" -> calendar.add(Calendar.YEAR, 1)
+        "Daily" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
+        "Weekly" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
+        "Monthly" -> calendar.add(Calendar.MONTH, 1)
+        "Yearly" -> calendar.add(Calendar.YEAR, 1)
     }
     return calendar.timeInMillis
 }
@@ -73,7 +73,7 @@ class NotificationReceiver : BroadcastReceiver() {
 
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
         val repeatOption = intent.getStringExtra("repeatOption") ?: ""
-        if (repeatOption in listOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY")) {
+        if (repeatOption in listOf("Daily", "Weekly", "Monthly", "Yearly")) {
             val itemId = intent.getStringExtra("itemId") ?: ""
             val message = intent.getStringExtra("messageExtra") ?: ""
             val isCheckedState = intent.getBooleanExtra("isCheckedState", false)

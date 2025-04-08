@@ -121,7 +121,28 @@ fun UnMarkCompletedTaskScreen(
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d("onDataChange", "Data snapshot received")
-                val selectedData = snapshot.child(id.toString()).getValue(DataClass::class.java)
+                val map = snapshot.child(id.toString()).value as? Map<*, *>
+                val selectedData = map?.let {
+                    DataClass(
+                        id = id.toString(),
+                        message = it["message"] as? String ?: "",
+                        time = it["time"] as? String ?: "",
+                        date = it["date"] as? String ?: "",
+                        notificationTime = when (val nt = it["notificationTime"]) {
+                            is Long -> nt
+                            is String -> nt.toLongOrNull() ?: 0L
+                            else -> 0L
+                        },
+                        repeatedTaskTime = it["repeatedTaskTime"] as? String ?: "",
+                        nextDueDate = when (val nd = it["nextDueDate"]) {
+                            is Long -> nd
+                            is String -> nd.toLongOrNull()
+                            else -> null
+                        },
+                        nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
+                        formatedDateForWidget = it["formatedDateForWidget"] as? String ?: ""
+                    )
+                }
                 if (selectedData != null) {
                     data = selectedData
                     val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
@@ -259,7 +280,7 @@ Log.d("UnMarkCompletedPageMessage","$dataClassMessage")
         .fillMaxSize()
         .background(color = MaterialTheme.colors.background)
     ) {
-        ThemedGridImage(modifier = Modifier)
+        //ThemedGridImage(modifier = Modifier)
         Box(modifier = Modifier
             .fillMaxSize()
             .clickable(indication = null,
@@ -391,6 +412,9 @@ Log.d("initialSelecteddate","$initialSelectedate")
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, top = 88.dp)
+                .renderInSharedTransitionScopeOverlay(
+                    zIndexInOverlay = 1f
+                )
                // .size(344.dp)
                 .sharedBounds(
                     rememberSharedContentState(key = "boundsUnMark-$id"),
@@ -410,7 +434,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                  //.scale(scale)
                 .aspectRatio(1f)
                 .clip(CircleShape)
-                .background(color = MaterialTheme.colors.primary, shape = CircleShape)
+                .background(color = MaterialTheme.colors.secondary, shape = CircleShape)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) { },
 
@@ -467,7 +491,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                                 textAlign = TextAlign.Center,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 24.sp,
-                                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                 fontFamily = interDisplayFamily,
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
@@ -478,7 +502,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Medium,
                             fontFamily = interDisplayFamily,
-                            color = MaterialTheme.colors.secondary,
+                            color = MaterialTheme.colors.primary,
                             textDecoration = TextDecoration.LineThrough,
                         ),
 
@@ -501,7 +525,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                         }*/
                         .border(
                             width = 0.4.dp,
-                            color = MaterialTheme.colors.secondary.copy(alpha = 0.5f), // Change to your desired border color
+                            color = MaterialTheme.colors.primary.copy(alpha = 0.5f), // Change to your desired border color
                             shape = CircleShape
                         )
                         .padding(8.dp)
@@ -519,11 +543,11 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier.alpha(0.5f))
                             Text(
-                                text = dateString.toUpperCase(),
+                                text = dateString,
                                 fontFamily = interDisplayFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = -0.sp)
                             )
                         }
@@ -533,11 +557,11 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                             ThemedCalendarImage(modifier = Modifier.alpha(0.5f))
                             Text(
-                                text = "${dateString.toUpperCase()}, ${timeString}",
+                                text = "${dateString}, ${timeString}",
                                 fontFamily = interDisplayFamily,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                color =  MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                                color =  MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                 style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp)
                             )
 
@@ -596,7 +620,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                     id = id,
                     addtaskCrossClick = false,
                     unMarkCompletedCrossClick = false,
-                    color = MaterialTheme.colors.secondary.copy(alpha = 0.5f),
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
                     modifier = Modifier.alpha(0.5f),
                     isClickable = isClickable)
             }
@@ -665,15 +689,16 @@ fun UnMarkCompletedButtons(id: String,
         )
     ){
         Box(modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             .padding(start = 24.dp,end = 24.dp)
             .height(48.dp)
            // .offset(y = offsetY)
            // .alpha(opacity)
-            .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(30.dp)),
+            .background(color = MaterialTheme.colors.secondary, shape = RoundedCornerShape(30.dp)),
+            contentAlignment = Alignment.Center
         ) {
             Row(modifier = Modifier
-                .fillMaxWidth()
+                //.fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -689,7 +714,7 @@ fun UnMarkCompletedButtons(id: String,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ThemedTrashImage()
-                    ButtonTextWhiteTheme(text = "DELETE",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "Delete",color = MaterialTheme.colors.primary,modifier = Modifier)
                 }
                 Box(
                     modifier = Modifier
@@ -712,7 +737,7 @@ fun UnMarkCompletedButtons(id: String,
                         },
                     verticalAlignment = Alignment.CenterVertically) {
                     ThemedSquareImage(modifier = Modifier)
-                    ButtonTextWhiteTheme(text = "MARK UNCOMPLETED",color = MaterialTheme.colors.secondary,modifier = Modifier)
+                    ButtonTextWhiteTheme(text = "Mark Uncomplete",color = MaterialTheme.colors.primary,modifier = Modifier)
                 }
             }
 

@@ -13,6 +13,6 @@ class MyApp: Application() {
         FirebaseApp.initializeApp(this)
         TodoWidget.initializeFirebaseListener(this)
         PeriodicTaskUpdater.enqueue(this)
-       // WorkManager.initialize(this, Configuration.Builder().build())
+//       WorkManager.initialize(this, Configuration.Builder().build())
     }
 }

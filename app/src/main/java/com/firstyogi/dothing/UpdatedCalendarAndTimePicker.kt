@@ -243,26 +243,26 @@ fun UpdatedCalendarAndTimePickerScreen(
                         .alpha(opacity)
                         .clickable { onDismiss.invoke() }
                         .background(
-                            color = MaterialTheme.colors.primary,
+                            color = MaterialTheme.colors.secondary,
                             shape = RoundedCornerShape(53.dp)
                         )
                         , // Adjust padding as needed
                     contentAlignment = Alignment.Center
                 ) {
                     ButtonTextWhiteTheme(
-                        text = "CANCEL",
-                        color = MaterialTheme.colors.secondary,
+                        text = "Cancel",
+                        color = MaterialTheme.colors.primary,
                         modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
 
                     )
                 }
-                Spacer(modifier = Modifier.padding(40.dp))
+                Spacer(modifier = Modifier.padding(32.dp))
                 Box(
                     modifier = Modifier
                         .offset(y = offsetY)
                         .alpha(opacity)
                         .background(
-                            color = MaterialTheme.colors.secondary,
+                            color = MaterialTheme.colors.primary,
                             shape = RoundedCornerShape(53.dp)
                         )
                         .clickable {
@@ -281,7 +281,7 @@ fun UpdatedCalendarAndTimePickerScreen(
                         },
                     contentAlignment = Alignment.Center
                 ){
-                    ButtonTextDarkTheme(text = "DONE",
+                    ButtonTextDarkTheme(text = "Done",
                         modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp, bottom = 16.dp)
                     )
                 }

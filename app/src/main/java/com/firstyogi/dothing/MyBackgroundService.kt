@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -35,17 +36,31 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
         val currentDate = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
         TaskRef.addListenerForSingleValueEvent(object :ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
-                for (childSnapshot in snapshot.children){
+                for (childSnapshot in snapshot.children) {
                     val data = childSnapshot.getValue(DataClass::class.java)
                     val currentTime = System.currentTimeMillis()
                     var id = data!!.id
                     var repeatOption = data.repeatedTaskTime
-                   // val nextDueDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
-                    val storedDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
-                        .parse(data.nextDueDateForCompletedTask!!)?.time ?: 0L
+                    // val nextDueDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
 
-                    if (currentDate >= storedDateInMillis.toString()) {
-                        checkAndUpdateTask(id, repeatOption!!, context = applicationContext)
+
+                    val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                    val nextDueDateString = data.nextDueDateForCompletedTask
+
+                    if (!nextDueDateString.isNullOrBlank()) {
+                        val storedDateInMillis = try {
+                            dateFormat.parse(nextDueDateString)?.time ?: 0L
+                        } catch (e: ParseException) {
+                            e.printStackTrace()
+                            0L
+                        }
+
+                        if (currentDate >= storedDateInMillis.toString()) {
+                            val repeatOption = data.repeatedTaskTime
+                            if (!repeatOption.isNullOrBlank()) {
+                                checkAndUpdateTask(id, repeatOption, context = applicationContext)
+                            }
+                        }
                     }
                 }
             }
@@ -59,7 +74,28 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onDataChange(snapshot: DataSnapshot) {
                 for (childSnapshot in snapshot.children) {
-                    val data = childSnapshot.getValue(DataClass::class.java)
+                    val map = childSnapshot.value as? Map<*, *> ?: continue
+                    val id = childSnapshot.key ?: continue
+                   // val data = childSnapshot.getValue(DataClass::class.java)
+                    val data = DataClass(
+                        id = id,
+                        message = map["message"] as? String ?: "",
+                        time = map["time"] as? String ?: "",
+                        date = map["date"] as? String ?: "",
+                        notificationTime = when (val nt = map["notificationTime"]) {
+                            is Long -> nt
+                            is String -> nt.toLongOrNull() ?: 0L
+                            else -> 0L
+                        },
+                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                        nextDueDate = when (val nd = map["nextDueDate"]) {
+                            is Long -> nd
+                            is String -> nd.toLongOrNull()
+                            else -> null
+                        },
+                        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                    )
                     if (data != null) {
                         val currentDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(currentDate)?.time ?: 0L
                         val nextDueDateInMillis = if (!data.nextDueDateForCompletedTask.isNullOrEmpty()) {
@@ -68,7 +104,7 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                             0L
                         }
 
-                        if (data.repeatedTaskTime in listOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY") &&
+                        if (data.repeatedTaskTime in listOf("Daily", "Weekly", "Monthly", "Yearly") &&
                             currentDateInMillis >= nextDueDateInMillis) {
 
                             // Remove from completed tasks

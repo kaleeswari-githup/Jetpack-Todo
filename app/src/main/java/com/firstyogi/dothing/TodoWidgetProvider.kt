@@ -84,8 +84,30 @@ class TodoWidget : GlanceAppWidget() {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         todos.clear()
                         for (childSnapshot in snapshot.children) {
-                            val todo = childSnapshot.getValue(DataClass::class.java)
-                            todo?.let { todos.add(it) }
+                            val id = childSnapshot.key ?: continue
+                            val map = childSnapshot.value as? Map<*, *> ?: continue
+
+                            val data = DataClass(
+                                id = id,
+                                message = map["message"] as? String ?: "",
+                                time = map["time"] as? String ?: "",
+                                date = map["date"] as? String ?: "",
+                                notificationTime = when (val nt = map["notificationTime"]) {
+                                    is Long -> nt
+                                    is String -> nt.toLongOrNull() ?: 0L
+                                    else -> 0L
+                                },
+                                repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                                nextDueDate = when (val nd = map["nextDueDate"]) {
+                                    is Long -> nd
+                                    is String -> nd.toLongOrNull()
+                                    else -> null
+                                },
+                                nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                                formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                            )
+
+                            todos.add(data)
                         }
                         // Update the widget when data changes
                         GlobalScope.launch(Dispatchers.Main) {
@@ -184,7 +206,7 @@ fun TodoItem(todo: DataClass) {
             )
             if (todo.repeatedTaskTime in listOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY")) {
                 androidx.glance.Image(
-                    provider = ImageProvider(R.drawable.repeated_task_icon),
+                    provider = ImageProvider(R.drawable.repeat_icon_black),
                     contentDescription = null,
                     modifier = GlanceModifier
                         .padding(top = 8.dp)

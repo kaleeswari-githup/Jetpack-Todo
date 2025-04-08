@@ -16,13 +16,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +37,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.firstyogi.ui.theme.AppJetpackComposeTheme
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 class NotificationPermissionActivity : ComponentActivity() {
     private val preferenceKey = "notification_permission_choice"
@@ -89,6 +96,9 @@ class NotificationPermissionActivity : ComponentActivity() {
                                     onPermissionResult(isGranted)
                                 }
                             val scaffoldState = rememberScaffoldState()
+
+                            // Hide status and navigation bar when this screen is shown
+
                             Scaffold(
                                 scaffoldState = scaffoldState,
                                 modifier = Modifier.fillMaxSize(),
@@ -101,76 +111,129 @@ class NotificationPermissionActivity : ComponentActivity() {
                                     ),
 
                                     ){
-                                    ThemedGridImage(modifier = Modifier)
+                                   // ThemedGridImage(modifier = Modifier)
 
 
-                                        Column(modifier = Modifier.fillMaxSize()
+                                        Column(modifier = Modifier
+                                            .fillMaxSize()
                                             .verticalScroll(rememberScrollState()),
-                                            horizontalAlignment = Alignment.CenterHorizontally) {
-                                            ThemedNotificationImage(modifier = Modifier.padding(top = 110.dp))
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            ) {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
 
-                                            Text(text = "ALLOW NOTIFICATIONS",
-                                                color = androidx.compose.material.MaterialTheme.colors.secondary,
-                                                modifier = Modifier.padding(top = 80.dp),
-                                                fontFamily = interDisplayFamily,
-                                                fontSize = 24.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                textAlign = TextAlign.Center
-                                            )
-                                            Text(text = "Get task notifications only—no unnecessary alerts, just what you need.",
-                                                color = androidx.compose.material.MaterialTheme.colors.secondary.copy(alpha = 0.75f),
-                                                modifier = Modifier.padding(top = 16.dp, start = 24.dp,end = 24.dp),
-                                                fontFamily = interDisplayFamily,
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                textAlign = TextAlign.Center,
-                                                lineHeight = 24.sp)
-                                            Box(modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(start = 24.dp, end = 24.dp, top = 129.dp)
-                                                .height(72.dp)
-                                                .background(
-                                                    color = androidx.compose.material.MaterialTheme.colors.secondary,
-                                                    shape = RoundedCornerShape(64.dp)
+                                                // Background Box (Card)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(height = 244.dp, width = 272.dp)
+                                                        .padding(top = 32.dp)
+                                                        .background(
+                                                            color = androidx.compose.material.MaterialTheme.colors.secondary,
+                                                            shape = RoundedCornerShape(32.dp)
+                                                        )
                                                 )
-                                                .clickable(indication = null,
-                                                    interactionSource = remember { MutableInteractionSource() }) {
-                                                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                                },
-                                                contentAlignment = Alignment.Center
-                                            ){
-                                                ButtonTextWhiteTheme(text = ("Allow Notifications").uppercase(),
-                                                    color = androidx.compose.material.MaterialTheme.colors.primary,modifier = Modifier
+
+                                                // ThemedNotificationImage on top of the Box
+                                                ThemedNotificationImage(
+                                                    modifier = Modifier
+                                                        .offset(y = 80.dp) // Move it down to sit on top of the Box
+                                                        .align(Alignment.TopCenter) // Keep it centered horizontally
                                                 )
                                             }
+                                            Spacer(modifier = Modifier.weight(1f))
                                             Box(modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(start = 24.dp, end = 24.dp, top = 24.dp)
-                                                .height(72.dp)
-                                                .background(
-                                                    color = androidx.compose.material.MaterialTheme.colors.primary,
-                                                    shape = RoundedCornerShape(64.dp)
-                                                )
-                                                .clickable(indication = null,
-                                                    interactionSource = remember { MutableInteractionSource() }) {
-                                                    val intent = Intent(context,MainActivity::class.java)
-                                                    context.startActivity(intent)
-                                                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-
-                                                    finish()
-                                                },
+                                                .wrapContentSize(),
                                                 contentAlignment = Alignment.Center
                                             ){
-                                                ButtonTextWhiteTheme(text = ("Not Now").uppercase(),
-                                                    color = androidx.compose.material.MaterialTheme.colors.secondary,modifier = Modifier)
+                                                Column(modifier = Modifier,
+                                                    horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text(text = "Allow notifications",
+                                                        color = androidx.compose.material.MaterialTheme.colors.primary,
+                                                        modifier = Modifier.padding(),
+                                                        fontFamily = interDisplayFamily,
+                                                        fontSize = 24.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        textAlign = TextAlign.Center,
+                                                        letterSpacing = 0.5.sp
+                                                    )
+                                                    Spacer(modifier = Modifier.padding(top = 16.dp))
+                                                    Text(text = "Get task notifications only—\nno unnecessary alerts, just\n what you need.",
+                                                        color = androidx.compose.material.MaterialTheme.colors.primary.copy(alpha = 0.5f),
+                                                        modifier = Modifier.padding( start = 24.dp,end = 24.dp),
+                                                        fontFamily = interDisplayFamily,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        textAlign = TextAlign.Center,
+                                                        lineHeight = 20.sp,
+                                                        letterSpacing = 0.5.sp)
+                                                }
+
                                             }
-                                            Text(text = "You can update in settings anytime.".toUpperCase(),
+                                            Spacer(modifier = Modifier.weight(1f))
+                                            Box(modifier = Modifier
+                                                .wrapContentSize()
+                                                .padding(bottom = 48.dp)){
+                                                Column {
+                                                    Box(modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(start = 48.dp, end = 48.dp)
+                                                        .height(48.dp)
+                                                        .background(
+                                                            color = androidx.compose.material.MaterialTheme.colors.primary,
+                                                            shape = RoundedCornerShape(64.dp)
+                                                        )
+                                                        .clickable(indication = null,
+                                                            interactionSource = remember { MutableInteractionSource() }) {
+                                                            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                                        },
+                                                        contentAlignment = Alignment.Center
+                                                    ){
+                                                        ButtonTextWhiteTheme(text = ("Allow notifications"),
+                                                            color = androidx.compose.material.MaterialTheme.colors.secondary,modifier = Modifier
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.padding(top = 24.dp))
+                                                    Box(modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(start = 48.dp, end = 48.dp)
+                                                        .height(48.dp)
+                                                        .background(
+                                                            color = androidx.compose.material.MaterialTheme.colors.secondary,
+                                                            shape = RoundedCornerShape(64.dp)
+                                                        )
+                                                        .clickable(indication = null,
+                                                            interactionSource = remember { MutableInteractionSource() }) {
+                                                            val intent =
+                                                                Intent(
+                                                                    context,
+                                                                    MainActivity::class.java
+                                                                )
+                                                            context.startActivity(intent)
+                                                            overridePendingTransition(
+                                                                android.R.anim.fade_in,
+                                                                android.R.anim.fade_out
+                                                            )
+
+                                                            finish()
+                                                        },
+                                                        contentAlignment = Alignment.Center
+                                                    ){
+                                                        ButtonTextWhiteTheme(text = ("Not Now"),
+                                                            color = androidx.compose.material.MaterialTheme.colors.primary,
+
+                                                            modifier = Modifier)
+                                                    }
+                                                }
+                                               
+                                            }
+
+                                            Text(text = "You can change this later in settings.".toUpperCase(),
                                                 fontFamily = interDisplayFamily,
-                                                fontSize = 13.sp,
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.Medium,
-                                                color = androidx.compose.material.MaterialTheme.colors.secondary.copy(alpha = 0.75f),
+                                                color = androidx.compose.material.MaterialTheme.colors.primary.copy(alpha = 0.5f),
                                                 textAlign = TextAlign.Center,
-                                                modifier = Modifier.padding(top = 41.dp)
+                                                modifier = Modifier.padding(bottom = 60.dp),
+                                                letterSpacing = 1.sp
                                             )
                                         }
 
@@ -215,9 +278,9 @@ class NotificationPermissionActivity : ComponentActivity() {
 fun ThemedNotificationImage(modifier: Modifier) {
     val isDarkTheme = isSystemInDarkTheme()
     val imageRes = if (isDarkTheme) {
-       R.drawable.notification_image_dark
+       R.drawable.notification_dark_theme
     } else {
-        R.drawable.notification_image_light
+        R.drawable.notification_light_theme
     }
 
     Image(
