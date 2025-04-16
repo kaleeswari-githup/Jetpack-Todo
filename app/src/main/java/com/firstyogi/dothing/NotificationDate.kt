@@ -61,7 +61,7 @@ class PeriodicTaskUpdater(context: Context, params: WorkerParameters) : Coroutin
         data.apply {
             date = SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(nextDueDate!!))
             nextDueDate = newNextDueDate
-            nextDueDateForCompletedTask = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(newNextDueDate))
+          //  nextDueDateForCompletedTask = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(newNextDueDate))
            // updateFormattedDateForWidget()
         }
 

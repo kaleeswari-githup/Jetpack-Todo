@@ -139,7 +139,7 @@ fun UnMarkCompletedTaskScreen(
                             is String -> nd.toLongOrNull()
                             else -> null
                         },
-                        nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
+                        //nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
                         formatedDateForWidget = it["formatedDateForWidget"] as? String ?: ""
                     )
                 }
@@ -204,7 +204,7 @@ fun UnMarkCompletedTaskScreen(
 
         }*/
         navController.previousBackStackEntry?.savedStateHandle?.apply {
-            set("snackbarDeleteMessage","TASK DELETED")
+            set("snackbarDeleteMessage","Task deleted")
             set("taskId",clickedTaskId)
 
         }
@@ -258,7 +258,7 @@ fun UnMarkCompletedTaskScreen(
                     }*/
 
                     navController.previousBackStackEntry?.savedStateHandle?.apply {
-                        set("snackbarUncompleteMessage","TASK MARKED UNCOMPLETED")
+                        set("snackbarUncompleteMessage","Task marked uncompleted")
                         set("taskId",clickedTaskId)
 
                     }
@@ -524,7 +524,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                             isPickerOpen.value = true
                         }*/
                         .border(
-                            width = 0.4.dp,
+                            width = 1.5.dp,
                             color = MaterialTheme.colors.primary.copy(alpha = 0.5f), // Change to your desired border color
                             shape = CircleShape
                         )
@@ -555,7 +555,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
 
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            ThemedCalendarImage(modifier = Modifier.alpha(0.5f))
+                            ThemedCalendarImage(modifier = Modifier)
                             Text(
                                 text = "${dateString}, ${timeString}",
                                 fontFamily = interDisplayFamily,
@@ -621,7 +621,7 @@ Log.d("initialSelecteddate","$initialSelectedate")
                     addtaskCrossClick = false,
                     unMarkCompletedCrossClick = false,
                     color = MaterialTheme.colors.primary.copy(alpha = 0.5f),
-                    modifier = Modifier.alpha(0.5f),
+                    modifier = Modifier,
                     isClickable = isClickable)
             }
         }

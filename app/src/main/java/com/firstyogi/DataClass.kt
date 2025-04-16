@@ -16,22 +16,9 @@ data class DataClass(
     var nextDueDate:Long? = null,
     var nextDueDateForCompletedTask:String? = "",
     var formatedDateForWidget:String?="",
+    var startDate:String? = ""
     //var needsSync: Boolean = false
-    ){
-    /*fun updateFormattedDateForWidget() {
-        formatedDateForWidget = if (date!!.isNotBlank()) {
-            val parsedDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("MM/dd/yyyy"))
-            formatDate(parsedDate)
-        } else {
-            null
-        }
-    }*/
-
-    private fun formatDate(date: LocalDate): String {
-        val formatter = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
-        return date.format(formatter)
-    }
-}
+    )
 fun parseDataClassFromSnapshot(map: Map<*, *>, id: String): DataClass {
     return DataClass(
         id = id,
@@ -49,7 +36,7 @@ fun parseDataClassFromSnapshot(map: Map<*, *>, id: String): DataClass {
             is String -> nd.toLongOrNull()
             else -> null
         },
-        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+       // nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
         formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
     )
 }

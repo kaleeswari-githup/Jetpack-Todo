@@ -105,7 +105,7 @@ fun MarkCompletedScreen(
     ){
 
     val repeatableOption = remember {
-        mutableStateOf("NO REPEAT")
+        mutableStateOf("No Repeat")
     }
     var isDeleteAllScreenOpen by remember {
         mutableStateOf(false)
@@ -156,7 +156,7 @@ fun MarkCompletedScreen(
                     val map = childSnapshot.value as? Map<*, *>
                     if (map != null) {
                         val safeData = DataClass(
-                            id = childSnapshot.key ?: "",
+                            id = map["id"] as? String ?: "",
                             message = map["message"] as? String ?: "",
                             time = map["time"] as? String ?: "",
                             date = map["date"] as? String ?: "",
@@ -171,7 +171,7 @@ fun MarkCompletedScreen(
                                 is String -> nd.toLongOrNull()
                                 else -> null
                             },
-                            nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                            //nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
                             formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
                         )
                         cardDataList.add(safeData)
@@ -194,8 +194,8 @@ fun MarkCompletedScreen(
             if (data != null) {
                 completedTasksRef.child(clickedTaskId).removeValue()
                 val snackbarResult = snackbarHostState.showSnackbar(
-                    message = "TASK DELETED",
-                    actionLabel = "UNDO",
+                    message = "Task Deleted",
+                    actionLabel = "Undo",
                     duration = SnackbarDuration.Short
                 )
                 when (snackbarResult) {
@@ -240,8 +240,8 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                         val snackbarResult = snackbarHostState.showSnackbar(
-                            message = "TASK MARKED UNCOMPLETED",
-                            actionLabel = "UNDO",
+                            message = "Task marked uncompleted",
+                            actionLabel = "Undo",
                             duration = SnackbarDuration.Short
                         )
                         when (snackbarResult) {
@@ -297,7 +297,7 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                     completedTasksRef.child(taskId).removeValue()
                     val snackbarResult = snackbarHostState.showSnackbar(
                         message = snackbarDeleteMessage,
-                        actionLabel = "UNDO",
+                        actionLabel = "Undo",
                         duration = SnackbarDuration.Short
                     )
                     val taskRef = database.reference.child("Task")
@@ -337,7 +337,7 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
             coroutineScope.launch {
                 val snackbarResult = snackbarHostState.showSnackbar(
                     message = snackbarUncompleteMessage,
-                    actionLabel = "UNDO",
+                    actionLabel = "Undo",
                     duration = SnackbarDuration.Short
                 )
 
@@ -372,13 +372,14 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
 
     // Rest of the MarkCompletedScreen UI...
 }
+    var alreadyNavigated by remember { mutableStateOf(false) }
     with(sharedTransitionScope){
         Scaffold(
             scaffoldState = scaffoldState,
             modifier = Modifier.fillMaxSize(),
             backgroundColor = Color.Transparent
         ) {
-            BoxWithConstraints(modifier = Modifier
+            Box(modifier = Modifier
                 .blur(radius = blurEffectBackground)
                 .fillMaxSize()
                 /*  .sharedBounds(
@@ -390,8 +391,12 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                 .background(color = MaterialTheme.colors.background)
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
-                    navController.popBackStack()
-                    markCompletevisible.value = false
+                    if (!alreadyNavigated) {
+                        alreadyNavigated = true
+                        navController.popBackStack()
+                        markCompletevisible.value = false
+                    }
+
                 },
                 ) {
                 //ThemedGridImage(modifier = Modifier)
@@ -873,6 +878,8 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                                     .clickable(indication = null,
 
                                         interactionSource = remember { MutableInteractionSource() }) {
+                                        cancelNotification(context, id)
+                                        cancelNotificationManger(context, id)
                                         val user = FirebaseAuth.getInstance().currentUser
                                         val currentuserId = user?.uid
                                         if (currentuserId != null) {
@@ -933,12 +940,17 @@ var openXPage by remember{
                         .height(48.dp)
 
 
-                        .clickable {
+                        .clickable(indication = null,
+
+                            interactionSource = remember { MutableInteractionSource() }) {
                             openXPage = true
-                        },
+                        }
+                        ,
                         contentAlignment = Alignment.Center
                     ){
-                        Row(modifier = Modifier.padding(start = 24.dp,end = 24.dp),
+                        Row(modifier = Modifier
+
+                            .padding(start = 24.dp,end = 24.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text(text = "Connect With Us".toUpperCase(),
@@ -971,8 +983,12 @@ var openXPage by remember{
                 ){
                     CrossFloatingActionButton(
                         onClick = {
-                            navController.popBackStack()
-                            markCompletevisible.value = false
+                            if (!alreadyNavigated) {
+                                alreadyNavigated = true
+                                navController.popBackStack()
+                                markCompletevisible.value = false
+                            }
+
                         },
                         visible = markCompletevisible
                     )

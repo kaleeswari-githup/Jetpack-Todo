@@ -228,7 +228,14 @@ fun DeleteTaskScreenCircle(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
 
-            DeletedTaskCircle(id = id, date = date , time = time, message = message, repeatOption = repeatOption)
+            DeletedTaskCircle(
+                id = id,
+                date = date ,
+                time = time,
+                message = message,
+                repeatOption = repeatOption,
+                showShadow = true
+            )
 
             Text(
                 text = textHeading,
@@ -269,6 +276,7 @@ fun DeletedTaskCircle(id: String,
                       message:String,
                       repeatOption:String,
                       inputDateFormat: String = "EEE, d MMM yyyy",
+                      showShadow: Boolean = true,
                       topContent: @Composable () -> Unit = {
                           Box(
                               modifier = androidx.compose.ui.Modifier
@@ -310,7 +318,8 @@ fun DeletedTaskCircle(id: String,
                 .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(MaterialTheme.colors.secondary, shape = CircleShape)
-                .drawBehind {
+                .then(
+                    if (showShadow) Modifier.drawBehind  {
                     val shadowColor = borderShadowColor.copy(alpha = 0.05f) // Soft inner shadow
                     val strokeWidth = 2.dp.toPx() // Shadow thickness
                     val topOffset = 1.5.dp.toPx() // Adjust to keep top shadow visible
@@ -331,7 +340,8 @@ fun DeletedTaskCircle(id: String,
                         radius = size.minDimension / 2 - strokeWidth - bottomOffset,
                         center = Offset(size.width / 2, size.height / 2 + bottomOffset)
                     )
-                }
+                }else Modifier
+                )
                 ,
             contentAlignment = androidx.compose.ui.Alignment.Center,
         ) {

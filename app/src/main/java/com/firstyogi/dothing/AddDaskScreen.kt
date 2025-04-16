@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -67,8 +69,7 @@ fun AddDaskScreen(
     selectedTime: MutableState<LocalTime?>,
     textValue:String,
     isChecked: MutableState<Boolean>,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+
     ) {
     var task = rememberSaveable {
         mutableStateOf(textValue)
@@ -92,49 +93,10 @@ fun AddDaskScreen(
         mutableStateOf(false)
     }
 
-    //val newTaskId = remember { UUID.randomUUID().toString() }
 
-    val onDneClick:() -> Unit = {
-        val trimmedText = task.value.trim()
-        val areNotificationsEnabled = areNotificationsEnabled(context)
-        val timeFormat = if (selectedTime != null && selectedTime.value != null) {
-            selectedTime.value!!.format(DateTimeFormatter.ofPattern("hh:mm a")).toUpperCase()
-            selectedTime.value!!.format(DateTimeFormatter.ofPattern("hh:mm a",Locale.ENGLISH)).toUpperCase()
-        } else {
-            null
-        }
-        val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-        val formattedDate = if (selectedDate != null && selectedDate.value != null) {
-            selectedDate.value!!.format(formatter)
-        } else {
-            null
-        }
-        val messageText = if (trimmedText.isNullOrBlank()) null else trimmedText
-        val userSelectedDate = if (formattedDate.isNullOrBlank()) null else formattedDate
-        val userSelectedTime = if (timeFormat.isNullOrBlank()) null else timeFormat
-        val id:String = databaseRef.push().key.toString()
-        val notificationTime: Long? = if (userSelectedDate != null && userSelectedTime != null) {
-            val combinedDateTime = "$userSelectedDate $userSelectedTime"
-           // val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
-            val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.ENGLISH)
-            val date: Date = dateTimeFormat.parse(combinedDateTime)
-            date?.time
-        } else {
-            null
-        }
-        val data = DataClass(
-            id,
-            messageText ?: "",
-            userSelectedTime ?: "",
-            userSelectedDate ?: "",
-            notificationTime =notificationTime ?: 0L ,
-            repeatedTaskTime = repeatableOption.value)
-        databaseRef.child(id).setValue(data)
-        navController.popBackStack()
+    LaunchedEffect(Unit) {
+        addTaskvisible.value = true
     }
-    var taskSaved = remember { mutableStateOf(false) }
-
-
     val onDoneClick: () -> Unit = {
 
         val trimmedText = task.value.trim()
@@ -193,7 +155,8 @@ fun AddDaskScreen(
             notificationTime = notificationTime ?: 0L,
             repeatedTaskTime = repeatableOption.value,
             nextDueDate = nextDueDate,
-            nextDueDateForCompletedTask = nextDueDateForCompletedTask
+            nextDueDateForCompletedTask = nextDueDateForCompletedTask,
+            startDate = userSelectedDate?:""
         )
 
         databaseRef.child(id).setValue(data)
@@ -201,12 +164,8 @@ fun AddDaskScreen(
         softwareKeyboardController?.hide()
        // navController.previousBackStackEntry?.savedStateHandle?.set("newTaskId", newTaskId)
         navController.popBackStack()
-        addTaskvisible.value = false
+       // addTaskvisible.value = false
 
-    }
-    val onRepeatedDelete:()->Unit ={
-        val data = DataClass(repeatedTaskTime = "NO REPEATE")
-        databaseRef.child(id).setValue(data)
     }
 
     val blurEffectBackground by animateDpAsState(targetValue = when{
@@ -215,9 +174,7 @@ fun AddDaskScreen(
     }
     )
 
-    LaunchedEffect(Unit) {
-        addTaskvisible.value = true
-    }
+
     val offsetY by animateDpAsState(
         targetValue = if (addTaskvisible.value) 0.dp else 42.dp,
         animationSpec = tween(durationMillis = 300, delayMillis = 100,easing = EaseOutCirc)
@@ -232,18 +189,21 @@ fun AddDaskScreen(
         }
     )
     val scaffoldState = rememberScaffoldState()
-    Surface(
-    ) {
+    var alreadyNavigated by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .blur(blurEffectBackground)
                 .background(color = MaterialTheme.colors.background)
+
                 .clickable(indication = null,
                     interactionSource = remember { MutableInteractionSource() }) {
-                    softwareKeyboardController!!.hide()
-                    navController.popBackStack()
-                    addTaskvisible.value = false
+                    if (!alreadyNavigated) {
+                        alreadyNavigated = true
+                        softwareKeyboardController?.hide()
+                        navController.popBackStack()
+                    }
+                   // addTaskvisible.value = false
                 }
         ) {
             //ThemedGridImage(modifier = Modifier)
@@ -270,8 +230,7 @@ fun AddDaskScreen(
                         isChecked = isChecked,
                         repeatableOption = repeatableOption,
                         id = id,
-                        animatedVisibilityScope = animatedVisibilityScope,
-                        sharedTransitionScope = sharedTransitionScope,
+
                         softwareKeyboardController = softwareKeyboardController!!,
 
                         )
@@ -300,9 +259,12 @@ fun AddDaskScreen(
                                     )
                                     .clickable(indication = null,
                                         interactionSource = remember { MutableInteractionSource() }) {
-                                        softwareKeyboardController.hide()
-                                        navController.popBackStack()
-                                        addTaskvisible.value = false
+                                        if (!alreadyNavigated) {
+                                            alreadyNavigated = true
+                                            softwareKeyboardController?.hide()
+                                            navController.popBackStack()
+                                        }
+                                       // addTaskvisible.value = false
 
                                     },
                                 contentAlignment = Alignment.Center
@@ -324,7 +286,11 @@ fun AddDaskScreen(
                                         )
                                         .clickable(indication = null,
                                             interactionSource = remember { MutableInteractionSource() }) {
-                                            onDoneClick.invoke()
+                                            if (!alreadyNavigated) {
+                                                alreadyNavigated = true
+                                                onDoneClick.invoke()
+                                            }
+
 
                                         },
                                     contentAlignment = Alignment.Center
@@ -352,17 +318,21 @@ fun AddDaskScreen(
             ) {
                 CrossFloatingActionButton(
                     onClick = {
-                        softwareKeyboardController!!.hide()
-                        addTaskvisible.value = false
+                        if (!alreadyNavigated) {
+                            alreadyNavigated = true
+                            softwareKeyboardController!!.hide()
+                            addTaskvisible.value = false
 
-                        navController.popBackStack()
+                            navController.popBackStack()
+                        }
+
                     },
                     visible = addTaskvisible
                 )
             }
 
         }
-    }
+
 
 
 
@@ -390,8 +360,7 @@ fun AddDaskCircleDesign(
     isChecked: MutableState<Boolean>,
     repeatableOption: MutableState<String>,
     id:String,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope:AnimatedVisibilityScope,
+
     softwareKeyboardController: SoftwareKeyboardController,
 
 
@@ -426,7 +395,7 @@ fun AddDaskCircleDesign(
         )
     )
     Log.d("addtaskId","$id")
-    with(sharedTransitionScope){
+
         Box(
             modifier = Modifier
 
@@ -614,7 +583,7 @@ fun AddDaskCircleDesign(
 
         }
 
-    }
+
    /* LaunchedEffect(isSaveClicked.value) {
         if (!isSaveClicked.value) {
             // Allow the FloatingActionButton transition to complete before switching

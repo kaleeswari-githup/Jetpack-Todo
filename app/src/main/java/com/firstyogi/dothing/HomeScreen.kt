@@ -25,6 +25,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -138,24 +139,13 @@ fun HomeScreen(
     val selectedItemId = remember { mutableStateOf("") }
     val selectedMarkedItemId = remember { mutableStateOf("") }
     var isMarkCompletedOpen = remember { mutableStateOf(false) }
-    var isUpdatePickerOpen = remember { mutableStateOf(false) }
-    var isPickerOpen = remember { mutableStateOf(false) }
-    var isAddDaskOpen = remember { mutableStateOf(false) }
+
 
     BackHandler {
         (context as? ComponentActivity)?.finish()
     }
-    DisposableEffect(Unit) {
-        onDispose {
-            coroutineScope.coroutineContext.cancelChildren()
-        }
-    }
-    var homeScreenvisible = remember {
-        mutableStateOf(false)
-    }
-    LaunchedEffect(Unit) {
-        homeScreenvisible.value = true // Set the visibility to true to trigger the animation
-    }
+
+
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val taskNewRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
@@ -165,22 +155,19 @@ fun HomeScreen(
             override fun onDataChange(snapshot: DataSnapshot) {
                 val data = snapshot.getValue(DataClass::class.java)
                 if (data != null) {
-                  // updateNextDueDate(data)
                     taskRef.removeValue()
 
                     completedTasksRef.setValue(data)
 
                     cancelNotification(context, data.id)
-                    // This changes only the local copy
 
-                    // Update the date field in the database
                     cancelNotificationManger(context, data.id)
 
                     coroutineScope.launch {
                         snackbarHostState.currentSnackbarData?.dismiss()
                         val result = snackbarHostState.showSnackbar(
-                            message = "TASK COMPLETED",
-                            actionLabel = "UNDO",
+                            message = "Task completed",
+                            actionLabel = "Undo",
                             duration = SnackbarDuration.Short
                         )
                         when (result) {
@@ -209,7 +196,11 @@ fun HomeScreen(
         })
     }
 //
-
+    DisposableEffect(Unit) {
+        onDispose {
+            snackbarHostState.currentSnackbarData?.dismiss()
+        }
+    }
 
 
     val completedTasksCountState = remember { mutableStateOf(0) }
@@ -243,6 +234,7 @@ fun HomeScreen(
                     data?.let {
                         cardDataList.add(it.copy(id = id))
                         isNotificationSet.value = true
+                        updateTaskInFirebase(data = data, repeatOption = data.repeatedTaskTime!!,context = context)
                     }
                 }
             }
@@ -253,98 +245,16 @@ fun HomeScreen(
         databaseRef.addValueEventListener(valueEventListener)
     }
 
-    /*LaunchedEffect(Unit){
-        val valueEventListener = object :ValueEventListener{
-            override fun onDataChange(dataSnapshot: DataSnapshot) {
-                cardDataList.clear()
-                for (childSnapshot in dataSnapshot.children) {
-                    val id = childSnapshot.key ?: continue
-                    val map = childSnapshot.value as? Map<*, *> ?: continue
-
-                    val data = DataClass(
-                        id = id,
-                        message = map["message"] as? String ?: "",
-                        time = map["time"] as? String ?: "",
-                        date = map["date"] as? String ?: "",
-                        notificationTime = when (val nt = map["notificationTime"]) {
-                            is Long -> nt
-                            is String -> nt.toLongOrNull() ?: 0L
-                            else -> 0L
-                        },
-                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
-                        nextDueDate = when (val nd = map["nextDueDate"]) {
-                            is Long -> nd
-                            is String -> nd.toLongOrNull()
-                            else -> null
-                        },
-                        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
-                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
-                    )
-
-                    cardDataList.add(data)
-                    isNotificationSet.value = true
-                }
-            }
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Database operation cancelled: $error")
-            }
-        }
-        databaseRef.addValueEventListener(valueEventListener)
-    }*/
     val overscrollOffset = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     // Custom NestedScrollConnection to handle overscroll
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                val currentOffset = overscrollOffset.value
-
-                // Detect if we're at the top or bottom and overscrolling
-                val isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                val isAtBottom = !listState.canScrollForward
-
-                return when {
-                    // Overscroll at the top
-                    delta > 0 && isAtTop -> {
-                        coroutineScope.launch {
-                            overscrollOffset.snapTo((currentOffset + delta).coerceAtMost(700f)) // Max stretch
-                        }
-                        available // Consume the scroll
-                    }
-                    // Overscroll at the bottom
-                    delta < 0 && isAtBottom -> {
-                        coroutineScope.launch {
-                            overscrollOffset.snapTo((currentOffset + delta).coerceAtLeast(-700f)) // Max stretch
-                        }
-                        available // Consume the scroll
-                    }
-                    else -> Offset.Zero // Normal scrolling
-                }
-            }
-
-            override suspend fun onPostFling(
-                consumed: androidx.compose.ui.unit.Velocity,
-                available: androidx.compose.ui.unit.Velocity
-            ): androidx.compose.ui.unit.Velocity {
-                // Smoothly animate back to 0 when scrolling stops
-                overscrollOffset.animateTo(
-                    targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy, // Elastic effect
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-                return super.onPostFling(consumed, available)
-            }
-        }
-    }
     Scaffold(
         scaffoldState = scaffoldState,
-        modifier = modifier.fillMaxSize(),
-        //backgroundColor = Color.Transparent,
+        modifier = modifier.fillMaxSize()
+          ,
+        backgroundColor = Color.Transparent,
         ){
         BoxWithConstraints(modifier = Modifier
             .fillMaxSize()
@@ -352,15 +262,11 @@ fun HomeScreen(
             .background(color = MaterialTheme.colors.background)
             .blur(radius = blurEffectBackground)
         ){
-          //  ThemedGridImage(modifier = Modifier)
-            val listState = rememberLazyListState()
+           // val listState = rememberLazyListState()
             val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
             if (cardDataList.isNotEmpty()){
             LazyColumn(modifier = Modifier
-                .fillMaxSize()
-               // .nestedScroll(nestedScrollConnection) // Attach the nested scroll behavior
-               // .offset { IntOffset(0, overscrollOffset.value.roundToInt()) }
-               ,
+                .fillMaxSize(),
                 state = listState,
                 horizontalAlignment = Alignment.CenterHorizontally){
                 if (todayTasks.isNotEmpty()){
@@ -407,7 +313,6 @@ fun HomeScreen(
                                         isChecked = isCheckedState,
                                         animatedVisibilityScope = animatedVisibilityScope,
                                         sharedTransitionScope = sharedTransitionScope,
-                                        visible = homeScreenvisible,
                                         cardDataList = todayTasks,
                                         isNotificationSet = isNotificationSet
                                     )
@@ -455,7 +360,7 @@ fun HomeScreen(
                                        isChecked = isCheckedState,
                                        animatedVisibilityScope = animatedVisibilityScope,
                                        sharedTransitionScope = sharedTransitionScope,
-                                       visible = homeScreenvisible,
+
                                        cardDataList = upcomingTasks,
                                        isNotificationSet = isNotificationSet
                                    )
@@ -584,7 +489,6 @@ fun HomeScreen(
                     sharedPreferences,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
-                    visible = homeScreenvisible,
                     todayTaskCount = todayTaskCount,
                     upcomingTaskCount = upcomingTaskCount
                     )
@@ -593,7 +497,7 @@ fun HomeScreen(
                     isChecked = isCheckedState,
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
-                    visible = homeScreenvisible
+
                 )
             }
             SnackbarHost(
@@ -606,86 +510,9 @@ fun HomeScreen(
 }
 
 
-private fun moveTaskToMainList(taskData: DataClass) {
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
 
-    val databaseRef = database.reference
-        .child("Task")
-        .child(uid.toString())
-        .push()
-    databaseRef.setValue(taskData)
-
-    val completedTaskRef = database.reference
-        .child("Task")
-        .child("CompletedTasks")
-        .child(uid.toString())
-        .child(taskData.id)
-    completedTaskRef.removeValue()
-}
 
 @RequiresApi(Build.VERSION_CODES.O)
-private fun getCurrentDate(): String {
-    val formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)
-    val currentDate = LocalDate.now()
-    return currentDate.format(formatter)
-}
-@RequiresApi(Build.VERSION_CODES.O)
-fun getNextDueDate(dateString: String, repeatOption: String): String {
-    val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy", Locale.ENGLISH)
-    if (dateString.isNullOrBlank()) {
-        return ""  // or handle this case as needed
-    }
-
-    // Parse the dateString
-    val originalDate: LocalDate
-    try {
-        originalDate = LocalDate.parse(dateString, originalDateFormat)
-    } catch (e: DateTimeParseException) {
-        // Handle the parsing exception if needed
-        return ""  // or handle this case as needed
-    }
-
-    val today = LocalDate.now()
-
-    var nextDate = originalDate
-
-    // Adjust nextDate based on the repeat option
-    nextDate = when (repeatOption) {
-        "DAILY" -> {
-            if (today.isAfter(originalDate) || today.isEqual(originalDate)) {
-                today.plusDays(1)
-            } else {
-                nextDate.plusDays(1)
-            }
-        }
-        "WEEKLY" -> {
-            if (today.isAfter(originalDate) || today.isEqual(originalDate)) {
-                today.plusWeeks(1)
-            } else {
-                nextDate.plusWeeks(1)
-            }
-        }
-        "MONTHLY" -> {
-            if (today.isAfter(originalDate) || today.isEqual(originalDate)) {
-                today.plusMonths(1)
-            } else {
-                nextDate.plusMonths(1)
-            }
-        }
-        "YEARLY" -> {
-            if (today.isAfter(originalDate) || today.isEqual(originalDate)) {
-                today.plusYears(1)
-            } else {
-                nextDate.plusYears(1)
-            }
-        }
-        else -> originalDate
-    }
-
-    return nextDate.format(originalDateFormat)
-}
 
 @Composable
 fun CustomSnackbar(snackbarData: SnackbarData) {
@@ -735,30 +562,10 @@ fun LazyGridLayout(navController: NavController,
                    isChecked: MutableState<Boolean>,
                    animatedVisibilityScope: AnimatedVisibilityScope,
                    sharedTransitionScope: SharedTransitionScope,
-                   visible: MutableState<Boolean>,
                    cardDataList:List<DataClass>,
                    isNotificationSet:MutableState<Boolean>
                    ){
-    val database = FirebaseDatabase.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
-    val uid = user?.uid
-
-
     val context = LocalContext.current
-
-
-   // var visible by remember { mutableStateOf(false) }
-   /* LaunchedEffect(Unit) {
-        delay(100)
-        visible = true
-    }*/
-    val offsetYSecond by animateDpAsState(
-        targetValue = if (visible.value) 0.dp else 0.dp,
-
-    )
-
-
-
     val MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM = 123
     if (isNotificationSet.value){
         cardDataList.forEach { data ->
@@ -850,7 +657,6 @@ fun LazyGridLayout(navController: NavController,
                                 repeatOption = cardData.repeatedTaskTime,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 sharedTransitionScope = sharedTransitionScope,
-                                visible = visible,
                                 isNewTask = isNewTask,
                                 modifier = Modifier
                                     /*.sharedBounds(
@@ -904,7 +710,6 @@ fun LazyGridLayout(navController: NavController,
                                 repeatOption = cardDataList[0].repeatedTaskTime,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 sharedTransitionScope = sharedTransitionScope,
-                                visible = visible,
                                 isNewTask = isNewTask,
                                 modifier = Modifier.animateItemPlacement()
 
@@ -945,7 +750,7 @@ fun RoundedCircleCardDesign(
     repeatOption: String?,
     animatedVisibilityScope: AnimatedVisibilityScope,
     sharedTransitionScope: SharedTransitionScope,
-    visible: MutableState<Boolean>,
+
     isNewTask: Boolean,
     modifier: Modifier
 
@@ -1007,7 +812,7 @@ with(sharedTransitionScope){
                 interactionSource = remember { MutableInteractionSource() }) {
                 updateScreenOpen.value = true
                 isClicked.value = true
-                visible.value = false
+               // visible.value = false
 
             }
 
@@ -1135,7 +940,9 @@ fun CanvasShadow(
 ){
     val isDarkTheme = isSystemInDarkTheme()
 
-            Canvas(
+
+    Canvas(
+
                 modifier = modifier) {
 
                 val gradientBrush = Brush.verticalGradient(
@@ -1219,7 +1026,7 @@ fun FloatingActionButton(
     isChecked:MutableState<Boolean>,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
-    visible:MutableState<Boolean>
+
 ){
     var isButtonProcessing by remember { mutableStateOf(false) }
     val shadowOpacity = 0.4f // Set the desired opacity value (between 0 and 1)
@@ -1291,7 +1098,7 @@ fun FloatingActionButton(
                             isButtonProcessing = true
                             coroutineScope.launch {
                                 navController.navigate(route = "Screen.AddDask.route/${isChecked.value}")
-                                visible.value = false
+                                //visible.value = false
                                 Vibration(context)
                             }
 
@@ -1509,20 +1316,12 @@ fun TopSectionHomeScreen(navController: NavController,
                          sharedPreferences: SharedPreferences,
                          sharedTransitionScope: SharedTransitionScope,
                          animatedVisibilityScope:AnimatedVisibilityScope,
-                         visible: MutableState<Boolean>,
                          todayTaskCount:Int,
                          upcomingTaskCount:Int
                          ){
 
     val context = LocalContext.current
-    val offsetY by animateDpAsState(
-        targetValue = if (visible.value) 0.dp else -52.dp,
-        animationSpec = tween(
-            durationMillis = 500,
-            delayMillis = 300,
-            easing = EaseOutCirc
-        )
-        )
+
     with(animatedVisibilityScope)
    {
         with(sharedTransitionScope){

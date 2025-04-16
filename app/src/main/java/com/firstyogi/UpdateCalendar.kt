@@ -247,7 +247,7 @@ fun UpdatedCalendar(
                 if (isClicked .value ) {
                     isTimePickervisible = false
                     RepeatedTaskScreen(
-                        initiallySelectedOption = selectedRepeatoption.value, // Pass selected option
+                        initiallySelectedOption = selectedRepeatoption.value.ifEmpty { "No Repeat" }, // Pass selected option
                         onRepeatOptionSelected = { selectedOption ->
                             selectedRepeatoption.value = selectedOption
                             //  isClicked.value = false // Close repeat options after selection

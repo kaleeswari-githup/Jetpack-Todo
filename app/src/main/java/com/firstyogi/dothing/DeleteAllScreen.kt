@@ -330,6 +330,7 @@ fun LazyRowDeletedAllItems( cardDataList: List<DataClass>){
                     message = cardData.message!!,
                     repeatOption = cardData.repeatedTaskTime!!,
                     inputDateFormat = "MM/dd/yyyy",
+                    showShadow = false,
                     topContent = {
                         ThemedFilledSquareImage(modifier = Modifier.padding(top = 8.dp))
                     }

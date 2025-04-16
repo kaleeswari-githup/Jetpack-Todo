@@ -97,7 +97,7 @@ fun UpdateTaskScreen(
 
 ) {
     val repeatableOption = remember {
-        mutableStateOf("")
+        mutableStateOf("No Repeat")
     }
     var isUpdatePickerOpen = remember { mutableStateOf(false) }
     val maxValue = 32
@@ -243,7 +243,7 @@ fun UpdateTaskScreen(
             }
 
             val formattedDate = originalDate?.format(desiredDateFormat) ?: ""
-
+            val startDateValue = if (formattedDate.isNotBlank()) formattedDate else null
             val timeFormats = listOf(
                 DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH),
                 DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH).withLocale(Locale.US),
@@ -277,6 +277,7 @@ fun UpdateTaskScreen(
                 time = formattedTime?.format(timeFormat) ?: "",
                 date = formattedDate,
                 notificationTime = notificationTime ?: 0L,
+                startDate = startDateValue
                // dueDate = longDateValue ?:0L
             )
 
@@ -286,6 +287,7 @@ fun UpdateTaskScreen(
                 "time" to updatedData.time,
                 "date" to updatedData.date,
                 "notificationTime" to updatedData.notificationTime,
+                "startDate" to updatedData.startDate
                // "longDateValue" to updatedData.dueDate
             )
             databaseRef.child(id.toString()).updateChildren(dataMap)
@@ -324,7 +326,7 @@ fun UpdateTaskScreen(
                             is String -> nd.toLongOrNull()
                             else -> null
                         },
-                        nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
+                        //nextDueDateForCompletedTask = it["nextDueDateForCompletedTask"] as? String ?: "",
                         formatedDateForWidget = it["formatedDateForWidget"] as? String ?: ""
                     )
                 }
@@ -334,8 +336,8 @@ fun UpdateTaskScreen(
                     cancelNotificationManger(context,clickedTaskId)
                     cancelNotification(context, clickedTaskId)
                     val snackbarResult = snackbarHostState.showSnackbar(
-                        message = "TASK DELETED",
-                        actionLabel = "UNDO",
+                        message = "Task deleted",
+                        actionLabel = "Undo",
                         duration = SnackbarDuration.Short
                     )
                     when (snackbarResult) {
@@ -386,8 +388,8 @@ fun UpdateTaskScreen(
                         coroutineScope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
                             val result = snackbarHostState.showSnackbar(
-                                message = "TASK COMPLETED",
-                                actionLabel = "UNDO",
+                                message = "Task completed",
+                                actionLabel = "Undo",
                                 duration = SnackbarDuration.Short
                             )
                             when (result) {
@@ -474,8 +476,8 @@ fun UpdateTaskScreen(
         animationSpec = tween(durationMillis = 500) // Optional: adjust for smoothness
     )
     val isNavigating = remember { mutableStateOf(false) }
+    var alreadyNavigated by remember { mutableStateOf(false) }
 
-        Surface() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -483,8 +485,12 @@ fun UpdateTaskScreen(
                     .background(color = MaterialTheme.colors.background)
                  .clickable(indication = null,
             interactionSource = remember { MutableInteractionSource() }) {
-            onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
-            updateScreenvisible.value = false
+                     if (!alreadyNavigated) {
+                         alreadyNavigated = true
+                         onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+                         updateScreenvisible.value = false
+                     }
+
         }
             ) {
               //  ThemedGridImage(modifier = Modifier)
@@ -553,14 +559,18 @@ fun UpdateTaskScreen(
                 ) {
                     CrossFloatingActionButton(
                         onClick = {
-                            onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+                            if (!alreadyNavigated) {
+                                alreadyNavigated = true
+                                onDoneClick.invoke(dataClassDate.value, dataClassTime.value)
+                            }
+
                         },
                         visible = updateScreenvisible
                     )
                 }
 
             }
-        }
+
 
 
 
@@ -1057,7 +1067,7 @@ fun ButtonTextWhiteTheme(text:String,color: Color,modifier: Modifier){
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         color = color,
-        style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
+        style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.5.sp),
         modifier = modifier,
         overflow = TextOverflow.Ellipsis,
         lineHeight = 24.sp

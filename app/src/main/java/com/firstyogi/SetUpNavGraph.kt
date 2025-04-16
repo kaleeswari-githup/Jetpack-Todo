@@ -43,126 +43,130 @@ SharedTransitionLayout {
     val currentRoute = navController.currentBackStackEntry?.destination?.route
 
 
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-        ){
-            composable(route = Screen.Home.route,
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+    ) {
+        composable(
+            route = Screen.Home.route,
 
-                ){navBackStackEntry ->
+            ) { navBackStackEntry ->
 
-                HomeScreen(
-                    animatedVisibilityScope = this,
-                    navController,
-                    homesnackbarHostState,
-                    coroutineScope,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    modifier = Modifier)
-            }
-            composable(Screen.Update.route,
+            HomeScreen(
+                animatedVisibilityScope = this,
+                navController,
+                homesnackbarHostState,
+                coroutineScope,
+                sharedTransitionScope = this@SharedTransitionLayout,
+                modifier = Modifier
+            )
+        }
+        composable(
+            Screen.Update.route,
 
-                arguments = listOf(
-                    navArgument(UPDATE_ID_VALUE){
-                        type = NavType.StringType
-                    },
-                    navArgument("isCheckedState") {
-                        type = NavType.BoolType
-                    }
-                ),
-                deepLinks = listOf(navDeepLink { uriPattern = "$uri/update_screen/{$UPDATE_ID_VALUE}/{isCheckedState}" })
-
-            ){backStackEntry->
-
-                val isCheckedState = rememberSaveable {
-                    mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
+            arguments = listOf(
+                navArgument(UPDATE_ID_VALUE) {
+                    type = NavType.StringType
+                },
+                navArgument("isCheckedState") {
+                    type = NavType.BoolType
                 }
-                UpdateTaskScreen(
+            ),
+            deepLinks = listOf(navDeepLink {
+                uriPattern = "$uri/update_screen/{$UPDATE_ID_VALUE}/{isCheckedState}"
+            })
 
-                    navController = navController,
-                    id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
-                    openKeyboard = false,
-                    isChecked = isCheckedState,
-                    homesnackbarHostState,
-                    coroutineScope,
-                    animatedVisibilityScope = this,
-                    sharedTransitionScope = this@SharedTransitionLayout
-                )
+        ) { backStackEntry ->
+
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
             }
+            UpdateTaskScreen(
 
-            composable("Screen.AddDask.route/{isCheckedState}",
+                navController = navController,
+                id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
+                openKeyboard = false,
+                isChecked = isCheckedState,
+                homesnackbarHostState,
+                coroutineScope,
+                animatedVisibilityScope = this,
+                sharedTransitionScope = this@SharedTransitionLayout
+            )
+        }
 
-                arguments = listOf(
-                    navArgument("isCheckedState") {
-                        type = NavType.BoolType
-                    }
-                )){backStackEntry ->
-                val isCheckedState = rememberSaveable {
-                    mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
+        composable(
+            "Screen.AddDask.route/{isCheckedState}",
+
+            arguments = listOf(
+                navArgument("isCheckedState") {
+                    type = NavType.BoolType
                 }
-                AddDaskScreen(
-                    navController = navController,
-                    selectedDate = remember {
-                        mutableStateOf(null)
-                    },
-                    selectedTime = remember {
-                        mutableStateOf(null)
-                    },
-                    textValue = "",
-                    isChecked = isCheckedState,
-                    animatedVisibilityScope = this,
-                    sharedTransitionScope = this@SharedTransitionLayout
-
-                )
+            )) { backStackEntry ->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
             }
-            composable("Screen.MarkComplete.route/{isMarkCheckedState}",
+            AddDaskScreen(
+                navController = navController,
+                selectedDate = remember {
+                    mutableStateOf(null)
+                },
+                selectedTime = remember {
+                    mutableStateOf(null)
+                },
+                textValue = "",
+                isChecked = isCheckedState,
 
-                arguments = listOf(
-                    navArgument("isMarkCheckedState") {
-                        type = NavType.BoolType
-                    }
+
                 )
-            ){backStackEntry ->
-                val isCheckedState = rememberSaveable {
-                    mutableStateOf(backStackEntry.arguments?.getBoolean("isMarkCheckedState") ?: false)
+        }
+        composable(
+            "Screen.MarkComplete.route/{isMarkCheckedState}",
+
+            arguments = listOf(
+                navArgument("isMarkCheckedState") {
+                    type = NavType.BoolType
                 }
-                MarkCompletedScreen(
-                    navController = navController,
-                    isChecked = isCheckedState,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    animatedVisibilityScope = this,
-                    snackbarHostState = completedsnackbarHostState
-                )
+            )
+        ) { backStackEntry ->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isMarkCheckedState") ?: false)
             }
-            composable(Screen.UnMarkCompleted.route,
-                arguments = listOf(
-                    navArgument(UPDATE_ID_VALUE){
-                        type = NavType.StringType
-                    },
-                    navArgument("isCheckedState") {
-                        type = NavType.BoolType
-                    }
-                )){backStackEntry->
-                val isCheckedState = rememberSaveable {
-                    mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
+            MarkCompletedScreen(
+                navController = navController,
+                isChecked = isCheckedState,
+                sharedTransitionScope = this@SharedTransitionLayout,
+                animatedVisibilityScope = this,
+                snackbarHostState = completedsnackbarHostState
+            )
+        }
+        composable(
+            Screen.UnMarkCompleted.route,
+            arguments = listOf(
+                navArgument(UPDATE_ID_VALUE) {
+                    type = NavType.StringType
+                },
+                navArgument("isCheckedState") {
+                    type = NavType.BoolType
                 }
-                UnMarkCompletedTaskScreen(
-                    snackbarHostState = completedsnackbarHostState,
-                    id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
-                    openKeyboard = false,
-                    isChecked = isCheckedState,
-                    animatedVisibilityScope = this,
-                    sharedTransitionScope = this@SharedTransitionLayout,
-                    navController = navController
-                )
+            )) { backStackEntry ->
+            val isCheckedState = rememberSaveable {
+                mutableStateOf(backStackEntry.arguments?.getBoolean("isCheckedState") ?: false)
             }
-
-
+            UnMarkCompletedTaskScreen(
+                snackbarHostState = completedsnackbarHostState,
+                id = backStackEntry.arguments?.getString(UPDATE_ID_VALUE),
+                openKeyboard = false,
+                isChecked = isCheckedState,
+                animatedVisibilityScope = this,
+                sharedTransitionScope = this@SharedTransitionLayout,
+                navController = navController
+            )
         }
 
 
+    }
+
+
 }
-
-
-
 
 }

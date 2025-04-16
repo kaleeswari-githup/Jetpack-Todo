@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 
@@ -21,6 +22,7 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -180,6 +182,26 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 
 }
+/*fun checkAndUpdateTaskAll(taskList: List<DataClass>, context: Context) {
+    val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+    val currentTime = System.currentTimeMillis()
+
+    for (data in taskList) {
+        val repeatOption = data.repeatedTaskTime ?: continue
+      //  val nextDueDateString = data.nextDueDateForCompletedTask ?: continue
+
+        val storedDateInMillis = try {
+           // dateFormat.parse(nextDueDateString)?.time ?: 0L
+        } catch (e: ParseException) {
+            e.printStackTrace()
+            0L
+        }
+
+        if (storedDateInMillis <= currentTime) {
+            updateTaskInFirebase(data, repeatOption, context)
+        }
+    }
+}*/
  fun checkAndUpdateTask(itemId: String, repeatOption: String, context: Context) {
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid ?: return
@@ -195,51 +217,128 @@ class NotificationReceiver : BroadcastReceiver() {
     }
 }
 
-private fun updateTaskInFirebase(data: DataClass, repeatOption: String, context: Context) {
+ fun updateTaskInFirebase(data: DataClass, repeatOption: String, context: Context) {
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid ?: return
     val database = FirebaseDatabase.getInstance()
     val taskRef = database.reference.child("Task").child(uid).child(data.id)
 
-    // Calculate the new next due date
-    val newNextDueDate = data.nextDueDate?.let {
-        val calculatedNextDueDate = calculateNextDueDate(it, repeatOption)
+    val currentTime = System.currentTimeMillis()
 
-        // Only update if the calculated date is in the future
-        if (calculatedNextDueDate > System.currentTimeMillis()) {
-            calculatedNextDueDate
-        } else {
-            it // Keep the existing date if it’s already correct
+    if (!data.startDate.isNullOrBlank() && !repeatOption.isNullOrBlank()) {
+        val result = calculateUpdatedDateFromStartDate(data.startDate!!, repeatOption)
+        result?.let { (calculatedDate, calculatedMillis) ->
+
+            // Check if existing date is behind the calculated one
+            val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+            val storedDateMillis = try {
+                formatter.parse(data.date)?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+
+            if (storedDateMillis < calculatedMillis) {
+                // ✅ Update only if the date is outdated
+               // Toast.makeText(context, "Task ${data.id} Updated!", Toast.LENGTH_SHORT).show()
+
+                data.date = calculatedDate
+                data.nextDueDate = calculateNextDueDate(calculatedMillis, repeatOption)
+                data.nextDueDateForCompletedTask = formatter.format(Date(data.nextDueDate!!))
+
+                taskRef.setValue(data)
+                val baseDateMillis = calculatedMillis // This is from your calculated new date (e.g., today)
+                val originalNotificationTime = data.notificationTime ?: 0L
+
+                val calendar = Calendar.getInstance().apply {
+                    timeInMillis = baseDateMillis
+
+                    val notifTimeCal = Calendar.getInstance().apply {
+                        timeInMillis = originalNotificationTime
+                    }
+
+                    // Set hour & minute from original notificationTime
+                    set(Calendar.HOUR_OF_DAY, notifTimeCal.get(Calendar.HOUR_OF_DAY))
+                    set(Calendar.MINUTE, notifTimeCal.get(Calendar.MINUTE))
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+
+                    // If that time is already passed today, move to the next valid day
+                    if (timeInMillis < System.currentTimeMillis()) {
+                        when (repeatOption.lowercase()) {
+                            "daily" -> add(Calendar.DAY_OF_YEAR, 1)
+                            "weekly" -> add(Calendar.WEEK_OF_YEAR, 1)
+                            "monthly" -> add(Calendar.MONTH, 1)
+                            "yearly" -> add(Calendar.YEAR, 1)
+                        }
+                    }
+                }
+
+                val newNotificationTime = calendar.timeInMillis
+                data.notificationTime = newNotificationTime // update Firebase model if needed
+
+                scheduleNotification(
+                    context,
+                    newNotificationTime,
+                    data.id,
+                    data.message ?: "",
+                    false,
+                    repeatOption
+                )
+
+
+            } else {
+                Log.d("UpdateCheck", "Task ${data.id} is already up to date.")
+            }
         }
-    }
-
-    data.apply {
-        // Update date only if nextDueDate is not null
-        date = newNextDueDate?.let { SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(it)) }
-        nextDueDate = newNextDueDate
-        nextDueDateForCompletedTask = newNextDueDate?.let {
-            SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(it))
-        }
-    }
-
-    // Save the updated data back to Firebase
-    taskRef.setValue(data).addOnSuccessListener {
-        // Schedule the next notification
-        //val nextNotificationTime = calculateNextNotificationTime(data.notificationTime!!, newNextDueDate)
-        scheduleNotification(
-            context,
-            data.notificationTime!!, // Use the original notification time
-            data.id,
-            data.message ?: "",
-            false, // Assuming isCheckedState should be false for a new cycle
-            repeatOption
-        )
-       // updateWidget( context)
-       // Log.d("NotificationCheck", "Scheduled notification for task ${data.id} at ${Date(newNextDueDate)}")
-
     }
 }
+fun calculateUpdatedDateFromStartDate(startDateString: String, repeatOption: String): Pair<String, Long>? {
+    return try {
+        val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+        val startDate = formatter.parse(startDateString) ?: return null
 
+        val startCalendar = Calendar.getInstance().apply {
+            time = startDate
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val todayCalendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        // Repeat until we go *past* today
+        while (!startCalendar.after(todayCalendar)) {
+            when (repeatOption.lowercase(Locale.ENGLISH)) {
+                "daily" -> startCalendar.add(Calendar.DAY_OF_YEAR, 1)
+                "weekly" -> startCalendar.add(Calendar.WEEK_OF_YEAR, 1)
+                "monthly" -> startCalendar.add(Calendar.MONTH, 1)
+                "yearly" -> startCalendar.add(Calendar.YEAR, 1)
+                else -> break
+            }
+        }
+
+        // Step back one repeat to get the latest valid date ≤ today
+        when (repeatOption.lowercase(Locale.ENGLISH)) {
+            "daily" -> startCalendar.add(Calendar.DAY_OF_YEAR, -1)
+            "weekly" -> startCalendar.add(Calendar.WEEK_OF_YEAR, -1)
+            "monthly" -> startCalendar.add(Calendar.MONTH, -1)
+            "yearly" -> startCalendar.add(Calendar.YEAR, -1)
+        }
+
+        val updatedDateString = formatter.format(startCalendar.time)
+        val updatedMillis = startCalendar.timeInMillis
+        Pair(updatedDateString, updatedMillis)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
 fun calculateNextNotificationTime(originalNotificationTime: Long, newNextDueDate: Long): Long {
     val originalCalendar = Calendar.getInstance().apply { timeInMillis = originalNotificationTime }
     val newCalendar = Calendar.getInstance().apply { timeInMillis = newNextDueDate }

@@ -103,7 +103,7 @@ class TodoWidget : GlanceAppWidget() {
                                     is String -> nd.toLongOrNull()
                                     else -> null
                                 },
-                                nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
+                                //nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
                                 formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
                             )
 

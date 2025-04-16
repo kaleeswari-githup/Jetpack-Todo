@@ -53,7 +53,7 @@ fun UpdatedCalendarAndTimePickerScreen(
     isClicked:MutableState<Boolean>,
     repeatableOption:MutableState<String>,
 ) {
-    var selectedRepeatOption = remember { mutableStateOf(repeatableOption.value) }
+    var selectedRepeatOption = remember { mutableStateOf(repeatableOption.value.ifEmpty { "No Repeat" }) }
     val selectedDate = remember { mutableStateOf(userSelectedDate ?: LocalDate.now()) }
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)
     var isTimePickerVisible by remember { mutableStateOf(false) }
