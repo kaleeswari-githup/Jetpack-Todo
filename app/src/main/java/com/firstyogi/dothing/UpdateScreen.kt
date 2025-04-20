@@ -68,6 +68,7 @@ import com.google.firebase.database.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -160,72 +161,7 @@ fun UpdateTaskScreen(
             databaseRef.removeEventListener(listener)
         }
     }
-   /* DisposableEffect(Unit) {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val map = snapshot.child(id.toString()).value as? Map<*, *>
-                if (map != null) {
-                    val selectedData = DataClass(
-                        id = id.toString(),
-                        message = map["message"] as? String ?: "",
-                        time = map["time"] as? String ?: "",
-                        date = map["date"] as? String ?: "",
-                        notificationTime = when (val nt = map["notificationTime"]) {
-                            is Long -> nt
-                            is String -> nt.toLongOrNull() ?: 0L
-                            else -> 0L
-                        },
-                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
-                        nextDueDate = when (val nd = map["nextDueDate"]) {
-                            is Long -> nd
-                            is String -> nd.toLongOrNull()
-                            else -> null
-                        },
-                        nextDueDateForCompletedTask = map["nextDueDateForCompletedTask"] as? String ?: "",
-                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
-                    )
 
-                    // Now you can use selectedData safely
-                    if (selectedData != null) {
-                        data = selectedData
-
-                        val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-                        val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy",Locale.ENGLISH)
-
-                        // Check if the date is not empty before attempting to parse
-                        if (!selectedData.date.isNullOrBlank()) {
-                            try {
-                                // Convert Long to LocalDate
-                                val parsedDate = LocalDate.parse(selectedData.date, originalDateFormat)
-                                dataClassDate.value = parsedDate.format(desiredDateFormat)
-                            } catch (e: DateTimeParseException) {
-                                // Handle parsing error if needed
-                                Log.e("DateParsingError", "Error parsing date: ${selectedData.date}", e)
-                            }
-                        } else {
-                            // Handle the case where the date is empty
-                            dataClassDate.value = ""
-                        }
-                        dataClassMessage.value = selectedData.message ?: ""
-                        dataClassTime.value = selectedData.time?:""
-                        repeatableOption.value = selectedData.repeatedTaskTime?:""
-                        // animationID.value = selectedData.id
-                        Log.d("updatedataclassname","${selectedData.message}")
-                    }
-                }
-
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-            }
-        }
-
-        databaseRef.addListenerForSingleValueEvent(listener)
-
-        onDispose {
-            databaseRef.removeEventListener(listener)
-        }
-    }*/
 
 //Log.d("selectedDate","$selectedDate.value")
         var context = LocalContext.current
@@ -265,9 +201,13 @@ fun UpdateTaskScreen(
             } else {
                 null
             }
-            val longDateValue: Long? = if (!formattedDate.isNullOrBlank()) {
-                val date = LocalDate.parse(formattedDate, desiredDateFormat)
-                date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val nextDueDate = if (notificationTime != null) {
+                calculateNextDueDate(notificationTime, repeatableOption.value)
+            } else {
+                null  // Or set this to a default value like current time, depending on your logic
+            }
+            val nextDueDateForCompletedTask = if (nextDueDate != null) {
+                SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(nextDueDate))
             } else {
                 null
             }
@@ -277,7 +217,8 @@ fun UpdateTaskScreen(
                 time = formattedTime?.format(timeFormat) ?: "",
                 date = formattedDate,
                 notificationTime = notificationTime ?: 0L,
-                startDate = startDateValue
+                startDate = startDateValue,
+                nextDueDateForCompletedTask = nextDueDateForCompletedTask
                // dueDate = longDateValue ?:0L
             )
 
@@ -287,7 +228,8 @@ fun UpdateTaskScreen(
                 "time" to updatedData.time,
                 "date" to updatedData.date,
                 "notificationTime" to updatedData.notificationTime,
-                "startDate" to updatedData.startDate
+                "startDate" to updatedData.startDate,
+                "nextDueDateForCompletedTask" to updatedData.nextDueDateForCompletedTask
                // "longDateValue" to updatedData.dueDate
             )
             databaseRef.child(id.toString()).updateChildren(dataMap)

@@ -17,6 +17,7 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
@@ -1147,7 +1148,7 @@ fun Modifier.bounceClick() = composed {
         }
 }
 
-@SuppressLint("ScheduleExactAlarm")
+
 fun scheduleNotification(
     context: Context,
     selectedDateTime: Long,
@@ -1183,17 +1184,56 @@ fun scheduleNotification(
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         // Always set the initial alarm
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, selectedDateTime, pendingIntent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ requires permission to schedule exact alarms
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    selectedDateTime,
+                    pendingIntent
+                )
+            } else {
+                // Permission not granted, fallback to inexact alarm
+                alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    selectedDateTime,
+                    pendingIntent
+                )
+            }
         } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, selectedDateTime, pendingIntent)
+            // For Android 11 and below, no permission needed
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                selectedDateTime,
+                pendingIntent
+            )
         }
+
+      /*  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    selectedDateTime,
+                    pendingIntent
+                )
+            } else {
+                // Ask user to grant permission
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                context.startActivity(intent)
+                // You may want to inform the user why this is needed before this
+            }
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                selectedDateTime,
+                pendingIntent
+            )
+        }*/
 
         }
 
 }
-@SuppressLint("ScheduleExactAlarm")
+
 fun schedulePastTimeNotification(
     context: Context,
     selectedDateTime: Long,
@@ -1232,10 +1272,29 @@ fun schedulePastTimeNotification(
 
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, futureNotificationTime, pendingIntent)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Android 12+ requires permission to schedule exact alarms
+        if (alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                futureNotificationTime,
+                pendingIntent
+            )
+        } else {
+            // Permission not granted, fallback to inexact alarm
+            alarmManager.set(
+                AlarmManager.RTC_WAKEUP,
+                futureNotificationTime,
+                pendingIntent
+            )
+        }
     } else {
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, futureNotificationTime, pendingIntent)
+        // For Android 11 and below, no permission needed
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            futureNotificationTime,
+            pendingIntent
+        )
     }
 
     Log.d("Notification", "Scheduled for itemId $itemId at ${Date(futureNotificationTime)}")

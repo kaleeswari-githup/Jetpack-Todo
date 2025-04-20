@@ -2,6 +2,7 @@ package com.firstyogi.dothing
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -62,21 +63,40 @@ class NotificationPermissionActivity : ComponentActivity() {
     @SuppressLint("SuspiciousIndentation", "UnusedBoxWithConstraintsScope",
         "UnusedMaterialScaffoldPaddingParameter"
     )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
         setContent {
             AppJetpackComposeTheme {
                 val context = LocalContext.current
-                val userChoice = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
-                    .getBoolean(preferenceKey, false)
-                        if (userChoice) {
-                            // User has already made a choice, navigate to MainActivity directly
-                            val intent = Intent(context, MainActivity::class.java)
-                            context.startActivity(intent)
-                            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                val sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+                val userChoice = sharedPreferences.getBoolean(preferenceKey, false)
+                if (userChoice) {
+                    // User has already made a choice, check exact alarm permission
+                    val exactAlarmChoiceMade = sharedPreferences.getBoolean("exact_alarm_permission_choice", false)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        !exactAlarmChoiceMade &&
+                        !(getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+                    ) {
+                        // Exact alarm permission not granted, go to ExactAlarmNotificatiionAllowActivity
+                        val intent = Intent(context, ExactAlarmNotificatiionAllowActivity::class.java)
+                        context.startActivity(intent)
+                        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                        finish()
+                    } else {
+                        // Go to MainActivity
+                        val intent = Intent(context, MainActivity::class.java)
+                        context.startActivity(intent)
+                        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                        finish()
+                    }
+                    return@AppJetpackComposeTheme
+                }
 
-                            finish()
-                        }else{
+
+
                             var hasNotificationPermission by remember {
                                 if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                                     mutableStateOf(
@@ -223,7 +243,7 @@ class NotificationPermissionActivity : ComponentActivity() {
                                                             modifier = Modifier)
                                                     }
                                                 }
-                                               
+
                                             }
 
                                             Text(text = "You can change this later in settings.".toUpperCase(),
@@ -242,7 +262,7 @@ class NotificationPermissionActivity : ComponentActivity() {
                                 }
                             }
 
-                        }
+
 
 
             }
@@ -254,14 +274,33 @@ class NotificationPermissionActivity : ComponentActivity() {
             .edit()
             .putBoolean(preferenceKey, true)
             .apply()
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val isExactAlarmAllowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmManager.canScheduleExactAlarms()
+        } else {
+            true // Lower versions don't need this permission
+        }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isExactAlarmAllowed) {
+            // Go to permission screen
+            val intent = Intent(this, ExactAlarmNotificatiionAllowActivity::class.java)
+            startActivity(intent)
+            finish()
+        } else {
+            // Go to MainActivity
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
         // Handle the permission result
         if (isGranted) {
             // Permission granted, navigate to MainActivity
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-
+            if (shouldShowExactAlarmPermissionScreen()) {
+                startActivity(Intent(this, ExactAlarmNotificatiionAllowActivity::class.java))
+            } else {
+                startActivity(Intent(this, MainActivity::class.java))
+            }
+            finish()
         } else {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
@@ -271,6 +310,10 @@ class NotificationPermissionActivity : ComponentActivity() {
         }
 
         finish()
+    }
+    fun Context.shouldShowExactAlarmPermissionScreen(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                !(getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
     }
 
 }

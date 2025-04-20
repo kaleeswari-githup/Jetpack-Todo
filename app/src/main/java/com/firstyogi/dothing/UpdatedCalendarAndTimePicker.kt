@@ -120,8 +120,14 @@ fun UpdatedCalendarAndTimePickerScreen(
         val notificationTime = calculateNotificationTime(originalDate!!, originalTime)
         val nextDueDate = calculateNextDueDate(notificationTime, repeatableoneOption)
 
+
+        val nextDueDateForCompletedTask = if (nextDueDate != null) {
+            SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH).format(Date(nextDueDate))
+        } else {
+            null
+        }
         // Calculate nextDueDateForCompletedTask
-        val nextDueDateForCompletedTask = calculateNextDueDateForCompletedTask(notificationTime, repeatableoneOption)
+      //  val nextDueDateForCompletedTask = calculateNextDueDateForCompletedTask(notificationTime, repeatableoneOption)
         Log.d("NextDueDateForCompletedTask","$nextDueDateForCompletedTask")
         val updatedData = HashMap<String, Any>()
         updatedData["message"] = message.value
@@ -131,7 +137,9 @@ fun UpdatedCalendarAndTimePickerScreen(
         updatedData["notificationTime"] = notificationTime
         updatedData["nextDueDate"] = nextDueDate
         updatedData["repeatedTaskTime"] = repeatableoneOption
-        updatedData["nextDueDateForCompletedTask"] = nextDueDateForCompletedTask
+        nextDueDateForCompletedTask?.let {
+            updatedData["nextDueDateForCompletedTask"] = it
+        }
 
         if (invokeOnDoneClick){
             databaseRef.child(id).updateChildren(updatedData)

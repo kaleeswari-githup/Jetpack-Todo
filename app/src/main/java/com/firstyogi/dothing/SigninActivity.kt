@@ -2,11 +2,13 @@ package com.firstyogi.dothing
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlarmManager
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.media.Image
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -120,17 +122,36 @@ class SigninActivity : ComponentActivity() {
 
         val user = auth.currentUser
         if (user != null) {
-            if (!areNotificationsEnabled(this)) {
+            val sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE)
+            val notificationChoiceMade = sharedPreferences.getBoolean("notification_permission_choice", false)
+            val exactAlarmChoiceMade = sharedPreferences.getBoolean("exact_alarm_permission_choice", false)
+
+            // Check notification permission
+            if (!areNotificationsEnabled(this) && !notificationChoiceMade) {
                 val intent = Intent(this@SigninActivity, NotificationPermissionActivity::class.java)
                 startActivity(intent)
-               // overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                 finish()
-            } else {
+            }
+            // Check exact alarm permission (only for Android 12+)
+            else if (
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                !exactAlarmChoiceMade &&
+                !(getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+            ) {
+                val intent = Intent(this@SigninActivity, ExactAlarmNotificatiionAllowActivity::class.java)
+                startActivity(intent)
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                finish()
+            }
+            // Both permissions are granted or choices made, go to MainActivity
+            else {
                 val intent = Intent(this@SigninActivity, MainActivity::class.java)
                 startActivity(intent)
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                 finish()
             }
+
             val startTime = System.currentTimeMillis()
             Log.d(TAG, "onStart called")
 
@@ -180,18 +201,52 @@ fun SignInScreen(){
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener { signInTask ->
                         if (signInTask.isSuccessful) {
-                            if (!areNotificationsEnabled(context)){
-                                val intent = Intent(context, NotificationPermissionActivity::class.java)
+                            val sharedPreferences =
+                                context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+                            val notificationChoiceMade = sharedPreferences.getBoolean(
+                                "notification_permission_choice",
+                                false
+                            )
+                            val exactAlarmChoiceMade =
+                                sharedPreferences.getBoolean("exact_alarm_permission_choice", false)
+
+                            // Check notification permission
+                            if (!areNotificationsEnabled(context) && !notificationChoiceMade) {
+                                val intent =
+                                    Intent(context, NotificationPermissionActivity::class.java)
                                 context.startActivity(intent)
-                               // (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-                            }else{
+                                (context as Activity).overridePendingTransition(
+                                    android.R.anim.fade_in,
+                                    android.R.anim.fade_out
+                                )
+                            }
+                            // Check exact alarm permission (only for Android 12+)
+                            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !exactAlarmChoiceMade &&
+                                !(context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+                            ) {
+                                val intent = Intent(
+                                    context,
+                                    ExactAlarmNotificatiionAllowActivity::class.java
+                                )
+                                context.startActivity(intent)
+                                (context as Activity).overridePendingTransition(
+                                    android.R.anim.fade_in,
+                                    android.R.anim.fade_out
+                                )
+                            } else {
+                                // Both permissions are granted or choices made, go to MainActivity
                                 val intent = Intent(context, MainActivity::class.java)
                                 context.startActivity(intent)
-                                (context as Activity).overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                                (context as Activity).overridePendingTransition(
+                                    android.R.anim.fade_in,
+                                    android.R.anim.fade_out
+                                )
                             }
+                        }
 
-                                                  }
-                    }
+
+            }
+
 
             } catch (e: ApiException) {
                 Toast.makeText(context,  e.localizedMessage, Toast.LENGTH_SHORT).show()

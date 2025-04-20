@@ -8,6 +8,7 @@
     <string name="delete_all">Delete all</string>
     <string name="delete">DELETE</string>
     <string name="title_activity_notification_permission">NotificationPermissionActivity</string>
+    <string name = "exact_alarm_activity_label">ExactAlarmNotificationAllowActivity</string>
     <string name="deleteall_heading">Delete all completed tasks?</string>
     <string name="deleteall_subtitle">This action will remove all tasks marked as completed.
 Once deleted, these tasks cannot be restored.</string>

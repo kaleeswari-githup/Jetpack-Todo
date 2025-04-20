@@ -75,6 +75,77 @@ updateTaskInFirebase(data,repeatOption!!,applicationContext)
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onDataChange(snapshot: DataSnapshot) {
                 for (childSnapshot in snapshot.children) {
+                    val data = childSnapshot.getValue(DataClass::class.java)
+                    if (data != null) {
+                        val currentDateInMillis = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(currentDate)?.time ?: 0L
+                        val nextDueDateInMillis = if (!data.nextDueDateForCompletedTask.isNullOrEmpty()) {
+                            SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).parse(data.nextDueDateForCompletedTask)?.time ?: 0L
+                        } else {
+                            0L
+                        }
+
+                        if (data.repeatedTaskTime in listOf("Daily", "Weekly", "Monthly", "Yearly") &&
+                            currentDateInMillis == nextDueDateInMillis) {
+
+                            // Remove from completed tasks
+                            val completedTaskKey = childSnapshot.key
+                            completedTasksRef.child(completedTaskKey.toString()).removeValue()
+                            checkAndUpdateTask(data.id, data.repeatedTaskTime!!, context = applicationContext)
+                            // Calculate new dates before moving to active tasks
+                            val newNextDueDate = calculateNextDueDate(data.nextDueDate!!, data.repeatedTaskTime!!)
+                            val originalNotificationOffset = data.notificationTime !!- data.nextDueDate!!
+                            val nextNotificationTime = newNextDueDate + originalNotificationOffset
+                            val newDateFormatted = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(data.nextDueDate!!))
+                            // Update the task data
+                            val updatedData = data.copy(
+                                date = newDateFormatted,
+                                nextDueDate = newNextDueDate,
+                                nextDueDateForCompletedTask = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date(newNextDueDate)),
+                                notificationTime = nextNotificationTime,
+                                // isCheckedState = false
+                            )
+                            val NextNotificationTime = calculateNextNotificationTime(data.notificationTime!!, newNextDueDate)
+                            val now = Calendar.getInstance().timeInMillis
+                            // Move to active tasks with updated data
+                            val databaseRef = database.reference.child("Task").child(uid.toString()).child(data.id)
+                            databaseRef.setValue(updatedData)
+
+                            // Schedule new notification only after successful database update
+                            if(nextNotificationTime > now){
+                                scheduleNotification(
+                                    applicationContext,
+                                    nextNotificationTime,
+                                    data.id,
+                                    data.message ?: "",
+                                    false,
+                                    data.repeatedTaskTime
+                                )
+                            }else{
+                                schedulePastTimeNotification(
+                                    applicationContext,
+                                    nextNotificationTime,
+                                    data.id,
+                                    data.message ?: "",
+                                    false,
+                                    data.repeatedTaskTime
+                                )
+                            }
+
+                            Log.d("Worker", "Rescheduled notification for task ${data.id} at ${Date(nextNotificationTime)}")
+
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Worker", "Database error: ${error.message}")
+            }
+        })
+      /*  completedTasksRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            @RequiresApi(Build.VERSION_CODES.O)
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (childSnapshot in snapshot.children) {
                     val map = childSnapshot.value as? Map<*, *> ?: continue
                     val id = childSnapshot.key ?: continue
                     // val data = childSnapshot.getValue(DataClass::class.java)
@@ -107,11 +178,12 @@ updateTaskInFirebase(data,repeatOption!!,applicationContext)
 
                         if (data.repeatedTaskTime in listOf("Daily", "Weekly", "Monthly", "Yearly") &&
                             currentDateInMillis >= nextDueDateInMillis) {
-
+                           Log.d("CurrentDateInMillis","$currentDateInMillis")
+                            Log.d("nextDueDateInMillis","$nextDueDateInMillis")
                             // Remove from completed tasks
                             val completedTaskKey = childSnapshot.key
                             completedTasksRef.child(completedTaskKey.toString()).removeValue()
-                            checkAndUpdateTask(data.id, data.repeatedTaskTime!!, context = applicationContext)
+                          //  checkAndUpdateTask(data.id, data.repeatedTaskTime!!, context = applicationContext)
                             // Calculate new dates before moving to active tasks
                             val newNextDueDate = calculateNextDueDate(data.nextDueDate!!, data.repeatedTaskTime!!)
                             val originalNotificationOffset = data.notificationTime !!- data.nextDueDate!!
@@ -165,7 +237,7 @@ updateTaskInFirebase(data,repeatOption!!,applicationContext)
             override fun onCancelled(error: DatabaseError) {
                 Log.e("Worker", "Database error: ${error.message}")
             }
-        })
+        })*/
 
         return Result.success()
         processTasks(taskList)
