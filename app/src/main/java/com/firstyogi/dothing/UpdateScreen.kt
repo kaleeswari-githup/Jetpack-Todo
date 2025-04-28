@@ -297,13 +297,13 @@ fun UpdateTaskScreen(
         val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
             val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
             val taskNewRef = database.reference.child("Task").child(uid.toString()).push()
-            var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
+            var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
             taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val snapshotValue = snapshot.value as? Map<*, *>
                     val data = snapshotValue?.let {
                         DataClass(
-                            id = id!!, // or wherever you're storing the ID
+                            id = it["id"] as? String ?: "", // or wherever you're storing the ID
                             message = it["message"] as? String ?: "",
                             time = it["time"] as? String ?: "",
                             date = it["date"] as? String ?: "",

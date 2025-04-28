@@ -18,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
@@ -70,6 +71,14 @@ class MainActivity : ComponentActivity() {
                 manager.createNotificationChannel(channel)}
 
                 SetupNavGraph()
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                val uid = currentUser?.uid
+                LaunchedEffect(Unit) {
+                    if (uid != null){
+                        migrateCompletedTaskIds(uid = currentUser.uid, context = context)
+                    }
+
+                }
 
 
             }
@@ -121,6 +130,34 @@ class MainActivity : ComponentActivity() {
     }
 
 
+}
+fun migrateCompletedTaskIds(uid: String, context: Context) {
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val alreadyMigrated = prefs.getBoolean("completed_tasks_migrated", false)
+    if (alreadyMigrated) return
+
+    val completedRef = FirebaseDatabase.getInstance()
+        .getReference("Task/CompletedTasks/$uid")
+
+    completedRef.get().addOnSuccessListener { snapshot ->
+        for (child in snapshot.children) {
+            val task = child.getValue(DataClass::class.java)
+            val pushedKey = child.key
+
+            if (task != null && pushedKey != task.id && !task.id.isNullOrEmpty()) {
+                // Move data to correct ID path
+                val correctRef = completedRef.child(task.id)
+
+                // 1. Write to correct ID
+                correctRef.setValue(task).addOnSuccessListener {
+                    // 2. Remove the wrongly pushed node
+                    completedRef.child(pushedKey!!).removeValue()
+                }
+            }
+        }
+
+        prefs.edit().putBoolean("completed_tasks_migrated", true).apply()
+    }
 }
 
 @Composable
