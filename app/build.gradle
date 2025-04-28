@@ -7,13 +7,13 @@ plugins {
 
 android {
     namespace 'com.firstyogi.dothing'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.firstyogi.dothing"
         minSdk 26
-        targetSdk 35
-        versionCode 41
+        targetSdk 34
+        versionCode 29
         versionName "2.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
