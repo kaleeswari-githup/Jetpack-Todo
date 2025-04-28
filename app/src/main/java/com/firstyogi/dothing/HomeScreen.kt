@@ -1183,7 +1183,6 @@ fun scheduleNotification(
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // Always set the initial alarm
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Android 12+ requires permission to schedule exact alarms
             if (alarmManager.canScheduleExactAlarms()) {
@@ -1208,6 +1207,9 @@ fun scheduleNotification(
                 pendingIntent
             )
         }
+
+        // Always set the initial alarm
+
 
       /*  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (alarmManager.canScheduleExactAlarms()) {
@@ -1271,20 +1273,19 @@ fun schedulePastTimeNotification(
     )
 
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         // Android 12+ requires permission to schedule exact alarms
         if (alarmManager.canScheduleExactAlarms()) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
-                futureNotificationTime,
+               futureNotificationTime,
                 pendingIntent
             )
         } else {
             // Permission not granted, fallback to inexact alarm
             alarmManager.set(
                 AlarmManager.RTC_WAKEUP,
-                futureNotificationTime,
+               futureNotificationTime,
                 pendingIntent
             )
         }
@@ -1292,10 +1293,12 @@ fun schedulePastTimeNotification(
         // For Android 11 and below, no permission needed
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            futureNotificationTime,
+           futureNotificationTime,
             pendingIntent
         )
     }
+
+
 
     Log.d("Notification", "Scheduled for itemId $itemId at ${Date(futureNotificationTime)}")
 }

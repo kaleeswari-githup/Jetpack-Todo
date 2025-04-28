@@ -24,12 +24,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -108,7 +111,8 @@ class ExactAlarmNotificatiionAllowActivity : ComponentActivity(){
                                         Box(
                                             modifier = Modifier
                                                 .height(244.dp)
-                                                .padding(top = 32.dp, start = 24.dp,end = 24.dp)
+                                                .offset(y = 32.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                                                .padding( start = 24.dp,end = 24.dp)
                                                 .background(
                                                     color = androidx.compose.material.MaterialTheme.colors.primary,
                                                     shape = RoundedCornerShape(32.dp)

@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -144,8 +147,10 @@ class NotificationPermissionActivity : ComponentActivity() {
                                                 // Background Box (Card)
                                                 Box(
                                                     modifier = Modifier
+
                                                         .size(height = 244.dp, width = 272.dp)
-                                                        .padding(top = 32.dp)
+                                                        .offset(y = 32.dp + WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+
                                                         .background(
                                                             color = androidx.compose.material.MaterialTheme.colors.secondary,
                                                             shape = RoundedCornerShape(32.dp)
@@ -155,7 +160,7 @@ class NotificationPermissionActivity : ComponentActivity() {
                                                 // ThemedNotificationImage on top of the Box
                                                 ThemedNotificationImage(
                                                     modifier = Modifier
-                                                        .offset(y = 80.dp) // Move it down to sit on top of the Box
+                                                        .offset(y = 80.dp+ WindowInsets.statusBars.asPaddingValues().calculateTopPadding()) // Move it down to sit on top of the Box
                                                         .align(Alignment.TopCenter) // Keep it centered horizontally
                                                 )
                                             }

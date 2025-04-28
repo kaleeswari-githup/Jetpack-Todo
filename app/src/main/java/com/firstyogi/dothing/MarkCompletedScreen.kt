@@ -186,30 +186,6 @@ fun MarkCompletedScreen(
         completedTasksRef.addValueEventListener(valueEventListener)
     }
 
-    val onDeleteClick:(String)  -> Unit = {clickedTaskId ->
-        var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-        coroutineScope.launch {
-            snackbarHostState.currentSnackbarData?.dismiss()
-            val data = completedTasksRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
-            if (data != null) {
-                completedTasksRef.child(clickedTaskId).removeValue()
-                val snackbarResult = snackbarHostState.showSnackbar(
-                    message = "Task Deleted",
-                    actionLabel = "Undo",
-                    duration = SnackbarDuration.Short
-                )
-                when (snackbarResult) {
-                    SnackbarResult.Dismissed -> {
-                        completedTasksRef.child(clickedTaskId).removeValue()
-                    }
-                    SnackbarResult.ActionPerformed -> {
-                        completedTasksRef.child(clickedTaskId).setValue(data)
-                    }
-                }
-            }
-        }
-
-    }
     val onUnMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
@@ -1288,6 +1264,7 @@ fun MarkCompletedCircleDesign(
                     .padding(top = 8.dp)
                     .clickable {
                         onUnMarkcompletedClick(id.toString())
+                        Log.d("ClickedId","$id")
 
                     })
                 Text(

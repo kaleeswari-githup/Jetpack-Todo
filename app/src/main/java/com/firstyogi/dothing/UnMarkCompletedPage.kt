@@ -124,7 +124,7 @@ fun UnMarkCompletedTaskScreen(
                 val map = snapshot.child(id.toString()).value as? Map<*, *>
                 val selectedData = map?.let {
                     DataClass(
-                        id = id.toString(),
+                        id = it["id"] as? String?: "",
                         message = it["message"] as? String ?: "",
                         time = it["time"] as? String ?: "",
                         date = it["date"] as? String ?: "",
