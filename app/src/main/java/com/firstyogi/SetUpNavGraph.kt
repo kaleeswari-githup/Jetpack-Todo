@@ -1,6 +1,7 @@
 package com.firstyogi.dothing
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.EnterTransition
@@ -33,7 +34,7 @@ val uri = "https://firstyogi.page.link"
 @SuppressLint("SuspiciousIndentation")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SetupNavGraph(){
+fun SetupNavGraph(activity: Activity){
     val navController = rememberNavController()
 
     val coroutineScope = rememberCoroutineScope()
@@ -115,9 +116,10 @@ SharedTransitionLayout {
                 },
                 textValue = "",
                 isChecked = isCheckedState,
+fromWidget = false,
+                activity = activity
 
-
-                )
+            )
         }
         composable(
             "Screen.MarkComplete.route/{isMarkCheckedState}",

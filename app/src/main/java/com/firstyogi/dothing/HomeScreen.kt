@@ -68,6 +68,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.text.withStyle
@@ -77,10 +78,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ComponentActivity
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
 import androidx.navigation.NavController
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.firstyogi.TodoWidget
 import com.firstyogi.dothing.*
 import com.firstyogi.ui.theme.*
 import com.google.api.Distribution.BucketOptions.Linear
@@ -93,6 +96,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -131,7 +135,7 @@ fun HomeScreen(
 
 
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
-
+    val clickedItemId = remember { mutableStateOf<String?>(null) }
     fun getIsChecked(): Boolean {
         return sharedPreferences.getBoolean("isChecked", true)
     }
@@ -146,7 +150,7 @@ fun HomeScreen(
         (context as? ComponentActivity)?.finish()
     }
 
-
+    val visibleMap = remember { mutableStateMapOf<String, Boolean>() }
     val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
         val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
         val taskNewRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
@@ -156,38 +160,43 @@ fun HomeScreen(
             override fun onDataChange(snapshot: DataSnapshot) {
                 val data = snapshot.getValue(DataClass::class.java)
                 if (data != null) {
-                    taskRef.removeValue()
-
-                    completedTasksRef.setValue(data)
-
-                    cancelNotification(context, data.id)
-
-                    cancelNotificationManger(context, data.id)
-
                     coroutineScope.launch {
-                        snackbarHostState.currentSnackbarData?.dismiss()
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Task completed",
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short
-                        )
-                        when (result) {
-                            SnackbarResult.ActionPerformed -> {
-                               // data.date = data.userSelectedFirstDate
-                                taskNewRef.setValue(data)
-                                completedTasksRef.removeValue()
+delay(300)
+                        // Do delayed task here
+                        taskRef.removeValue()
 
-                            }
-                            SnackbarResult.Dismissed -> {
+                        completedTasksRef.setValue(data)
 
-                                completedTasksRef.setValue(data)
+                        cancelNotification(context, data.id)
+
+                        cancelNotificationManger(context, data.id)
+
+                        coroutineScope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Task completed",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            when (result) {
+                                SnackbarResult.ActionPerformed -> {
+                                    // data.date = data.userSelectedFirstDate
+                                    taskNewRef.setValue(data)
+                                    completedTasksRef.removeValue()
+                                    clickedItemId.value = if (clickedItemId.value == id) null else id
+
+                                    visibleMap[data.id.toString()] = false
+                                }
+                                SnackbarResult.Dismissed -> {
+
+                                    completedTasksRef.setValue(data)
+                                }
                             }
-                        }
+                    }
+
 
                     }
-                    GlobalScope.launch(Dispatchers.Main) {
-                        TodoWidget.updateWidgets(context)
-                    }
+
                 }
             }
 
@@ -196,7 +205,7 @@ fun HomeScreen(
             }
         })
     }
-//
+
     DisposableEffect(Unit) {
         onDispose {
             snackbarHostState.currentSnackbarData?.dismiss()
@@ -225,6 +234,7 @@ fun HomeScreen(
     val upcomingTasks = cardDataList.filter { it.date!! > currentDate }
     val todayTaskCount = todayTasks.size
     val upcomingTaskCount = upcomingTasks.size
+    saveTaskCountsToPrefs(context, todayTaskCount, upcomingTaskCount)
     LaunchedEffect(Unit){
         val valueEventListener = object :ValueEventListener{
             override fun onDataChange(dataSnapshot: DataSnapshot) {
@@ -305,7 +315,7 @@ fun HomeScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .heightIn(max = 1000.dp) // Restrict height to avoid conflicts
+                                        .heightIn(max = 20000.dp) // Restrict height to avoid conflicts
                                 ) {
                                     LazyGridLayout(
                                         navController = navController,
@@ -315,7 +325,9 @@ fun HomeScreen(
                                         animatedVisibilityScope = animatedVisibilityScope,
                                         sharedTransitionScope = sharedTransitionScope,
                                         cardDataList = todayTasks,
-                                        isNotificationSet = isNotificationSet
+                                        isNotificationSet = isNotificationSet,
+                                        clickedItemId = clickedItemId,
+                                        visibleMap = visibleMap
                                     )
                                 }
 
@@ -363,7 +375,9 @@ fun HomeScreen(
                                        sharedTransitionScope = sharedTransitionScope,
 
                                        cardDataList = upcomingTasks,
-                                       isNotificationSet = isNotificationSet
+                                       isNotificationSet = isNotificationSet,
+                                       clickedItemId = clickedItemId,
+                                       visibleMap = visibleMap
                                    )
                                }
 
@@ -510,13 +524,44 @@ fun HomeScreen(
     }
 }
 
+fun updateWidgetCountsFromLocal(context: Context, cardDataList: List<DataClass>) {
+    val currentDate = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
 
+    val todayTasks = cardDataList.filter {
+        it.date.isNullOrEmpty() || it.date!! <= currentDate
+    }
 
+    val upcomingTasks = cardDataList.filter {
+        !it.date.isNullOrEmpty() && it.date!! > currentDate
+    }
+
+    val todayTaskCount = todayTasks.size
+    val upcomingTaskCount = upcomingTasks.size
+
+    saveTaskCountsToPrefs(context, todayTaskCount, upcomingTaskCount)
+}
+fun updateWidgetImmediately(context: Context) {
+    CoroutineScope(Dispatchers.Main).launch {
+        TodoWidget().updateAll(context)
+    }
+}
+fun saveTaskCountsToPrefs(context: Context, todayCount: Int, upcomingCount: Int) {
+    val prefs = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE)
+    prefs.edit().apply {
+        putInt("todayTaskCount", todayCount)
+        putInt("upcomingTaskCount", upcomingCount)
+        apply()
+    }
+
+    // Update widget immediately after saving data
+   updateWidgetImmediately(context)
+}
 
 @RequiresApi(Build.VERSION_CODES.O)
 
 @Composable
 fun CustomSnackbar(snackbarData: SnackbarData) {
+
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colors.secondary,
@@ -540,14 +585,19 @@ fun CustomSnackbar(snackbarData: SnackbarData) {
                 modifier = Modifier.weight(1f))
            // Spacer(Modifier.weight(1f))
             snackbarData.actionLabel?.let { actionLabel ->
-                TextButton(onClick = { snackbarData.performAction() }) {
+
                     Text(text = actionLabel,
                         color = FABRed,
                         fontFamily = interDisplayFamily,
                         fontSize = 15.sp,
                         style = androidx.compose.ui.text.TextStyle(letterSpacing = 1.sp),
-                        fontWeight = FontWeight.Medium)
-                }
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }){
+                             snackbarData.performAction()
+                        }
+                     )
+
             }
         }
     }
@@ -564,7 +614,9 @@ fun LazyGridLayout(navController: NavController,
                    animatedVisibilityScope: AnimatedVisibilityScope,
                    sharedTransitionScope: SharedTransitionScope,
                    cardDataList:List<DataClass>,
-                   isNotificationSet:MutableState<Boolean>
+                   isNotificationSet:MutableState<Boolean>,
+                   clickedItemId: MutableState<String?>,
+                   visibleMap: MutableMap<String, Boolean>
                    ){
     val context = LocalContext.current
     val MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM = 123
@@ -585,7 +637,7 @@ fun LazyGridLayout(navController: NavController,
                 ) {
                     // Permission is not granted, request it
                     ActivityCompat.requestPermissions(
-                        LocalContext.current as Activity,
+                        context as Activity,
                         arrayOf(android.Manifest.permission.SCHEDULE_EXACT_ALARM),
                         MY_PERMISSIONS_REQUEST_SCHEDULE_ALARM
                     )
@@ -604,9 +656,10 @@ fun LazyGridLayout(navController: NavController,
     val newTaskId = navController.currentBackStackEntry?.savedStateHandle?.get<String>("newTaskId")
     val sharedKey = "bounds-$newTaskId"
     val gridColumns = 2
-
+    val reversedList = cardDataList.reversed()
     with(sharedTransitionScope){
         if (cardDataList.isNotEmpty()){
+            val sortedList = cardDataList.sortedByDescending { it.timestamp }
             if (cardDataList.size > 1) {
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(gridColumns),
@@ -615,12 +668,12 @@ fun LazyGridLayout(navController: NavController,
 
 
                     ) {
-                    itemsIndexed(cardDataList.reversed()) { index, cardData ->
+                    itemsIndexed(sortedList) { index, cardData ->
                         val isNewTask = cardData.id == newTaskId
                         val originalDateFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                         val desiredDateFormat = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
                         val dateStringFromDatabase = cardData.date
-                        val formattedDate = if (dateStringFromDatabase!!.isNotEmpty()) {
+                        val formattedDate = if (!dateStringFromDatabase.isNullOrEmpty()) {
                             val originalDate = LocalDate.parse(dateStringFromDatabase, originalDateFormat)
                             originalDate.format(desiredDateFormat)
                         } else {
@@ -630,18 +683,14 @@ fun LazyGridLayout(navController: NavController,
 
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxWidth()
+                              //  .fillMaxSize()
                                 .padding(
                                     top = if (index == 1) 100.dp else 0.dp,
-                                    bottom = if (index == cardDataList.size - 1) 24.dp else 0.dp
+                                    bottom = if (index == sortedList.size - 1) 24.dp else 0.dp
                                 )
 
-                                .animateContentSize(
-                                    animationSpec = tween(
-                                        durationMillis = 200,
-                                        easing = EaseInElastic
-                                    )
-                                ),
+                            ,
                             contentAlignment = Alignment.Center
                         ) {
 
@@ -659,18 +708,10 @@ fun LazyGridLayout(navController: NavController,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 sharedTransitionScope = sharedTransitionScope,
                                 isNewTask = isNewTask,
-                                modifier = Modifier
-                                    /*.sharedBounds(
-                                        rememberSharedContentState(key = if (!isNewTask) "bounds-$id" else sharedKey),
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                        boundsTransform = {initialRect,targetRect ->
-                                            spring(dampingRatio = 0.8f,
-                                                stiffness = 380f)
-
-                                        },
-                                        placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
-                                    )*/
-
+                                cardDataList = cardDataList,
+                                clickedItemId = clickedItemId,
+                                modifier = Modifier,
+                                visibleMap = visibleMap
                             )
 
 
@@ -679,9 +720,9 @@ fun LazyGridLayout(navController: NavController,
                         }
                     }
                 }
-            }else if (cardDataList.size == 1) {
+            }else if (sortedList.size == 1) {
                 LazyColumn(){
-                    itemsIndexed(cardDataList){ index,cardData ->
+                    itemsIndexed(sortedList){ index,cardData ->
                         val isNewTask = cardData.id == newTaskId
                         Box(modifier = Modifier
                             .fillMaxSize()
@@ -712,10 +753,10 @@ fun LazyGridLayout(navController: NavController,
                                 animatedVisibilityScope = animatedVisibilityScope,
                                 sharedTransitionScope = sharedTransitionScope,
                                 isNewTask = isNewTask,
-                                modifier = Modifier.animateItemPlacement()
-
-
-
+                                modifier = Modifier,
+                                cardDataList = cardDataList,
+                                clickedItemId = clickedItemId,
+                                visibleMap = visibleMap
                             )
 
 
@@ -753,9 +794,13 @@ fun RoundedCircleCardDesign(
     sharedTransitionScope: SharedTransitionScope,
 
     isNewTask: Boolean,
-    modifier: Modifier
+    modifier: Modifier,
+    cardDataList: List<DataClass>,
+    clickedItemId: MutableState<String?>,
+    visibleMap: MutableMap<String, Boolean>
 
-    )
+
+)
 {
 
     val transitionKey = remember(id, isNewTask) {
@@ -788,81 +833,131 @@ fun RoundedCircleCardDesign(
 
 Log.d("homescreenid","$id")
 with(sharedTransitionScope){
-    Box(
-        modifier = modifier
-            .size(184.dp)
-            .aspectRatio(1f)
-            .sharedBounds(
-                rememberSharedContentState(key = "bounds-$id"),
-                animatedVisibilityScope = animatedVisibilityScope,
 
-                boundsTransform = { initialRect, targetRect ->
-                    spring(
-                        dampingRatio = 0.8f,
-                        stiffness = 380f
-                    )
+    val isClickEnabled = remember { mutableStateOf(true) }
+
+    val isVisible = visibleMap.getOrPut(id.toString()) { false }
+
+
+        Box(
+            modifier = modifier
+                .size(184.dp)
+                .aspectRatio(1f)
+                .sharedBounds(
+                    rememberSharedContentState(key = "bounds-$id"),
+                    animatedVisibilityScope = animatedVisibilityScope,
+
+                    boundsTransform = { initialRect, targetRect ->
+                        spring(
+                            dampingRatio = 0.8f,
+                            stiffness = 380f
+                        )
+
+                    },
+                    placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
+                )
+
+                .clip(CircleShape)
+                .background(MaterialTheme.colors.secondary, shape = CircleShape)
+
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }) {
+                    updateScreenOpen.value = true
+                    isClicked.value = true
+                    // visible.value = false
 
                 },
-                placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
-            )
-
-            .clip(CircleShape)
-            .background(MaterialTheme.colors.secondary, shape = CircleShape)
-
-            .clickable(indication = null,
-                interactionSource = remember { MutableInteractionSource() }) {
-                updateScreenOpen.value = true
-                isClicked.value = true
-               // visible.value = false
-
-            }
-
-        ,
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .heightIn(max = 200.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .padding(top = 8.dp)
-                    .size(32.dp)
+                    .fillMaxSize()
+                    .heightIn(max = 200.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box( // 🟩 Replaces Column for overlapping content
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(32.dp),
+                    contentAlignment = Alignment.Center // 🔥 Align both in center
+                ) {
+                   androidx.compose.animation. AnimatedVisibility(
+                        visible = !isVisible,
+                        enter = fadeIn() + scaleIn(),
+                        exit = fadeOut() + scaleOut()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    color = MaterialTheme.colors.background,
+                                    shape = CircleShape
+                                )
+                                .clickable(
+                                    enabled = isClickEnabled.value && isChecked.value,
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
+                                    isClickEnabled.value = false
 
-                    .background(color = MaterialTheme.colors.background, shape = CircleShape)
-                    .clickable(indication = null,
-                        interactionSource = remember { MutableInteractionSource() }) {
-                        if (isChecked.value) {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                val mMediaPlayer =
-                                    MediaPlayer.create(mContext, R.raw.tab_button)
-                                mMediaPlayer.start()
-                                delay(mMediaPlayer.duration.toLong())
-                                mMediaPlayer.release()
-                                onMarkCompletedClick(id.toString())
-                            }
-                            Vibration(context = mContext)
-                        }
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            val mMediaPlayer =
+                                                MediaPlayer.create(mContext, R.raw.tab_button)
+                                            mMediaPlayer.start()
+                                            delay(mMediaPlayer.duration.toLong())
+                                            mMediaPlayer.release()
+                                            onMarkCompletedClick(id.toString())
+                                            updateWidgetCountsFromLocal(mContext, cardDataList)
+                                            clickedItemId.value = id
+                                            withContext(Dispatchers.Main) {
+                                                visibleMap[id.toString()] = true
+                                            }
+                                            delay(500) // optional: give small buffer
+                                            isClickEnabled.value = true
+                                        }
+                                        Vibration(context = mContext)
 
-                    })
-            Text(
-                text = ("$message"),
-                textAlign = TextAlign.Center,
-                fontFamily = interDisplayFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 13.sp,
-                color = MaterialTheme.colors.primary,
-                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                modifier = Modifier
-                    .padding(top = 26.dp, start = 16.dp, end = 16.dp)
-                    ,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                letterSpacing = 0.5.sp
-                   /* .sharedElement(
+
+                                })
+                    }
+
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isVisible,
+                        enter = scaleIn(
+                            animationSpec = tween(
+                                durationMillis = 300,
+                                easing = FastOutSlowInEasing
+                            )
+                        ),
+                        exit = scaleOut(
+                            animationSpec = tween(durationMillis = 200)
+                        )
+                    ) {
+                        ThemedFilledSquareImage(
+                            modifier = Modifier
+                                .fillMaxSize()
+                        )
+                    }
+                }
+                Text(
+                    text = ("$message"),
+                    textAlign = TextAlign.Center,
+                    fontFamily = interDisplayFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colors.primary,
+                    style = androidx.compose.ui.text.TextStyle(
+                        letterSpacing = 0.sp,
+                        textDecoration = if (clickedItemId.value == id) TextDecoration.LineThrough else TextDecoration.None
+                    ),
+                    modifier = Modifier
+                        .padding(top = 26.dp, start = 16.dp, end = 16.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    letterSpacing = 0.5.sp
+                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsMessage-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
                         boundsTransform = { _,_, ->
@@ -871,47 +966,50 @@ with(sharedTransitionScope){
                         placeHolderSize = SharedTransitionScope.PlaceHolderSize.animatedSize
                     )*/
 
-            )
-            Text(
-                text =dateString.toUpperCase(),
-                fontFamily = interDisplayFamily,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Normal,
-                fontSize = 11.sp,
-                color = MaterialTheme.colors.primary.copy(alpha = 0.50f),
-                style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
-                modifier = Modifier
-                    .padding(top = 4.dp, start = 16.dp, end = 16.dp)
-                    .height(15.dp),
-                overflow = TextOverflow.Ellipsis,
-                letterSpacing = 1.sp
-                   /* .sharedElement(
+                )
+                Text(
+                    text = dateString.toUpperCase(),
+                    fontFamily = interDisplayFamily,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.50f),
+                    style = androidx.compose.ui.text.TextStyle(letterSpacing = 0.sp),
+                    modifier = Modifier
+                        .padding(top = 4.dp, start = 16.dp, end = 16.dp)
+                        .height(15.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    letterSpacing = 1.sp
+                    /* .sharedElement(
                         state = rememberSharedContentState(key = "boundsDateandTime-$id"),
                         animatedVisibilityScope = animatedVisibilityScope,
                         boundsTransform = { _,_, ->
                             tween(300)
                         }
                     )*/
-            )
-            if (repeatOption in listOf("Daily","Weekly","Monthly","Yearly") ){
-                ThemedRepeatedIconImage(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .alpha(0.3f))
-            }
-
-        }
-        if (updateScreenOpen.value){
-            LaunchedEffect(Unit){
-                navController.navigate(
-                    route = Screen.Update.passUpdateValues(
-                        id = id.toString(),
-                        isChecked = isChecked.value,
-                    )
                 )
+                if (repeatOption in listOf("Daily", "Weekly", "Monthly", "Yearly")) {
+                    ThemedRepeatedIconImage(
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .alpha(0.3f)
+                    )
+                }
+
+            }
+            if (updateScreenOpen.value) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(
+                        route = Screen.Update.passUpdateValues(
+                            id = id.toString(),
+                            isChecked = isChecked.value,
+                        )
+                    )
+                }
             }
         }
-    }
+
+
 }
 
 

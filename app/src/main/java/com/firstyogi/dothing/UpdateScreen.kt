@@ -66,8 +66,10 @@ import com.firstyogi.ui.theme.FABRed
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -79,6 +81,7 @@ import java.time.format.DateTimeParseException
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
+import kotlin.toString
 
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -111,7 +114,7 @@ fun UpdateTaskScreen(
     var dataClassDate= remember { mutableStateOf("") }
     var dataClassTime = remember{ mutableStateOf("") }
    // var animationID = remember{ mutableStateOf("") }
-    val contextx = LocalContext.current as Activity
+
 
     var updateScreenvisible = remember {
         mutableStateOf(false)
@@ -296,8 +299,7 @@ fun UpdateTaskScreen(
         }
         val onMarkCompletedClick: (String) -> Unit = { clickedTaskId ->
             val taskRef = database.reference.child("Task").child(uid.toString()).child(clickedTaskId)
-            val taskNewRef = database.reference.child("Task").child(uid.toString()).push()
-            var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).push()
+            var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString()).child(clickedTaskId)
             taskRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val snapshotValue = snapshot.value as? Map<*, *>
@@ -323,6 +325,7 @@ fun UpdateTaskScreen(
                         )
                     }
                     if (data != null) {
+
                         taskRef.removeValue()
                         completedTasksRef.setValue(data)
                         cancelNotification(context, data.id)
@@ -337,7 +340,7 @@ fun UpdateTaskScreen(
                             when (result) {
                                 SnackbarResult.ActionPerformed -> {
                                     //Do Something
-                                    taskNewRef.setValue(data)
+                                    taskRef.setValue(data)
                                     completedTasksRef.removeValue()
 
                                 }
@@ -860,7 +863,9 @@ fun UpdatedButtons(
 ){
     val coroutineScope = rememberCoroutineScope()
 
+    val visibleMap = remember { mutableStateMapOf<String, Boolean>() }
 
+    val isVisible = visibleMap.getOrPut(id.toString()) { false }
 
     val offsetY by animateDpAsState(
         targetValue = if (visible.value) 0.dp else 24.dp,
@@ -956,10 +961,16 @@ fun UpdatedButtons(
                                 onMarkCompletedClick(id)
                                 visible.value = false
                                 navController.popBackStack()
+                                withContext(Dispatchers.Main) {
+                                    visibleMap[id.toString()] = true
+                                }
                             }
                         },
                     verticalAlignment = Alignment.CenterVertically) {
-                    ThemedSquareImage(modifier = Modifier)
+
+                        ThemedSquareImage(modifier = Modifier)
+
+
                     ButtonTextWhiteTheme(text = "Mark completed",color = MaterialTheme.colors.primary,modifier = Modifier)
                 }
             }

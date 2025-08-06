@@ -72,11 +72,11 @@ class NotificationReceiver : BroadcastReceiver() {
 
         val notificationId = itemId.hashCode()
         notificationIdsMap[itemId] = notificationId
-
+        Log.d("notificationid","$itemId")
         val notificationBuilder = NotificationCompat.Builder(context, channelID)
         val repeatOption = intent.getStringExtra("repeatOption") ?: ""
         if (repeatOption in listOf("Daily", "Weekly", "Monthly", "Yearly")) {
-            val itemId = intent.getStringExtra("itemId") ?: ""
+           // val itemId = intent.getStringExtra("itemId") ?: ""
             val message = intent.getStringExtra("messageExtra") ?: ""
             val isCheckedState = intent.getBooleanExtra("isCheckedState", false)
 
@@ -105,8 +105,8 @@ class NotificationReceiver : BroadcastReceiver() {
                       //  updateNextDueDate(data)
                         taskRef.removeValue()
                         completedTasksRef.setValue(data)
-                        cancelNotification(context, data.id)
-                        cancelNotificationManger(context, data.id)
+                        cancelNotification(context, itemId)
+                        cancelNotificationManger(context, itemId)
 
 
                     }
@@ -337,6 +337,35 @@ fun calculateUpdatedDateFromStartDate(startDateString: String, repeatOption: Str
     } catch (e: Exception) {
         e.printStackTrace()
         null
+    }
+}
+fun updateCompletedTaskInFirebase(data: DataClass) {
+    val user = FirebaseAuth.getInstance().currentUser
+    val uid = user?.uid ?: return
+    val database = FirebaseDatabase.getInstance()
+    val completedTaskRef = database.reference.child("Task").child("CompletedTasks").child(uid).child(data.id)
+
+    if (!data.startDate.isNullOrBlank() && !data.repeatedTaskTime.isNullOrBlank()) {
+        val result = calculateUpdatedDateFromStartDate(data.startDate!!, data.repeatedTaskTime!!)
+        result?.let { (calculatedDate, calculatedMillis) ->
+
+            val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+            val storedDateMillis = try {
+                formatter.parse(data.date)?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+
+            if (storedDateMillis < calculatedMillis) {
+                data.date = calculatedDate
+                data.nextDueDate = calculateNextDueDate(calculatedMillis, data.repeatedTaskTime!!)
+                data.nextDueDateForCompletedTask = formatter.format(Date(data.nextDueDate!!))
+
+                completedTaskRef.setValue(data)
+            } else {
+                Log.d("CompletedTaskUpdate", "Completed Task ${data.id} is already up to date.")
+            }
+        }
     }
 }
 fun calculateNextNotificationTime(originalNotificationTime: Long, newNextDueDate: Long): Long {

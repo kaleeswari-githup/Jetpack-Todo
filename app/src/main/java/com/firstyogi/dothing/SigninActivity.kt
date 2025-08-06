@@ -89,6 +89,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.solver.state.State
 import androidx.core.app.NotificationManagerCompat
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import com.firstyogi.TodoWidget
 
 import com.firstyogi.ui.theme.AppJetpackComposeTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -97,9 +102,13 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.database.FirebaseDatabase
+import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class SigninActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -201,6 +210,90 @@ fun SignInScreen(){
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener { signInTask ->
                         if (signInTask.isSuccessful) {
+                            val applicationContext = context.applicationContext
+                            val user = FirebaseAuth.getInstance().currentUser
+                            val userId = user?.uid ?: return@addOnCompleteListener
+                            CoroutineScope(Dispatchers.IO).launch {
+                                delay(300) // Let Firebase settle
+
+                                // 1. Get user's tasks from Firebase
+                                val user = FirebaseAuth.getInstance().currentUser
+                                val userId = user?.uid ?: return@launch
+                                val snapshot = FirebaseDatabase.getInstance().getReference("Task").child(userId).get().await()
+
+                                val todos = snapshot.children.mapNotNull { childSnapshot ->
+                                    val id = childSnapshot.key ?: return@mapNotNull null
+                                    val map = childSnapshot.value as? Map<*, *> ?: return@mapNotNull null
+                                    DataClass(
+                                        id = id,
+                                        message = map["message"] as? String ?: "",
+                                        time = map["time"] as? String ?: "",
+                                        date = map["date"] as? String ?: "",
+                                        notificationTime = (map["notificationTime"] as? Long) ?: 0L,
+                                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                                        nextDueDate = (map["nextDueDate"] as? Long),
+                                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                                    )} // your mapping logic
+
+                                // 2. Convert to JSON
+                                val todosJson = Gson().toJson(todos)
+
+                                // 3. Update widget state
+                                val glanceIds = GlanceAppWidgetManager(applicationContext).getGlanceIds(TodoWidget::class.java)
+                                glanceIds.forEach { glanceId ->
+                                    updateAppWidgetState(
+                                        applicationContext,
+                                        PreferencesGlanceStateDefinition,
+                                        glanceId
+                                    ) { prefs ->
+                                        prefs.toMutablePreferences().apply {
+                                            this[stringPreferencesKey("todos_json")] = todosJson
+                                            this[stringPreferencesKey("user_signed_in")] = "true"
+                                        }
+                                    }
+
+                                    // 4. Trigger widget refresh
+                                    TodoWidget().update(applicationContext, glanceId)
+                                }
+                            }
+                           /* CoroutineScope(Dispatchers.IO).launch {
+                                delay(300)
+                                val ref = FirebaseDatabase.getInstance().getReference("Task").child(userId)
+                                val snapshot = ref.get().await()
+
+                                val todos = snapshot.children.mapNotNull { childSnapshot ->
+                                    val id = childSnapshot.key ?: return@mapNotNull null
+                                    val map = childSnapshot.value as? Map<*, *> ?: return@mapNotNull null
+                                    DataClass(
+                                        id = id,
+                                        message = map["message"] as? String ?: "",
+                                        time = map["time"] as? String ?: "",
+                                        date = map["date"] as? String ?: "",
+                                        notificationTime = (map["notificationTime"] as? Long) ?: 0L,
+                                        repeatedTaskTime = map["repeatedTaskTime"] as? String ?: "",
+                                        nextDueDate = (map["nextDueDate"] as? Long),
+                                        formatedDateForWidget = map["formatedDateForWidget"] as? String ?: ""
+                                    )
+                                }
+
+                                val todosJson = Gson().toJson(todos)
+
+                                val glanceIds = GlanceAppWidgetManager(applicationContext).getGlanceIds(TodoWidget::class.java)
+
+                                glanceIds.forEach { glanceId ->
+                                    updateAppWidgetState(
+                                        applicationContext,
+                                        PreferencesGlanceStateDefinition,
+                                        glanceId
+                                    ) { prefs ->
+                                        prefs.toMutablePreferences().apply {
+                                            this[stringPreferencesKey("todos_json")] = todosJson
+                                        }
+                                    }
+
+                                    TodoWidget().update(applicationContext, glanceId)
+                                }
+                            }*/
                             val sharedPreferences =
                                 context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
                             val notificationChoiceMade = sharedPreferences.getBoolean(

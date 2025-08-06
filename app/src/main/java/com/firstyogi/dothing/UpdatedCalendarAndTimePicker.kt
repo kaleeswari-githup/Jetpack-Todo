@@ -249,7 +249,8 @@ fun UpdatedCalendarAndTimePickerScreen(
                     modifier = Modifier
                         .offset(y = offsetY)
                         .alpha(opacity)
-                        .clickable { onDismiss.invoke() }
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) { onDismiss.invoke() }
                         .background(
                             color = MaterialTheme.colors.secondary,
                             shape = RoundedCornerShape(53.dp)
@@ -273,7 +274,8 @@ fun UpdatedCalendarAndTimePickerScreen(
                             color = MaterialTheme.colors.primary,
                             shape = RoundedCornerShape(53.dp)
                         )
-                        .clickable {
+                        .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
                             Log.d("id","$id")
                             val dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
                             val dateString: String = selectedDate.value.format(dateFormatter)

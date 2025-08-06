@@ -181,28 +181,7 @@ fun UnMarkCompletedTaskScreen(
         }
     }
     val onDeleteClick:(String)  -> Unit = {clickedTaskId ->
-        var completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
-      /*  coroutineScope.launch {
-            snackbarHostState.currentSnackbarData?.dismiss()
-            val data = completedTasksRef.child(clickedTaskId).get().await().getValue(DataClass::class.java)
-            if (data != null) {
-                completedTasksRef.child(clickedTaskId).removeValue()
-                val snackbarResult = snackbarHostState.showSnackbar(
-                    message = "TASK DELETED",
-                    actionLabel = "UNDO",
-                    duration = SnackbarDuration.Short
-                )
-                when (snackbarResult) {
-                    SnackbarResult.Dismissed -> {
-                        completedTasksRef.child(clickedTaskId).removeValue()
-                    }
-                    SnackbarResult.ActionPerformed -> {
-                        completedTasksRef.child(clickedTaskId).setValue(data)
-                    }
-                }
-            }
 
-        }*/
         navController.previousBackStackEntry?.savedStateHandle?.apply {
             set("snackbarDeleteMessage","Task deleted")
             set("taskId",clickedTaskId)

@@ -16,7 +16,8 @@ data class DataClass(
     var nextDueDate:Long? = null,
     var nextDueDateForCompletedTask:String? = "",
     var formatedDateForWidget:String?="",
-    var startDate:String? = ""
+    var startDate:String? = "",
+    val timestamp: Long = System.currentTimeMillis()
     //var needsSync: Boolean = false
     )
 fun parseDataClassFromSnapshot(map: Map<*, *>, id: String): DataClass {

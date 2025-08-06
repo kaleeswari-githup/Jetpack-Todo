@@ -1,0 +1,9 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="142dp"
+    android:minHeight="142dp"
+    android:maxWidth = "142dp"
+    android:maxHeight = "142dp"
+    android:widgetCategory="home_screen"
+
+    android:previewImage="@drawable/widget_preview_image"
+     />

@@ -35,6 +35,20 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
         val completedTasksRef = database.reference.child("Task").child("CompletedTasks").child(uid.toString())
         val taskList = mutableListOf<DataClass>()
         val currentDate = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
+        completedTasksRef.addListenerForSingleValueEvent(object :ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (childSnapshot in snapshot.children){
+                    val data = childSnapshot.getValue(DataClass::class.java)
+                    if (data != null) {
+                        updateCompletedTaskInFirebase(data)
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("MyWorker", "Database error: ${error.message}", error.toException())
+            }
+        })
         TaskRef.addListenerForSingleValueEvent(object :ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 for (childSnapshot in snapshot.children) {
@@ -56,6 +70,7 @@ class MyWorker(context: Context, workerParams: WorkerParameters) : Worker(contex
                             0L
                         }
 updateTaskInFirebase(data,repeatOption!!,applicationContext)
+                        updateCompletedTaskInFirebase(data)
                         if (currentDate >= storedDateInMillis.toString()) {
                             val repeatOption = data.repeatedTaskTime
                             if (!repeatOption.isNullOrBlank()) {
@@ -67,7 +82,7 @@ updateTaskInFirebase(data,repeatOption!!,applicationContext)
             }
 
             override fun onCancelled(error: DatabaseError) {
-                TODO("Not yet implemented")
+                Log.e("MyWorker", "ActiveTasks error: ${error.message}")
             }
 
         })
@@ -531,58 +546,7 @@ fun checkAndRescheduleCompletedTask(
     }
 }
 
-class LocalDatabaseOperations(private val context: Context) {
-    private val database = AppDatabase.getInstance(context)
-    private val taskDao = database.taskDao()
 
-    suspend fun checkAndUpdateTask(itemId: String, repeatOption: String) =
-        withContext(Dispatchers.IO) {
-            val task = taskDao.getTaskById(itemId) ?: return@withContext
-            updateTaskInLocalDatabase(task, repeatOption)
-        }
-
-    private suspend fun updateTaskInLocalDatabase(task: TaskEntity, repeatOption: String) =
-        withContext(Dispatchers.IO) {
-            // Calculate the new next due date
-            val newNextDueDate = calculateNextDueDate(task.nextDueDate, repeatOption)
-
-            // Update the task data
-            val updatedTask = task.copy(
-                date = SimpleDateFormat(
-                    "MM/dd/yyyy",
-                    Locale.ENGLISH
-                ).format(Date(task.nextDueDate)),
-                nextDueDate = newNextDueDate,
-                nextDueDateForCompletedTask = SimpleDateFormat(
-                    "MM/dd/yyyy",
-                    Locale.getDefault()
-                ).format(Date(newNextDueDate)),
-                needsSync = true
-            )
-
-            // Save the updated data to the local database
-            taskDao.insertTask(updatedTask)
-
-            // Schedule the next notification
-            val nextNotificationTime =
-                calculateNextNotificationTime(task.notificationTime, newNextDueDate)
-            scheduleNotification(
-                context,
-                task.notificationTime, // Use the original notification time
-                task.id,
-                task.message!!,
-                false, // Assuming isCheckedState should be false for a new cycle
-                repeatOption
-            )
-
-           // updateWidget( context)
-
-            Log.d(
-                "NotificationCheck",
-                "Scheduled notification for task ${task.id} at ${Date(newNextDueDate)}"
-            )
-        }
-}
 /*completedTasksRef.addListenerForSingleValueEvent(object : ValueEventListener {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onDataChange(snapshot: DataSnapshot) {

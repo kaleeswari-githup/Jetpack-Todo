@@ -63,6 +63,7 @@
             </intent-filter>
 
         </activity>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -71,9 +72,42 @@
             android:theme="@style/Theme.DoThings" >
 
         </activity>
+        <activity
+            android:name="com.firstyogi.AddTaskActivity"
+            android:exported="true"
+
+            android:screenOrientation="portrait" />
 
         <receiver android:name=".NotificationReceiver"
             android:exported="true"/>
+        <receiver
+            android:name="com.firstyogi.WidgetBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".WidgetPlacementReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_ENABLED"/>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="android.appwidget.action.APPWIDGET_DELETED"/>
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="com.firstyogi.TodoWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/app_widget_provider" />
+        </receiver>
 
     </application>
 

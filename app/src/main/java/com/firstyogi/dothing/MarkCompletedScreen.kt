@@ -24,6 +24,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -68,20 +69,27 @@ import androidx.compose.ui.text.toUpperCase
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.firstyogi.TodoWidget
 import com.firstyogi.ui.theme.*
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
+
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -110,7 +118,10 @@ fun MarkCompletedScreen(
     var isDeleteAllScreenOpen by remember {
         mutableStateOf(false)
     }
-   // val snackbarHostState = remember { SnackbarHostState() }
+    val visibleMap = remember { mutableStateMapOf<String, Boolean>() }
+    val clickedItemId = remember { mutableStateOf<String?>(null) }
+
+    // val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val sharedPreferences = context.getSharedPreferences("MyAppSettings", Context.MODE_PRIVATE)
     val selectedMarkedItemId = remember { mutableStateOf("") }
@@ -197,42 +208,51 @@ fun MarkCompletedScreen(
 Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                     val nextDueDate = calculateNextDueDate(System.currentTimeMillis(), data.repeatedTaskTime!!)
                     if (data.date != null){
+                        coroutineScope.launch {
+                            delay(300)
+                            completedTasksRef.removeValue()
+                            taskRef.setValue(data)
+                            scheduleNotification(
+                                context,
+                                nextDueDate,
+                                data.id,
+                                data.message!!,
+                                false,
+                                data.repeatedTaskTime!!
+                            )
+                            coroutineScope.launch {
+
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                val snackbarResult = snackbarHostState.showSnackbar(
+                                    message = "Task marked uncompleted",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                when (snackbarResult) {
+                                    SnackbarResult.Dismissed -> {
+                                        val updatedData = data.copy(timestamp = System.currentTimeMillis())
+                                        taskRef.setValue(updatedData)
+                                    }
+                                    SnackbarResult.ActionPerformed -> {
+                                        //data.date = data.nextDueDate
+                                        val undoneData = data.copy(timestamp = System.currentTimeMillis())
+                                        completedNewTaskRef.setValue(undoneData)
+                                        taskRef.removeValue()
+                                        cancelNotification(context, data.id)
+                                        visibleMap[data.id.toString()] = false
+
+                                    }
+                                }
+                            }
+                        }
+
 
                      //   data.nextDueDate = nextDueDate
                     }
 
 
 
-                    completedTasksRef.removeValue()
-                    taskRef.setValue(data)
-                    scheduleNotification(
-                        context,
-                        nextDueDate,
-                        data.id,
-                        data.message!!,
-                        false,
-                        data.repeatedTaskTime!!
-                    )
-                    coroutineScope.launch {
-                        snackbarHostState.currentSnackbarData?.dismiss()
-                        val snackbarResult = snackbarHostState.showSnackbar(
-                            message = "Task marked uncompleted",
-                            actionLabel = "Undo",
-                            duration = SnackbarDuration.Short
-                        )
-                        when (snackbarResult) {
-                            SnackbarResult.Dismissed -> {
-                                taskRef.setValue(data)
-                            }
-                            SnackbarResult.ActionPerformed -> {
-                                //data.date = data.nextDueDate
-                                completedNewTaskRef.setValue(data)
-                                taskRef.removeValue()
-                                cancelNotification(context, data.id)
 
-                            }
-                        }
-                    }
                 }
             }
 
@@ -254,7 +274,6 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
     }
     )
     var markCompletevisible = remember { mutableStateOf(false) }
-    val gson = Gson()
 
     LaunchedEffect(Unit) {
                 markCompletevisible.value = true // Set the visibility to true to trigger the animation
@@ -599,7 +618,8 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                                                     fontWeight = FontWeight.Medium,
                                                     color = FABRed,
                                                     letterSpacing = 1.sp,
-                                                    modifier = Modifier.clickable {
+                                                    modifier = Modifier.clickable(indication = null,
+                                                        interactionSource = remember { MutableInteractionSource() }) {
                                                         isDeleteAllScreenOpen = true
                                                     }
                                                 )
@@ -624,7 +644,9 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                                                     animatedVisibilityScope = animatedVisibilityScope,
                                                     sharedTransitionScope = sharedTransitionScope,
                                                     navController = navController,
-                                                    cardDataList = cardDataList
+                                                    cardDataList = cardDataList,
+                                                    clickedItemId = clickedItemId,
+                                                    visibleMap = visibleMap
                                                 )
                                             }
                                             else {
@@ -868,11 +890,32 @@ Log.d("unmarkcompletid","${completedNewTaskRef.key}")
                                             context,
                                             GoogleSignInOptions.DEFAULT_SIGN_IN
                                         )
+                                        CoroutineScope(Dispatchers.IO).launch {
+
+                                            val glanceIds =
+                                                GlanceAppWidgetManager(context).getGlanceIds(
+                                                    TodoWidget::class.java
+                                                )
+                                            val applicationContext = context.applicationContext
+                                            glanceIds.forEach { glanceId ->
+                                                updateAppWidgetState(
+                                                    applicationContext,
+                                                    PreferencesGlanceStateDefinition,
+                                                    glanceId
+                                                ) { prefs ->
+                                                    prefs.toMutablePreferences().apply {
+                                                        remove(stringPreferencesKey("todos_json"))
+                                                    }
+                                                }
+                                                TodoWidget().update(applicationContext, glanceId)
+                                            }
+                                        }
                                         // Sign out from Google
                                         googleSignInClient
                                             .signOut()
                                             .addOnCompleteListener {
                                                 // Optional: Perform any additional actions after sign out
+
                                                 val intent =
                                                     Intent(context, SigninActivity::class.java)
                                                 context.startActivity(intent)
@@ -1081,8 +1124,11 @@ fun LazyRowCompletedTask(
                          animatedVisibilityScope: AnimatedVisibilityScope,
                          sharedTransitionScope: SharedTransitionScope,
                          navController: NavController,
-    cardDataList:List<DataClass>
-                         ){
+    cardDataList:List<DataClass>,
+    visibleMap: MutableMap<String, Boolean>,
+    clickedItemId: MutableState<String?>
+
+    ){
     val database = FirebaseDatabase.getInstance()
     val user = FirebaseAuth.getInstance().currentUser
     val uid = user?.uid
@@ -1140,7 +1186,9 @@ fun LazyRowCompletedTask(
                 repeatableOption = cardData.repeatedTaskTime!!,
                 animatedVisibilityScope = animatedVisibilityScope,
                 sharedTransitionScope = sharedTransitionScope,
-                navController = navController
+                navController = navController,
+                visibleMap = visibleMap,
+                clickedItemId = clickedItemId
 
             )
 
@@ -1164,10 +1212,15 @@ fun MarkCompletedCircleDesign(
     repeatableOption: String,
     animatedVisibilityScope:AnimatedVisibilityScope,
     sharedTransitionScope: SharedTransitionScope,
-    navController: NavController
+    navController: NavController,
+    clickedItemId: MutableState<String?>,
+
+    visibleMap: MutableMap<String, Boolean>
                               ){
     var shadowColors = MaterialTheme.colors.secondary
     var borderShadowColor = MaterialTheme.colors.primary
+    val isVisible = visibleMap.getOrPut(id.toString()) { false }
+    val coroutineScope = rememberCoroutineScope()
     with(sharedTransitionScope){
         Box(
             modifier = modifier
@@ -1260,19 +1313,63 @@ fun MarkCompletedCircleDesign(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
-                ThemedFilledSquareImage(modifier = Modifier
-                    .padding(top = 8.dp)
-                    .clickable {
-                        onUnMarkcompletedClick(id.toString())
-                        Log.d("ClickedId","$id")
+                Box( // 🟩 Replaces Column for overlapping content
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .size(32.dp),
+                    contentAlignment = Alignment.Center // 🔥 Align both in center
+                ) {
+                    androidx.compose.animation. AnimatedVisibility(
+                        visible = !isVisible,
+                        enter = fadeIn() + scaleIn(),
+                        exit = fadeOut() + scaleOut()
+                    ) {
+                        ThemedFilledSquareImage(modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(indication = null,
+                            interactionSource = remember { MutableInteractionSource() }) {
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    onUnMarkcompletedClick(id.toString())
+                                    withContext(Dispatchers.Main) {
+                                        visibleMap[id.toString()] = true
+                                    }
+                                }
 
-                    })
+                                Log.d("ClickedId","$id")
+
+                            })
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isVisible,
+                        enter = scaleIn(
+                            animationSpec = tween(
+                                durationMillis = 300,
+                                easing = FastOutSlowInEasing
+                            )
+                        ),
+                        exit = scaleOut(
+                            animationSpec = tween(durationMillis = 200)
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    color = MaterialTheme.colors.background,
+                                    shape = CircleShape
+                                )
+                        )
+                    }
+
+                }
+
                 Text(
                     text = buildAnnotatedString {
                         append("$message")
                         addStyle(
                             style = SpanStyle(
-                                textDecoration = TextDecoration.LineThrough
+                                textDecoration = if (clickedItemId.value == id) TextDecoration.LineThrough else TextDecoration.None
+
                             ),
                             start = 0,
                             end = message!!.length

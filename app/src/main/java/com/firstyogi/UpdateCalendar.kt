@@ -385,12 +385,14 @@ fun UpdatedShrinkCalendar(
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         monthOffset--
+                        Vibration(context)
                     })
 
                 ThemedCalendarRightArrowImage(modifier = Modifier
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
                         monthOffset++
+                        Vibration(context)
                     })
             }
 

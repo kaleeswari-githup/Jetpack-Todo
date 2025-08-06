@@ -2,7 +2,9 @@ package com.firstyogi.dothing
 
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -69,6 +71,8 @@ fun AddDaskScreen(
     selectedTime: MutableState<LocalTime?>,
     textValue:String,
     isChecked: MutableState<Boolean>,
+    fromWidget:Boolean,
+    activity: Activity
 
     ) {
     var task = rememberSaveable {
@@ -156,14 +160,25 @@ fun AddDaskScreen(
             repeatedTaskTime = repeatableOption.value,
             nextDueDate = nextDueDate,
             nextDueDateForCompletedTask = nextDueDateForCompletedTask,
-            startDate = userSelectedDate?:""
+            startDate = userSelectedDate?:"",
+            timestamp = System.currentTimeMillis()
         )
 
         databaseRef.child(id).setValue(data)
 
         softwareKeyboardController?.hide()
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+
        // navController.previousBackStackEntry?.savedStateHandle?.set("newTaskId", newTaskId)
-        navController.popBackStack()
+        if (fromWidget) {
+            val activity = (context as? Activity)
+            activity?.finish() // just close the screen
+        } else {
+            navController.popBackStack() // normal behavior inside app
+        }
        // addTaskvisible.value = false
 
     }
@@ -193,6 +208,7 @@ fun AddDaskScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                
                 .blur(blurEffectBackground)
                 .background(color = MaterialTheme.colors.background)
 
@@ -260,9 +276,15 @@ fun AddDaskScreen(
                                     .clickable(indication = null,
                                         interactionSource = remember { MutableInteractionSource() }) {
                                         if (!alreadyNavigated) {
+                                            if (fromWidget) {
+                                                val activity = (context as? Activity)
+                                                activity?.finish() // just close the screen
+                                            } else {
+                                                navController.popBackStack() // normal behavior inside app
+                                            }
                                             alreadyNavigated = true
                                             softwareKeyboardController?.hide()
-                                            navController.popBackStack()
+                                         //   navController.popBackStack()
                                         }
                                        // addTaskvisible.value = false
 
@@ -320,10 +342,16 @@ fun AddDaskScreen(
                     onClick = {
                         if (!alreadyNavigated) {
                             alreadyNavigated = true
+                            if (fromWidget) {
+                                val activity = (context as? Activity)
+                                activity?.finish() // just close the screen
+                            } else {
+                                navController.popBackStack() // normal behavior inside app
+                            }
                             softwareKeyboardController!!.hide()
                             addTaskvisible.value = false
 
-                            navController.popBackStack()
+
                         }
 
                     },

@@ -68,7 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.wear.tiles.ModifiersBuilders.Padding
+
 import com.firstyogi.dothing.ui.theme.FABRed
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -121,7 +121,8 @@ fun DeleteAllScreenPage(onDismiss:() -> Unit,
                             letterSpacing = 1.sp,
                             modifier = Modifier
                                 .padding(top = 16.dp, start = 24.dp, end = 24.dp, bottom = 16.dp)
-                                .clickable {
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
                                     onDismiss.invoke()
                                 }
                         )
@@ -141,7 +142,8 @@ fun DeleteAllScreenPage(onDismiss:() -> Unit,
                             letterSpacing = 1.sp,
                             modifier = Modifier
                                 .padding(top = 16.dp, start = 24.dp, end = 24.dp, bottom = 16.dp)
-                                .clickable {
+                                .clickable(indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }) {
                                     clicked.value = true
 
                                 }

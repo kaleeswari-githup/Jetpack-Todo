@@ -18,6 +18,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
@@ -28,6 +29,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.firstyogi.TodoWidget
 import com.firstyogi.ui.theme.AppJetpackComposeTheme
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.auth.FirebaseAuth
@@ -47,30 +49,39 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        val activity = this@MainActivity
         setContent {
             AppJetpackComposeTheme{
+               // TodoWidget.initializeFirebaseListener(applicationContext)
+
                 enableEdgeToEdge()
                 val context = this
-               /* val myWorkRequest = OneTimeWorkRequestBuilder<MyWorker>()
-                    .setInitialDelay(10, TimeUnit.MINUTES) // Delay execution if needed
-                    .build()
-                WorkManager.getInstance(context).enqueue(myWorkRequest)*/
-         schedulePeriodicWorkManager(context)
-               PeriodicTaskUpdater.enqueue(this)
+                /* val myWorkRequest = OneTimeWorkRequestBuilder<MyWorker>()
+                     .setInitialDelay(10, TimeUnit.MINUTES) // Delay execution if needed
+                     .build()
+                 WorkManager.getInstance(context).enqueue(myWorkRequest)*/
+                schedulePeriodicWorkManager(context)
+                PeriodicTaskUpdater.enqueue(this)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    channelID,
-                    "Tasks",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-                val manager: NotificationManager =
-                    context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                manager.createNotificationChannel(channel)}
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channel = NotificationChannel(
+                        channelID,
+                        "Tasks",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    )
+                    val manager: NotificationManager =
+                        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.createNotificationChannel(channel)}
 
-                SetupNavGraph()
+                SetupNavGraph(activity)
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                val uid = currentUser?.uid
+                LaunchedEffect(Unit) {
+                    if (uid != null){
+                        migrateCompletedTaskIds(uid = currentUser.uid, context = context)
+                    }
 
+                }
 
             }
 
@@ -104,23 +115,51 @@ class MainActivity : ComponentActivity() {
             ExistingPeriodicWorkPolicy.REPLACE,
             periodicWorkRequest
         )
-      /*  val workRequest = PeriodicWorkRequestBuilder<MyWorker>(15, TimeUnit.MINUTES)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED) // Ensure network is available
-                    .setRequiresBatteryNotLow(true) // Prevent execution if battery is low
-                    .build()
-            )
-            .build()
+        /*  val workRequest = PeriodicWorkRequestBuilder<MyWorker>(15, TimeUnit.MINUTES)
+              .setConstraints(
+                  Constraints.Builder()
+                      .setRequiredNetworkType(NetworkType.NOT_REQUIRED) // Ensure network is available
+                      .setRequiresBatteryNotLow(true) // Prevent execution if battery is low
+                      .build()
+              )
+              .build()
 
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "CheckCompletedTasks",
-            ExistingPeriodicWorkPolicy.KEEP,
-            workRequest
-        )*/
+          WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+              "CheckCompletedTasks",
+              ExistingPeriodicWorkPolicy.KEEP,
+              workRequest
+          )*/
     }
 
 
+}
+fun migrateCompletedTaskIds(uid: String, context: Context) {
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val alreadyMigrated = prefs.getBoolean("completed_tasks_migrated", false)
+    if (alreadyMigrated) return
+
+    val completedRef = FirebaseDatabase.getInstance()
+        .getReference("Task/CompletedTasks/$uid")
+
+    completedRef.get().addOnSuccessListener { snapshot ->
+        for (child in snapshot.children) {
+            val task = child.getValue(DataClass::class.java)
+            val pushedKey = child.key
+
+            if (task != null && pushedKey != task.id && !task.id.isNullOrEmpty()) {
+                // Move data to correct ID path
+                val correctRef = completedRef.child(task.id)
+
+                // 1. Write to correct ID
+                correctRef.setValue(task).addOnSuccessListener {
+                    // 2. Remove the wrongly pushed node
+                    completedRef.child(pushedKey!!).removeValue()
+                }
+            }
+        }
+
+        prefs.edit().putBoolean("completed_tasks_migrated", true).apply()
+    }
 }
 
 @Composable
