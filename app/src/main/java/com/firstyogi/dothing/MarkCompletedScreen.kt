@@ -997,7 +997,8 @@ var openXPage by remember{
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 56.dp),
+                        .padding(top = 56.dp)
+                        ,
                     contentAlignment = Alignment.TopEnd
                 ){
                     CrossFloatingActionButton(
@@ -1006,6 +1007,7 @@ var openXPage by remember{
                                 alreadyNavigated = true
                                 navController.popBackStack()
                                 markCompletevisible.value = false
+                                Vibration(context)
                             }
 
                         },

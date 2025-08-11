@@ -285,31 +285,40 @@ fun SignInPromptWidget(context: Context) {
 
     Box(
         modifier = GlanceModifier
+            .padding(5.dp)
             .fillMaxSize()
-            .background(GlanceTheme.colors.primary)
+            .background(GlanceTheme.colors.onPrimary)
             .cornerRadius(18.dp),
            // .clickable(actionStartActivity(signInIntent)),
        // contentAlignment = Alignment.TopEnd
 
     ) {
+        Box (
+            modifier = GlanceModifier.fillMaxSize()
+                //  .padding(8.dp)
+                .background(GlanceTheme.colors.primary)
+                .cornerRadius(16.dp)
+        ){
 
+        }
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(end = 16.dp),
+                .padding(end = 16.dp)
+            ,
             contentAlignment = Alignment.TopEnd // ✅ This aligns content to top-end
         ) {
             Image(
                 provider = ImageProvider(resId = R.drawable.dothing_widget_logo),
                 contentDescription = null,
-                modifier = GlanceModifier.size(68.dp)
+                modifier = GlanceModifier.size(56.dp)
             )
         }
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .padding(start = 16.dp,end = 16.dp,bottom = 24.dp), // Optional horizontal padding
+                .padding(start = 16.dp,end = 16.dp,bottom = 16.dp), // Optional horizontal padding
             contentAlignment = Alignment.BottomCenter // ✅ This centers the button
         ) {
             Box(
@@ -329,7 +338,8 @@ fun SignInPromptWidget(context: Context) {
                 ) {
                     Image(
                         provider = ImageProvider(resId = R.drawable.google_icon),
-                        contentDescription = null
+                        contentDescription = null,
+                        modifier = GlanceModifier.size(20.dp)
                     )
                     Spacer(modifier = GlanceModifier.width(8.dp))
                     Text(
@@ -420,7 +430,7 @@ fun WidgetDesign(todos: List<DataClass>,addTaskIntent: Intent,isSignedIn: Boolea
         modifier = GlanceModifier
            .padding(5.dp)
             .cornerRadius(18.dp)
-            .background(GlanceTheme.colors.primary)
+            .background(GlanceTheme.colors.onPrimary)
             .size(163.dp)
 
 
@@ -530,6 +540,10 @@ fun WidgetDesign(todos: List<DataClass>,addTaskIntent: Intent,isSignedIn: Boolea
                         provider = androidx.glance.ImageProvider(resId =R.drawable.add_button ),
                         contentDescription = null,
                         modifier = GlanceModifier.size(48.dp)
+                            .clickable(
+
+                                actionStartActivity(addTaskIntent)
+                            )
 
                     )
 

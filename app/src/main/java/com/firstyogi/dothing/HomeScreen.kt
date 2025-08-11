@@ -311,7 +311,8 @@ delay(300)
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Medium,
                                     letterSpacing = 1.sp,
-                                    modifier = Modifier.padding(top = 2.dp))
+                                  // modifier = Modifier.padding(top = 2.dp)
+                                )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
